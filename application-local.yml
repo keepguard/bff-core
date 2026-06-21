@@ -1,0 +1,62 @@
+server:
+  port: "8282"
+  read_timeout: "120s"
+  write_timeout: "120s"
+  idle_timeout: "180s"
+  request_timeout: "15m"
+
+services:
+  auth:
+    base_url: "http://localhost:8081"
+    timeout: "30s"
+    retries: 3
+  communication:
+    base_url: "http://localhost:8082"
+    timeout: "30s"
+    retries: 3
+  company:
+    base_url: "http://localhost:8083"
+    timeout: "30s"
+    retries: 3
+  user:
+    base_url: "http://localhost:8085"
+    timeout: "30s"
+    retries: 3
+  user_consents:
+    base_url: "http://localhost:8086"
+    timeout: "30s"
+    retries: 3
+  user_profile:
+    base_url: "http://localhost:8091"
+    timeout: "30s"
+    retries: 3
+
+rabbitmq:
+  host: "localhost"
+  port: 5672
+  user: "guest"
+  password: "guest"
+  vhost: "/"
+  #exchange: "ms-communication-exchange-local"
+  exchange: "ms-communication-exchange-dev"
+  routing_key: "communication.message.send"
+  durable: true
+  auto_delete: false
+
+jwt:
+  secret: "Q2FjaG9ycm8gU2VndXJhbmNhIFByb2pldG8gS2VlcEd1YXJkIQ=="
+  issuer: "keepguard"
+  audience: "keepguard-api"
+
+metrics:
+  enabled: true
+  scrape_path: "/metrics"
+  port: "9090"
+
+log:
+  level: "debug"
+  format: "json"
+
+
+env: "local"
+
