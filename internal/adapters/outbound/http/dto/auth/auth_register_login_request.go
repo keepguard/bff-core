@@ -4,5 +4,5 @@ package dto
 type AuthRegisterLoginRequestDTO struct {
 	Username     string `json:"username" validate:"required"`
 	PasswordHash string `json:"passwordHash" validate:"required"`
-	XApplication string `json:"xApplication" validate:"required"`
+	TenantId string `json:"tenantId" validate:"required"`
 }

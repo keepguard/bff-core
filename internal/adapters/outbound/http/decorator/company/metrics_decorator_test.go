@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-func TestCompanyMetricsDecorator_GetByXApplication_Success(t *testing.T) {
+func TestCompanyMetricsDecorator_GetByTenantId_Success(t *testing.T) {
 	// Arrange
 	mockClient := &MockCompanyClient{}
 	metricsInstance := getTestMetrics()
@@ -25,10 +25,10 @@ func TestCompanyMetricsDecorator_GetByXApplication_Success(t *testing.T) {
 		Name: "Test Company",
 	}
 
-	mockClient.On("GetByXApplication", mock.Anything, "test-app", "corr-123").Return(expectedResponse, nil).Once()
+	mockClient.On("GetByTenantId", mock.Anything, "test-app", "corr-123").Return(expectedResponse, nil).Once()
 
 	// Act
-	result, err := decorator.GetByXApplication(context.Background(), "test-app", "corr-123")
+	result, err := decorator.GetByTenantId(context.Background(), "test-app", "corr-123")
 
 	// Assert
 	assert.NoError(t, err)
@@ -36,7 +36,7 @@ func TestCompanyMetricsDecorator_GetByXApplication_Success(t *testing.T) {
 	mockClient.AssertExpectations(t)
 }
 
-func TestCompanyMetricsDecorator_GetByXApplication_Error(t *testing.T) {
+func TestCompanyMetricsDecorator_GetByTenantId_Error(t *testing.T) {
 	// Arrange
 	mockClient := &MockCompanyClient{}
 	metricsInstance := getTestMetrics()
@@ -49,10 +49,10 @@ func TestCompanyMetricsDecorator_GetByXApplication_Error(t *testing.T) {
 		Message: "Internal Server Error",
 	}
 
-	mockClient.On("GetByXApplication", mock.Anything, "test-app", "corr-123").Return(companyDto.MSCompanyResponseDTO{}, expectedError).Once()
+	mockClient.On("GetByTenantId", mock.Anything, "test-app", "corr-123").Return(companyDto.MSCompanyResponseDTO{}, expectedError).Once()
 
 	// Act
-	result, err := decorator.GetByXApplication(context.Background(), "test-app", "corr-123")
+	result, err := decorator.GetByTenantId(context.Background(), "test-app", "corr-123")
 
 	// Assert
 	assert.Error(t, err)
@@ -125,10 +125,10 @@ func TestCompanyMetricsDecorator_RecordsMetrics(t *testing.T) {
 		Name: "Test Company",
 	}
 
-	mockClient.On("GetByXApplication", mock.Anything, "test-app", "corr-123").Return(expectedResponse, nil).Once()
+	mockClient.On("GetByTenantId", mock.Anything, "test-app", "corr-123").Return(expectedResponse, nil).Once()
 
 	// Act
-	result, err := decorator.GetByXApplication(context.Background(), "test-app", "corr-123")
+	result, err := decorator.GetByTenantId(context.Background(), "test-app", "corr-123")
 
 	// Assert
 	assert.NoError(t, err)
@@ -153,10 +153,10 @@ func TestCompanyMetricsDecorator_RecordsErrorMetrics(t *testing.T) {
 		Message: "Service Unavailable",
 	}
 
-	mockClient.On("GetByXApplication", mock.Anything, "test-app", "corr-123").Return(companyDto.MSCompanyResponseDTO{}, expectedError).Once()
+	mockClient.On("GetByTenantId", mock.Anything, "test-app", "corr-123").Return(companyDto.MSCompanyResponseDTO{}, expectedError).Once()
 
 	// Act
-	result, err := decorator.GetByXApplication(context.Background(), "test-app", "corr-123")
+	result, err := decorator.GetByTenantId(context.Background(), "test-app", "corr-123")
 
 	// Assert
 	assert.Error(t, err)

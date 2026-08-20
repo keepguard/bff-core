@@ -11,7 +11,7 @@ type MSUserRegisterInitResponseDTO struct {
 // MSUserRegisterConfirmResponseDTO representa a resposta da confirmação de registro do ms-user
 type MSUserRegisterConfirmResponseDTO struct {
 	RegistrationSessionID      string `json:"registration_session_id"`
-	XApplication               string `json:"x_application"`
+	TenantId               string `json:"tenant_id"`
 	Email                      string `json:"email"`
 	NameFull                   string `json:"name_full"`
 	Phone                      string `json:"phone"`

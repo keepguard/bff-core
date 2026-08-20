@@ -169,21 +169,21 @@ func (d *retryDecorator) retryError(ctx context.Context, operation func() error)
 }
 
 // CreateUser implementa CreateUser com retry
-func (d *retryDecorator) CreateUser(ctx context.Context, req userDto.MSUserCreateRequestDTO, xApplication, correlationID string) (userDto.MSUserResponseDTO, error) {
+func (d *retryDecorator) CreateUser(ctx context.Context, req userDto.MSUserCreateRequestDTO, tenantId, correlationID string) (userDto.MSUserResponseDTO, error) {
 	return d.retry(ctx, func() (userDto.MSUserResponseDTO, error) {
-		return d.inner.CreateUser(ctx, req, xApplication, correlationID)
+		return d.inner.CreateUser(ctx, req, tenantId, correlationID)
 	})
 }
 
 // GetUserByCodeUser implementa GetUserByCodeUser com retry
-func (d *retryDecorator) GetUserByCodeUser(ctx context.Context, codeUser, token, xApplication, correlationID string) (userDto.MSUserResponseDTO, error) {
+func (d *retryDecorator) GetUserByCodeUser(ctx context.Context, codeUser, token, tenantId, correlationID string) (userDto.MSUserResponseDTO, error) {
 	return d.retry(ctx, func() (userDto.MSUserResponseDTO, error) {
-		return d.inner.GetUserByCodeUser(ctx, codeUser, token, xApplication, correlationID)
+		return d.inner.GetUserByCodeUser(ctx, codeUser, token, tenantId, correlationID)
 	})
 }
 
 // GetByEmail implementa GetByEmail com retry
-func (d *retryDecorator) GetByEmail(ctx context.Context, email, xApplication, correlationID string) (authDto.UserByEmailResponseDTO, error) {
+func (d *retryDecorator) GetByEmail(ctx context.Context, email, tenantId, correlationID string) (authDto.UserByEmailResponseDTO, error) {
 	var lastErr error
 	var lastResult authDto.UserByEmailResponseDTO
 
@@ -194,7 +194,7 @@ func (d *retryDecorator) GetByEmail(ctx context.Context, email, xApplication, co
 		default:
 		}
 
-		result, err := d.inner.GetByEmail(ctx, email, xApplication, correlationID)
+		result, err := d.inner.GetByEmail(ctx, email, tenantId, correlationID)
 
 		if err == nil {
 			return result, nil
@@ -221,7 +221,7 @@ func (d *retryDecorator) GetByEmail(ctx context.Context, email, xApplication, co
 }
 
 // CreateUserNotify implementa CreateUserNotify com retry
-func (d *retryDecorator) CreateUserNotify(ctx context.Context, req userDto.MSUserNotifyCreateRequestDTO, xApplication, correlationID string) (userDto.MSUserNotifyResponseDTO, error) {
+func (d *retryDecorator) CreateUserNotify(ctx context.Context, req userDto.MSUserNotifyCreateRequestDTO, tenantId, correlationID string) (userDto.MSUserNotifyResponseDTO, error) {
 	var lastErr error
 	var lastResult userDto.MSUserNotifyResponseDTO
 
@@ -232,7 +232,7 @@ func (d *retryDecorator) CreateUserNotify(ctx context.Context, req userDto.MSUse
 		default:
 		}
 
-		result, err := d.inner.CreateUserNotify(ctx, req, xApplication, correlationID)
+		result, err := d.inner.CreateUserNotify(ctx, req, tenantId, correlationID)
 
 		if err == nil {
 			return result, nil
@@ -259,7 +259,7 @@ func (d *retryDecorator) CreateUserNotify(ctx context.Context, req userDto.MSUse
 }
 
 // InitRegister implementa InitRegister com retry
-func (d *retryDecorator) InitRegister(ctx context.Context, req userDto.MSUserRegisterInitRequestDTO, xApplication, correlationID string) (userDto.MSUserRegisterInitResponseDTO, error) {
+func (d *retryDecorator) InitRegister(ctx context.Context, req userDto.MSUserRegisterInitRequestDTO, tenantId, correlationID string) (userDto.MSUserRegisterInitResponseDTO, error) {
 	var lastErr error
 	var lastResult userDto.MSUserRegisterInitResponseDTO
 
@@ -270,7 +270,7 @@ func (d *retryDecorator) InitRegister(ctx context.Context, req userDto.MSUserReg
 		default:
 		}
 
-		result, err := d.inner.InitRegister(ctx, req, xApplication, correlationID)
+		result, err := d.inner.InitRegister(ctx, req, tenantId, correlationID)
 
 		if err == nil {
 			return result, nil
@@ -297,7 +297,7 @@ func (d *retryDecorator) InitRegister(ctx context.Context, req userDto.MSUserReg
 }
 
 // ConfirmRegister implementa ConfirmRegister com retry
-func (d *retryDecorator) ConfirmRegister(ctx context.Context, req userDto.MSUserRegisterConfirmRequestDTO, xApplication, correlationID string) (userDto.MSUserRegisterConfirmResponseDTO, error) {
+func (d *retryDecorator) ConfirmRegister(ctx context.Context, req userDto.MSUserRegisterConfirmRequestDTO, tenantId, correlationID string) (userDto.MSUserRegisterConfirmResponseDTO, error) {
 	var lastResult userDto.MSUserRegisterConfirmResponseDTO
 	var lastErr error
 
@@ -311,7 +311,7 @@ func (d *retryDecorator) ConfirmRegister(ctx context.Context, req userDto.MSUser
 			}
 		}
 
-		lastResult, lastErr = d.inner.ConfirmRegister(ctx, req, xApplication, correlationID)
+		lastResult, lastErr = d.inner.ConfirmRegister(ctx, req, tenantId, correlationID)
 		if lastErr == nil {
 			return lastResult, nil
 		}
@@ -326,16 +326,16 @@ func (d *retryDecorator) ConfirmRegister(ctx context.Context, req userDto.MSUser
 }
 
 // DeleteUser implementa DeleteUser com retry
-func (d *retryDecorator) DeleteUser(ctx context.Context, userID, xApplication, correlationID string) error {
+func (d *retryDecorator) DeleteUser(ctx context.Context, userID, tenantId, correlationID string) error {
 	return d.retryError(ctx, func() error {
-		return d.inner.DeleteUser(ctx, userID, xApplication, correlationID)
+		return d.inner.DeleteUser(ctx, userID, tenantId, correlationID)
 	})
 }
 
 // ResendRegisterToken implementa ResendRegisterToken com retry
-func (d *retryDecorator) ResendRegisterToken(ctx context.Context, req userDto.MSUserRegisterResendRequestDTO, xApplication, correlationID string) (userDto.MSUserRegisterResendResponseDTO, error) {
+func (d *retryDecorator) ResendRegisterToken(ctx context.Context, req userDto.MSUserRegisterResendRequestDTO, tenantId, correlationID string) (userDto.MSUserRegisterResendResponseDTO, error) {
 	return d.retryResend(ctx, func() (userDto.MSUserRegisterResendResponseDTO, error) {
-		return d.inner.ResendRegisterToken(ctx, req, xApplication, correlationID)
+		return d.inner.ResendRegisterToken(ctx, req, tenantId, correlationID)
 	})
 }
 

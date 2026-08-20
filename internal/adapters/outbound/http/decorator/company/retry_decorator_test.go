@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-func TestRetryDecorator_GetByXApplication_Success(t *testing.T) {
+func TestRetryDecorator_GetByTenantId_Success(t *testing.T) {
 	// Arrange
 	mockClient := &MockCompanyClient{}
 	config := RetryConfig{
@@ -31,10 +31,10 @@ func TestRetryDecorator_GetByXApplication_Success(t *testing.T) {
 		Name: "Test Company",
 	}
 
-	mockClient.On("GetByXApplication", mock.Anything, "test-app", "corr-123").Return(expectedResponse, nil).Once()
+	mockClient.On("GetByTenantId", mock.Anything, "test-app", "corr-123").Return(expectedResponse, nil).Once()
 
 	// Act
-	result, err := decorator.GetByXApplication(context.Background(), "test-app", "corr-123")
+	result, err := decorator.GetByTenantId(context.Background(), "test-app", "corr-123")
 
 	// Assert
 	assert.NoError(t, err)
@@ -42,7 +42,7 @@ func TestRetryDecorator_GetByXApplication_Success(t *testing.T) {
 	mockClient.AssertExpectations(t)
 }
 
-func TestRetryDecorator_GetByXApplication_RetryableError_Success(t *testing.T) {
+func TestRetryDecorator_GetByTenantId_RetryableError_Success(t *testing.T) {
 	// Arrange
 	mockClient := &MockCompanyClient{}
 	config := RetryConfig{
@@ -67,11 +67,11 @@ func TestRetryDecorator_GetByXApplication_RetryableError_Success(t *testing.T) {
 	}
 
 	// Primeira chamada falha, segunda sucede
-	mockClient.On("GetByXApplication", mock.Anything, "test-app", "corr-123").Return(companyDto.MSCompanyResponseDTO{}, retryableError).Once()
-	mockClient.On("GetByXApplication", mock.Anything, "test-app", "corr-123").Return(expectedResponse, nil).Once()
+	mockClient.On("GetByTenantId", mock.Anything, "test-app", "corr-123").Return(companyDto.MSCompanyResponseDTO{}, retryableError).Once()
+	mockClient.On("GetByTenantId", mock.Anything, "test-app", "corr-123").Return(expectedResponse, nil).Once()
 
 	// Act
-	result, err := decorator.GetByXApplication(context.Background(), "test-app", "corr-123")
+	result, err := decorator.GetByTenantId(context.Background(), "test-app", "corr-123")
 
 	// Assert
 	assert.NoError(t, err)
@@ -79,7 +79,7 @@ func TestRetryDecorator_GetByXApplication_RetryableError_Success(t *testing.T) {
 	mockClient.AssertExpectations(t)
 }
 
-func TestRetryDecorator_GetByXApplication_NonRetryableError(t *testing.T) {
+func TestRetryDecorator_GetByTenantId_NonRetryableError(t *testing.T) {
 	// Arrange
 	mockClient := &MockCompanyClient{}
 	config := RetryConfig{
@@ -98,10 +98,10 @@ func TestRetryDecorator_GetByXApplication_NonRetryableError(t *testing.T) {
 	}
 
 	// Deve chamar apenas uma vez (erro não retryable)
-	mockClient.On("GetByXApplication", mock.Anything, "test-app", "corr-123").Return(companyDto.MSCompanyResponseDTO{}, nonRetryableError).Once()
+	mockClient.On("GetByTenantId", mock.Anything, "test-app", "corr-123").Return(companyDto.MSCompanyResponseDTO{}, nonRetryableError).Once()
 
 	// Act
-	result, err := decorator.GetByXApplication(context.Background(), "test-app", "corr-123")
+	result, err := decorator.GetByTenantId(context.Background(), "test-app", "corr-123")
 
 	// Assert
 	assert.Error(t, err)
@@ -110,7 +110,7 @@ func TestRetryDecorator_GetByXApplication_NonRetryableError(t *testing.T) {
 	mockClient.AssertExpectations(t)
 }
 
-func TestRetryDecorator_GetByXApplication_MaxAttemptsExceeded(t *testing.T) {
+func TestRetryDecorator_GetByTenantId_MaxAttemptsExceeded(t *testing.T) {
 	// Arrange
 	mockClient := &MockCompanyClient{}
 	config := RetryConfig{
@@ -129,10 +129,10 @@ func TestRetryDecorator_GetByXApplication_MaxAttemptsExceeded(t *testing.T) {
 	}
 
 	// Deve chamar 2 vezes (MaxAttempts)
-	mockClient.On("GetByXApplication", mock.Anything, "test-app", "corr-123").Return(companyDto.MSCompanyResponseDTO{}, retryableError).Twice()
+	mockClient.On("GetByTenantId", mock.Anything, "test-app", "corr-123").Return(companyDto.MSCompanyResponseDTO{}, retryableError).Twice()
 
 	// Act
-	result, err := decorator.GetByXApplication(context.Background(), "test-app", "corr-123")
+	result, err := decorator.GetByTenantId(context.Background(), "test-app", "corr-123")
 
 	// Assert
 	assert.Error(t, err)
@@ -141,7 +141,7 @@ func TestRetryDecorator_GetByXApplication_MaxAttemptsExceeded(t *testing.T) {
 	mockClient.AssertExpectations(t)
 }
 
-func TestRetryDecorator_GetByXApplication_ContextCancelled(t *testing.T) {
+func TestRetryDecorator_GetByTenantId_ContextCancelled(t *testing.T) {
 	// Arrange
 	mockClient := &MockCompanyClient{}
 	config := RetryConfig{
@@ -160,7 +160,7 @@ func TestRetryDecorator_GetByXApplication_ContextCancelled(t *testing.T) {
 	}
 
 	// Primeira chamada falha
-	mockClient.On("GetByXApplication", mock.Anything, "test-app", "corr-123").Return(companyDto.MSCompanyResponseDTO{}, retryableError).Once()
+	mockClient.On("GetByTenantId", mock.Anything, "test-app", "corr-123").Return(companyDto.MSCompanyResponseDTO{}, retryableError).Once()
 
 	// Cria contexto que será cancelado
 	ctx, cancel := context.WithCancel(context.Background())
@@ -171,7 +171,7 @@ func TestRetryDecorator_GetByXApplication_ContextCancelled(t *testing.T) {
 		cancel()
 	}()
 
-	result, err := decorator.GetByXApplication(ctx, "test-app", "corr-123")
+	result, err := decorator.GetByTenantId(ctx, "test-app", "corr-123")
 
 	// Assert
 	assert.Error(t, err)

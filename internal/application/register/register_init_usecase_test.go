@@ -63,7 +63,7 @@ func TestRegisterInitUseCase_Execute_Success(t *testing.T) {
 	}
 
 	// Setup mocks
-	mockCompanyClient.On("GetByXApplication", mock.Anything, "test-app", "corr-123").Return(company, nil)
+	mockCompanyClient.On("GetByTenantId", mock.Anything, "test-app", "corr-123").Return(company, nil)
 	mockUserClient.On("InitRegister", mock.Anything, mock.Anything, "test-app", "corr-123").Return(registerResponse, nil)
 	mockMessagePublisher.On("PublishMessage", mock.Anything, mock.Anything).Return(nil)
 
@@ -79,7 +79,7 @@ func TestRegisterInitUseCase_Execute_Success(t *testing.T) {
 		UserAgent:                  "Mozilla/5.0",
 		Geolocation:                "São Paulo, SP",
 		Type:                       "PERSON",
-		XApplication:               "test-app",
+		TenantId:               "test-app",
 		CorrelationID:              "corr-123",
 	}
 
@@ -117,7 +117,7 @@ func TestRegisterInitUseCase_Execute_CompanyNotFound(t *testing.T) {
 	}
 
 	// Setup mocks - company not found
-	mockCompanyClient.On("GetByXApplication", mock.Anything, "test-app", "corr-123").Return(companyDto.MSCompanyResponseDTO{}, errors.New("company not found"))
+	mockCompanyClient.On("GetByTenantId", mock.Anything, "test-app", "corr-123").Return(companyDto.MSCompanyResponseDTO{}, errors.New("company not found"))
 
 	command := appdto.RegisterInitCommand{
 		Context:                    context.Background(),
@@ -131,7 +131,7 @@ func TestRegisterInitUseCase_Execute_CompanyNotFound(t *testing.T) {
 		UserAgent:                  "Mozilla/5.0",
 		Geolocation:                "São Paulo, SP",
 		Type:                       "PERSON",
-		XApplication:               "test-app",
+		TenantId:               "test-app",
 		CorrelationID:              "corr-123",
 	}
 
@@ -175,7 +175,7 @@ func TestRegisterInitUseCase_Execute_InitRegisterFailed(t *testing.T) {
 	}
 
 	// Setup mocks - init register fails
-	mockCompanyClient.On("GetByXApplication", mock.Anything, "test-app", "corr-123").Return(company, nil)
+	mockCompanyClient.On("GetByTenantId", mock.Anything, "test-app", "corr-123").Return(company, nil)
 	mockUserClient.On("InitRegister", mock.Anything, mock.Anything, "test-app", "corr-123").Return(userDto.MSUserRegisterInitResponseDTO{}, errors.New("email already exists"))
 
 	command := appdto.RegisterInitCommand{
@@ -190,7 +190,7 @@ func TestRegisterInitUseCase_Execute_InitRegisterFailed(t *testing.T) {
 		UserAgent:                  "Mozilla/5.0",
 		Geolocation:                "São Paulo, SP",
 		Type:                       "PERSON",
-		XApplication:               "test-app",
+		TenantId:               "test-app",
 		CorrelationID:              "corr-123",
 	}
 
@@ -241,7 +241,7 @@ func TestRegisterInitUseCase_Execute_CommunicationFailed_StillSuccess(t *testing
 	}
 
 	// Setup mocks - communication fails but registration should still succeed
-	mockCompanyClient.On("GetByXApplication", mock.Anything, "test-app", "corr-123").Return(company, nil)
+	mockCompanyClient.On("GetByTenantId", mock.Anything, "test-app", "corr-123").Return(company, nil)
 	mockUserClient.On("InitRegister", mock.Anything, mock.Anything, "test-app", "corr-123").Return(registerResponse, nil)
 	mockMessagePublisher.On("PublishMessage", mock.Anything, mock.Anything).Return(errors.New("email service unavailable"))
 
@@ -257,7 +257,7 @@ func TestRegisterInitUseCase_Execute_CommunicationFailed_StillSuccess(t *testing
 		UserAgent:                  "Mozilla/5.0",
 		Geolocation:                "São Paulo, SP",
 		Type:                       "PERSON",
-		XApplication:               "test-app",
+		TenantId:               "test-app",
 		CorrelationID:              "corr-123",
 	}
 
@@ -308,7 +308,7 @@ func TestRegisterInitUseCase_Execute_VerifyRequestData(t *testing.T) {
 	}
 
 	// Setup mocks with specific assertions
-	mockCompanyClient.On("GetByXApplication", mock.Anything, "test-app", "corr-123").Return(company, nil)
+	mockCompanyClient.On("GetByTenantId", mock.Anything, "test-app", "corr-123").Return(company, nil)
 
 	// Capture the request to verify its content
 	var capturedRequest userDto.MSUserRegisterInitRequestDTO
@@ -353,7 +353,7 @@ func TestRegisterInitUseCase_Execute_VerifyRequestData(t *testing.T) {
 		UserAgent:                  "Mozilla/5.0",
 		Geolocation:                "São Paulo, SP",
 		Type:                       "PERSON",
-		XApplication:               "test-app",
+		TenantId:               "test-app",
 		CorrelationID:              "corr-123",
 	}
 

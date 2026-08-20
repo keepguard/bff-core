@@ -50,7 +50,7 @@ func (m *middlewareImpl) LoggingMiddleware() echo.MiddlewareFunc {
 			// Extrai informações da requisição
 			requestID := c.Response().Header().Get(echo.HeaderXRequestID)
 			correlationID := c.Request().Header.Get("X-Correlation-ID")
-			xApplication := c.Request().Header.Get("X-Application")
+			tenantId := c.Request().Header.Get("X-Tenant-Id")
 			userID := c.Request().Header.Get("X-User-ID")
 			method := c.Request().Method
 			path := c.Path()
@@ -84,7 +84,7 @@ func (m *middlewareImpl) LoggingMiddleware() echo.MiddlewareFunc {
 				zap.String("spanId", requestID),
 				zap.String("requestId", requestID),
 				zap.String("correlationId", correlationID),
-				zap.String("xApplication", xApplication),
+				zap.String("tenantId", tenantId),
 				zap.String("userId", userID),
 				zap.String("method", method),
 				zap.String("path", path),
@@ -148,14 +148,14 @@ func (m *middlewareImpl) CORSMiddleware() echo.MiddlewareFunc {
 			echo.HeaderXRequestID,
 			"X-User-ID",
 			"X-Correlation-ID",
-			"X-Application",
+			"X-Tenant-Id",
 			"Idempotency-Key",
 		},
 		ExposeHeaders: []string{
 			echo.HeaderXRequestID,
 			"X-User-ID",
 			"X-Correlation-ID",
-			"X-Application",
+			"X-Tenant-Id",
 		},
 		MaxAge: 86400, // 24 horas
 	})
@@ -246,15 +246,15 @@ func SetCorrelationID(c echo.Context, correlationID string) {
 	c.Response().Header().Set("X-Correlation-ID", correlationID)
 }
 
-// GetXApplication extrai o X-Application do contexto
-func GetXApplication(c echo.Context) string {
-	return c.Request().Header.Get("X-Application")
+// GetTenantId extrai o X-Tenant-Id do contexto
+func GetTenantId(c echo.Context) string {
+	return c.Request().Header.Get("X-Tenant-Id")
 }
 
-// SetXApplication define o X-Application no contexto
-func SetXApplication(c echo.Context, xApplication string) {
-	c.Request().Header.Set("X-Application", xApplication)
-	c.Response().Header().Set("X-Application", xApplication)
+// SetTenantId define o X-Tenant-Id no contexto
+func SetTenantId(c echo.Context, tenantId string) {
+	c.Request().Header.Set("X-Tenant-Id", tenantId)
+	c.Response().Header().Set("X-Tenant-Id", tenantId)
 }
 
 // getEnvOrDefault retorna valor da variável de ambiente ou valor padrão

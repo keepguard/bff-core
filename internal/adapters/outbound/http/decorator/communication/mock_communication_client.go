@@ -13,12 +13,12 @@ type MockCommunicationClient struct {
 	mock.Mock
 }
 
-func (m *MockCommunicationClient) SendNotification(ctx context.Context, req portsclient.SendNotificationRequestDTO, xApplication, correlationID string) error {
-	args := m.Called(ctx, req, xApplication, correlationID)
+func (m *MockCommunicationClient) SendNotification(ctx context.Context, req portsclient.SendNotificationRequestDTO, tenantId, correlationID string) error {
+	args := m.Called(ctx, req, tenantId, correlationID)
 	return args.Error(0)
 }
 
-func (m *MockCommunicationClient) SendMessage(ctx context.Context, req communicationDto.SendMessageRequestDTO, xApplication, correlationID string) (communicationDto.SendMessageResponseDTO, error) {
-	args := m.Called(ctx, req, xApplication, correlationID)
+func (m *MockCommunicationClient) SendMessage(ctx context.Context, req communicationDto.SendMessageRequestDTO, tenantId, correlationID string) (communicationDto.SendMessageResponseDTO, error) {
+	args := m.Called(ctx, req, tenantId, correlationID)
 	return args.Get(0).(communicationDto.SendMessageResponseDTO), args.Error(1)
 }

@@ -57,7 +57,7 @@ func TestRetryDecorator_CreateUser_Success(t *testing.T) {
 		CompanyID: "company123",
 		Type:      "PERSON",
 	}
-	xApplication := "test-app"
+	tenantId := "test-app"
 	correlationID := "corr-123"
 
 	expectedResponse := userDto.MSUserResponseDTO{
@@ -67,10 +67,10 @@ func TestRetryDecorator_CreateUser_Success(t *testing.T) {
 		Type:      "PERSON",
 	}
 
-	mockInner.On("CreateUser", ctx, req, xApplication, correlationID).Return(expectedResponse, nil).Once()
+	mockInner.On("CreateUser", ctx, req, tenantId, correlationID).Return(expectedResponse, nil).Once()
 
 	// Act
-	result, err := decorator.CreateUser(ctx, req, xApplication, correlationID)
+	result, err := decorator.CreateUser(ctx, req, tenantId, correlationID)
 
 	// Assert
 	assert.NoError(t, err)
@@ -97,7 +97,7 @@ func TestRetryDecorator_CreateUser_RetryableError_EventuallySuccess(t *testing.T
 		CompanyID: "company123",
 		Type:      "PERSON",
 	}
-	xApplication := "test-app"
+	tenantId := "test-app"
 	correlationID := "corr-123"
 
 	expectedResponse := userDto.MSUserResponseDTO{
@@ -113,11 +113,11 @@ func TestRetryDecorator_CreateUser_RetryableError_EventuallySuccess(t *testing.T
 	}
 
 	// First two calls fail with retryable error, third succeeds
-	mockInner.On("CreateUser", ctx, req, xApplication, correlationID).Return(userDto.MSUserResponseDTO{}, retryableError).Twice()
-	mockInner.On("CreateUser", ctx, req, xApplication, correlationID).Return(expectedResponse, nil).Once()
+	mockInner.On("CreateUser", ctx, req, tenantId, correlationID).Return(userDto.MSUserResponseDTO{}, retryableError).Twice()
+	mockInner.On("CreateUser", ctx, req, tenantId, correlationID).Return(expectedResponse, nil).Once()
 
 	// Act
-	result, err := decorator.CreateUser(ctx, req, xApplication, correlationID)
+	result, err := decorator.CreateUser(ctx, req, tenantId, correlationID)
 
 	// Assert
 	assert.NoError(t, err)
@@ -144,7 +144,7 @@ func TestRetryDecorator_CreateUser_NonRetryableError_NoRetry(t *testing.T) {
 		CompanyID: "company123",
 		Type:      "PERSON",
 	}
-	xApplication := "test-app"
+	tenantId := "test-app"
 	correlationID := "corr-123"
 
 	nonRetryableError := &appdto.HTTPError{
@@ -153,10 +153,10 @@ func TestRetryDecorator_CreateUser_NonRetryableError_NoRetry(t *testing.T) {
 	}
 
 	// Should only be called once for non-retryable error
-	mockInner.On("CreateUser", ctx, req, xApplication, correlationID).Return(userDto.MSUserResponseDTO{}, nonRetryableError).Once()
+	mockInner.On("CreateUser", ctx, req, tenantId, correlationID).Return(userDto.MSUserResponseDTO{}, nonRetryableError).Once()
 
 	// Act
-	result, err := decorator.CreateUser(ctx, req, xApplication, correlationID)
+	result, err := decorator.CreateUser(ctx, req, tenantId, correlationID)
 
 	// Assert
 	assert.Error(t, err)
@@ -184,7 +184,7 @@ func TestRetryDecorator_CreateUser_AllAttemptsFail(t *testing.T) {
 		CompanyID: "company123",
 		Type:      "PERSON",
 	}
-	xApplication := "test-app"
+	tenantId := "test-app"
 	correlationID := "corr-123"
 
 	retryableError := &appdto.HTTPError{
@@ -193,10 +193,10 @@ func TestRetryDecorator_CreateUser_AllAttemptsFail(t *testing.T) {
 	}
 
 	// All attempts fail
-	mockInner.On("CreateUser", ctx, req, xApplication, correlationID).Return(userDto.MSUserResponseDTO{}, retryableError).Twice()
+	mockInner.On("CreateUser", ctx, req, tenantId, correlationID).Return(userDto.MSUserResponseDTO{}, retryableError).Twice()
 
 	// Act
-	result, err := decorator.CreateUser(ctx, req, xApplication, correlationID)
+	result, err := decorator.CreateUser(ctx, req, tenantId, correlationID)
 
 	// Assert
 	assert.Error(t, err)
@@ -221,7 +221,7 @@ func TestRetryDecorator_GetUserByCodeUser_Success(t *testing.T) {
 	ctx := context.Background()
 	codeUser := "code123"
 	token := "token123"
-	xApplication := "test-app"
+	tenantId := "test-app"
 	correlationID := "corr-123"
 
 	expectedResponse := userDto.MSUserResponseDTO{
@@ -231,10 +231,10 @@ func TestRetryDecorator_GetUserByCodeUser_Success(t *testing.T) {
 		Type:      "PERSON",
 	}
 
-	mockInner.On("GetUserByCodeUser", ctx, codeUser, token, xApplication, correlationID).Return(expectedResponse, nil).Once()
+	mockInner.On("GetUserByCodeUser", ctx, codeUser, token, tenantId, correlationID).Return(expectedResponse, nil).Once()
 
 	// Act
-	result, err := decorator.GetUserByCodeUser(ctx, codeUser, token, xApplication, correlationID)
+	result, err := decorator.GetUserByCodeUser(ctx, codeUser, token, tenantId, correlationID)
 
 	// Assert
 	assert.NoError(t, err)
@@ -257,7 +257,7 @@ func TestRetryDecorator_GetByEmail_Success(t *testing.T) {
 
 	ctx := context.Background()
 	email := "test@example.com"
-	xApplication := "test-app"
+	tenantId := "test-app"
 	correlationID := "corr-123"
 
 	expectedResponse := authDto.UserByEmailResponseDTO{
@@ -265,10 +265,10 @@ func TestRetryDecorator_GetByEmail_Success(t *testing.T) {
 		Email: "test@example.com",
 	}
 
-	mockInner.On("GetByEmail", ctx, email, xApplication, correlationID).Return(expectedResponse, nil).Once()
+	mockInner.On("GetByEmail", ctx, email, tenantId, correlationID).Return(expectedResponse, nil).Once()
 
 	// Act
-	result, err := decorator.GetByEmail(ctx, email, xApplication, correlationID)
+	result, err := decorator.GetByEmail(ctx, email, tenantId, correlationID)
 
 	// Assert
 	assert.NoError(t, err)
@@ -297,7 +297,7 @@ func TestRetryDecorator_CreateUserNotify_Success(t *testing.T) {
 		PushEnabled:     true,
 		WhatsAppEnabled: true,
 	}
-	xApplication := "test-app"
+	tenantId := "test-app"
 	correlationID := "corr-123"
 
 	expectedResponse := userDto.MSUserNotifyResponseDTO{
@@ -305,10 +305,10 @@ func TestRetryDecorator_CreateUserNotify_Success(t *testing.T) {
 		UserID: "user123",
 	}
 
-	mockInner.On("CreateUserNotify", ctx, req, xApplication, correlationID).Return(expectedResponse, nil).Once()
+	mockInner.On("CreateUserNotify", ctx, req, tenantId, correlationID).Return(expectedResponse, nil).Once()
 
 	// Act
-	result, err := decorator.CreateUserNotify(ctx, req, xApplication, correlationID)
+	result, err := decorator.CreateUserNotify(ctx, req, tenantId, correlationID)
 
 	// Assert
 	assert.NoError(t, err)
@@ -342,7 +342,7 @@ func TestRetryDecorator_InitRegister_Success(t *testing.T) {
 		Geolocation:                "São Paulo, SP",
 		Type:                       "PERSON",
 	}
-	xApplication := "test-app"
+	tenantId := "test-app"
 	correlationID := "corr-123"
 
 	expectedResponse := userDto.MSUserRegisterInitResponseDTO{
@@ -352,10 +352,10 @@ func TestRetryDecorator_InitRegister_Success(t *testing.T) {
 		ExpiresIn:             1800,
 	}
 
-	mockInner.On("InitRegister", ctx, req, xApplication, correlationID).Return(expectedResponse, nil).Once()
+	mockInner.On("InitRegister", ctx, req, tenantId, correlationID).Return(expectedResponse, nil).Once()
 
 	// Act
-	result, err := decorator.InitRegister(ctx, req, xApplication, correlationID)
+	result, err := decorator.InitRegister(ctx, req, tenantId, correlationID)
 
 	// Assert
 	assert.NoError(t, err)
@@ -382,7 +382,7 @@ func TestRetryDecorator_ConfirmRegister_Success(t *testing.T) {
 		RegistrationSessionID: "session123",
 		Token:                 "123456",
 	}
-	xApplication := "test-app"
+	tenantId := "test-app"
 	correlationID := "corr-123"
 
 	expectedResponse := userDto.MSUserRegisterConfirmResponseDTO{
@@ -393,10 +393,10 @@ func TestRetryDecorator_ConfirmRegister_Success(t *testing.T) {
 		Message:  "Registration confirmed",
 	}
 
-	mockInner.On("ConfirmRegister", ctx, req, xApplication, correlationID).Return(expectedResponse, nil).Once()
+	mockInner.On("ConfirmRegister", ctx, req, tenantId, correlationID).Return(expectedResponse, nil).Once()
 
 	// Act
-	result, err := decorator.ConfirmRegister(ctx, req, xApplication, correlationID)
+	result, err := decorator.ConfirmRegister(ctx, req, tenantId, correlationID)
 
 	// Assert
 	assert.NoError(t, err)
@@ -419,13 +419,13 @@ func TestRetryDecorator_DeleteUser_Success(t *testing.T) {
 
 	ctx := context.Background()
 	userID := "user123"
-	xApplication := "test-app"
+	tenantId := "test-app"
 	correlationID := "corr-123"
 
-	mockInner.On("DeleteUser", ctx, userID, xApplication, correlationID).Return(nil).Once()
+	mockInner.On("DeleteUser", ctx, userID, tenantId, correlationID).Return(nil).Once()
 
 	// Act
-	err := decorator.DeleteUser(ctx, userID, xApplication, correlationID)
+	err := decorator.DeleteUser(ctx, userID, tenantId, correlationID)
 
 	// Assert
 	assert.NoError(t, err)
@@ -447,14 +447,14 @@ func TestRetryDecorator_DeleteUser_Error(t *testing.T) {
 
 	ctx := context.Background()
 	userID := "user123"
-	xApplication := "test-app"
+	tenantId := "test-app"
 	correlationID := "corr-123"
 
 	expectedError := errors.New("user not found")
-	mockInner.On("DeleteUser", ctx, userID, xApplication, correlationID).Return(expectedError).Once()
+	mockInner.On("DeleteUser", ctx, userID, tenantId, correlationID).Return(expectedError).Once()
 
 	// Act
-	err := decorator.DeleteUser(ctx, userID, xApplication, correlationID)
+	err := decorator.DeleteUser(ctx, userID, tenantId, correlationID)
 
 	// Assert
 	assert.Error(t, err)
@@ -481,7 +481,7 @@ func TestRetryDecorator_ContextCancellation(t *testing.T) {
 		CompanyID: "company123",
 		Type:      "PERSON",
 	}
-	xApplication := "test-app"
+	tenantId := "test-app"
 	correlationID := "corr-123"
 
 	retryableError := &appdto.HTTPError{
@@ -489,7 +489,7 @@ func TestRetryDecorator_ContextCancellation(t *testing.T) {
 		Message: "Service temporarily unavailable",
 	}
 
-	mockInner.On("CreateUser", ctx, req, xApplication, correlationID).Return(userDto.MSUserResponseDTO{}, retryableError).Once()
+	mockInner.On("CreateUser", ctx, req, tenantId, correlationID).Return(userDto.MSUserResponseDTO{}, retryableError).Once()
 
 	// Cancel context after first call
 	go func() {
@@ -498,7 +498,7 @@ func TestRetryDecorator_ContextCancellation(t *testing.T) {
 	}()
 
 	// Act
-	result, err := decorator.CreateUser(ctx, req, xApplication, correlationID)
+	result, err := decorator.CreateUser(ctx, req, tenantId, correlationID)
 
 	// Assert
 	assert.Error(t, err)
@@ -650,7 +650,7 @@ func TestRetryDecorator_ConfirmRegister_4xxError_ShouldNotRetry(t *testing.T) {
 		RegistrationSessionID: "session123",
 		Token:                 "123456",
 	}
-	xApplication := "test-app"
+	tenantId := "test-app"
 	correlationID := "corr-123"
 
 	// Erro 400 (Bad Request) - token inválido
@@ -660,10 +660,10 @@ func TestRetryDecorator_ConfirmRegister_4xxError_ShouldNotRetry(t *testing.T) {
 		Details: "token não encontrado ou expirado",
 	}
 
-	mockInner.On("ConfirmRegister", ctx, req, xApplication, correlationID).Return(userDto.MSUserRegisterConfirmResponseDTO{}, httpErr).Once()
+	mockInner.On("ConfirmRegister", ctx, req, tenantId, correlationID).Return(userDto.MSUserRegisterConfirmResponseDTO{}, httpErr).Once()
 
 	// Act
-	result, err := decorator.ConfirmRegister(ctx, req, xApplication, correlationID)
+	result, err := decorator.ConfirmRegister(ctx, req, tenantId, correlationID)
 
 	// Assert
 	assert.Error(t, err)
@@ -694,7 +694,7 @@ func TestRetryDecorator_ConfirmRegister_5xxError_ShouldRetry(t *testing.T) {
 		RegistrationSessionID: "session123",
 		Token:                 "123456",
 	}
-	xApplication := "test-app"
+	tenantId := "test-app"
 	correlationID := "corr-123"
 
 	// Erro 500 (Internal Server Error) - erro de infraestrutura
@@ -705,10 +705,10 @@ func TestRetryDecorator_ConfirmRegister_5xxError_ShouldRetry(t *testing.T) {
 	}
 
 	// Mock deve ser chamado 3 vezes (MaxAttempts)
-	mockInner.On("ConfirmRegister", ctx, req, xApplication, correlationID).Return(userDto.MSUserRegisterConfirmResponseDTO{}, httpErr).Times(3)
+	mockInner.On("ConfirmRegister", ctx, req, tenantId, correlationID).Return(userDto.MSUserRegisterConfirmResponseDTO{}, httpErr).Times(3)
 
 	// Act
-	result, err := decorator.ConfirmRegister(ctx, req, xApplication, correlationID)
+	result, err := decorator.ConfirmRegister(ctx, req, tenantId, correlationID)
 
 	// Assert
 	assert.Error(t, err)

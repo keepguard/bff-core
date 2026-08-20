@@ -31,18 +31,18 @@ func NewUserLoggingDecorator(
 }
 
 // CreateUser implementa CreateUser com logging
-func (d *userLoggingDecorator) CreateUser(ctx context.Context, req userDto.MSUserCreateRequestDTO, xApplication, correlationID string) (userDto.MSUserResponseDTO, error) {
+func (d *userLoggingDecorator) CreateUser(ctx context.Context, req userDto.MSUserCreateRequestDTO, tenantId, correlationID string) (userDto.MSUserResponseDTO, error) {
 	start := time.Now()
 
 	d.logger.Info("Iniciando requisição",
 		zap.String("service", d.serviceName),
 		zap.String("operation", "CreateUser"),
 		zap.String("correlationID", correlationID),
-		zap.String("xApplication", xApplication),
+		zap.String("tenantId", tenantId),
 		zap.String("email", req.Email),
 	)
 
-	response, err := d.inner.CreateUser(ctx, req, xApplication, correlationID)
+	response, err := d.inner.CreateUser(ctx, req, tenantId, correlationID)
 	duration := time.Since(start)
 
 	if err != nil {
@@ -50,7 +50,7 @@ func (d *userLoggingDecorator) CreateUser(ctx context.Context, req userDto.MSUse
 			zap.String("service", d.serviceName),
 			zap.String("operation", "CreateUser"),
 			zap.String("correlationID", correlationID),
-			zap.String("xApplication", xApplication),
+			zap.String("tenantId", tenantId),
 			zap.String("email", req.Email),
 			zap.Duration("duration", duration),
 			zap.Error(err),
@@ -62,7 +62,7 @@ func (d *userLoggingDecorator) CreateUser(ctx context.Context, req userDto.MSUse
 		zap.String("service", d.serviceName),
 		zap.String("operation", "CreateUser"),
 		zap.String("correlationID", correlationID),
-		zap.String("xApplication", xApplication),
+		zap.String("tenantId", tenantId),
 		zap.String("email", req.Email),
 		zap.String("userID", response.ID),
 		zap.String("codeUser", response.CodeUser),
@@ -73,18 +73,18 @@ func (d *userLoggingDecorator) CreateUser(ctx context.Context, req userDto.MSUse
 }
 
 // GetUserByCodeUser implementa GetUserByCodeUser com logging
-func (d *userLoggingDecorator) GetUserByCodeUser(ctx context.Context, codeUser, token, xApplication, correlationID string) (userDto.MSUserResponseDTO, error) {
+func (d *userLoggingDecorator) GetUserByCodeUser(ctx context.Context, codeUser, token, tenantId, correlationID string) (userDto.MSUserResponseDTO, error) {
 	start := time.Now()
 
 	d.logger.Info("Iniciando requisição",
 		zap.String("service", d.serviceName),
 		zap.String("operation", "GetUserByCodeUser"),
 		zap.String("correlationID", correlationID),
-		zap.String("xApplication", xApplication),
+		zap.String("tenantId", tenantId),
 		zap.String("codeUser", codeUser),
 	)
 
-	response, err := d.inner.GetUserByCodeUser(ctx, codeUser, token, xApplication, correlationID)
+	response, err := d.inner.GetUserByCodeUser(ctx, codeUser, token, tenantId, correlationID)
 	duration := time.Since(start)
 
 	if err != nil {
@@ -92,7 +92,7 @@ func (d *userLoggingDecorator) GetUserByCodeUser(ctx context.Context, codeUser, 
 			zap.String("service", d.serviceName),
 			zap.String("operation", "GetUserByCodeUser"),
 			zap.String("correlationID", correlationID),
-			zap.String("xApplication", xApplication),
+			zap.String("tenantId", tenantId),
 			zap.String("codeUser", codeUser),
 			zap.Duration("duration", duration),
 			zap.Error(err),
@@ -104,7 +104,7 @@ func (d *userLoggingDecorator) GetUserByCodeUser(ctx context.Context, codeUser, 
 		zap.String("service", d.serviceName),
 		zap.String("operation", "GetUserByCodeUser"),
 		zap.String("correlationID", correlationID),
-		zap.String("xApplication", xApplication),
+		zap.String("tenantId", tenantId),
 		zap.String("codeUser", codeUser),
 		zap.String("userID", response.ID),
 		zap.String("email", response.Email),
@@ -115,18 +115,18 @@ func (d *userLoggingDecorator) GetUserByCodeUser(ctx context.Context, codeUser, 
 }
 
 // GetByEmail implementa GetByEmail com logging
-func (d *userLoggingDecorator) GetByEmail(ctx context.Context, email, xApplication, correlationID string) (authDto.UserByEmailResponseDTO, error) {
+func (d *userLoggingDecorator) GetByEmail(ctx context.Context, email, tenantId, correlationID string) (authDto.UserByEmailResponseDTO, error) {
 	start := time.Now()
 
 	d.logger.Info("Iniciando requisição",
 		zap.String("service", d.serviceName),
 		zap.String("operation", "GetByEmail"),
 		zap.String("correlationID", correlationID),
-		zap.String("xApplication", xApplication),
+		zap.String("tenantId", tenantId),
 		zap.String("email", email),
 	)
 
-	response, err := d.inner.GetByEmail(ctx, email, xApplication, correlationID)
+	response, err := d.inner.GetByEmail(ctx, email, tenantId, correlationID)
 	duration := time.Since(start)
 
 	if err != nil {
@@ -134,7 +134,7 @@ func (d *userLoggingDecorator) GetByEmail(ctx context.Context, email, xApplicati
 			zap.String("service", d.serviceName),
 			zap.String("operation", "GetByEmail"),
 			zap.String("correlationID", correlationID),
-			zap.String("xApplication", xApplication),
+			zap.String("tenantId", tenantId),
 			zap.String("email", email),
 			zap.Duration("duration", duration),
 			zap.Error(err),
@@ -146,7 +146,7 @@ func (d *userLoggingDecorator) GetByEmail(ctx context.Context, email, xApplicati
 		zap.String("service", d.serviceName),
 		zap.String("operation", "GetByEmail"),
 		zap.String("correlationID", correlationID),
-		zap.String("xApplication", xApplication),
+		zap.String("tenantId", tenantId),
 		zap.String("email", email),
 		zap.String("userID", response.ID),
 		zap.String("codeUser", response.CodeUser),
@@ -157,18 +157,18 @@ func (d *userLoggingDecorator) GetByEmail(ctx context.Context, email, xApplicati
 }
 
 // CreateUserNotify implementa CreateUserNotify com logging
-func (d *userLoggingDecorator) CreateUserNotify(ctx context.Context, req userDto.MSUserNotifyCreateRequestDTO, xApplication, correlationID string) (userDto.MSUserNotifyResponseDTO, error) {
+func (d *userLoggingDecorator) CreateUserNotify(ctx context.Context, req userDto.MSUserNotifyCreateRequestDTO, tenantId, correlationID string) (userDto.MSUserNotifyResponseDTO, error) {
 	start := time.Now()
 
 	d.logger.Info("Iniciando requisição",
 		zap.String("service", d.serviceName),
 		zap.String("operation", "CreateUserNotify"),
 		zap.String("correlationID", correlationID),
-		zap.String("xApplication", xApplication),
+		zap.String("tenantId", tenantId),
 		zap.String("userID", req.UserID),
 	)
 
-	response, err := d.inner.CreateUserNotify(ctx, req, xApplication, correlationID)
+	response, err := d.inner.CreateUserNotify(ctx, req, tenantId, correlationID)
 	duration := time.Since(start)
 
 	if err != nil {
@@ -176,7 +176,7 @@ func (d *userLoggingDecorator) CreateUserNotify(ctx context.Context, req userDto
 			zap.String("service", d.serviceName),
 			zap.String("operation", "CreateUserNotify"),
 			zap.String("correlationID", correlationID),
-			zap.String("xApplication", xApplication),
+			zap.String("tenantId", tenantId),
 			zap.String("userID", req.UserID),
 			zap.Duration("duration", duration),
 			zap.Error(err),
@@ -188,7 +188,7 @@ func (d *userLoggingDecorator) CreateUserNotify(ctx context.Context, req userDto
 		zap.String("service", d.serviceName),
 		zap.String("operation", "CreateUserNotify"),
 		zap.String("correlationID", correlationID),
-		zap.String("xApplication", xApplication),
+		zap.String("tenantId", tenantId),
 		zap.String("userID", req.UserID),
 		zap.String("notifyID", response.ID),
 		zap.Duration("duration", duration),
@@ -198,19 +198,19 @@ func (d *userLoggingDecorator) CreateUserNotify(ctx context.Context, req userDto
 }
 
 // InitRegister implementa InitRegister com logging
-func (d *userLoggingDecorator) InitRegister(ctx context.Context, req userDto.MSUserRegisterInitRequestDTO, xApplication, correlationID string) (userDto.MSUserRegisterInitResponseDTO, error) {
+func (d *userLoggingDecorator) InitRegister(ctx context.Context, req userDto.MSUserRegisterInitRequestDTO, tenantId, correlationID string) (userDto.MSUserRegisterInitResponseDTO, error) {
 	start := time.Now()
 
 	d.logger.Info("Iniciando requisição",
 		zap.String("service", d.serviceName),
 		zap.String("operation", "InitRegister"),
 		zap.String("correlationID", correlationID),
-		zap.String("xApplication", xApplication),
+		zap.String("tenantId", tenantId),
 		zap.String("email", req.Email),
 		zap.String("nameFull", req.NameFull),
 	)
 
-	response, err := d.inner.InitRegister(ctx, req, xApplication, correlationID)
+	response, err := d.inner.InitRegister(ctx, req, tenantId, correlationID)
 	duration := time.Since(start)
 
 	if err != nil {
@@ -218,7 +218,7 @@ func (d *userLoggingDecorator) InitRegister(ctx context.Context, req userDto.MSU
 			zap.String("service", d.serviceName),
 			zap.String("operation", "InitRegister"),
 			zap.String("correlationID", correlationID),
-			zap.String("xApplication", xApplication),
+			zap.String("tenantId", tenantId),
 			zap.String("email", req.Email),
 			zap.Duration("duration", duration),
 			zap.Error(err),
@@ -230,7 +230,7 @@ func (d *userLoggingDecorator) InitRegister(ctx context.Context, req userDto.MSU
 		zap.String("service", d.serviceName),
 		zap.String("operation", "InitRegister"),
 		zap.String("correlationID", correlationID),
-		zap.String("xApplication", xApplication),
+		zap.String("tenantId", tenantId),
 		zap.String("email", req.Email),
 		zap.String("sessionID", response.RegistrationSessionID),
 		zap.Duration("duration", duration),
@@ -240,19 +240,19 @@ func (d *userLoggingDecorator) InitRegister(ctx context.Context, req userDto.MSU
 }
 
 // ConfirmRegister implementa ConfirmRegister com logging
-func (d *userLoggingDecorator) ConfirmRegister(ctx context.Context, req userDto.MSUserRegisterConfirmRequestDTO, xApplication, correlationID string) (userDto.MSUserRegisterConfirmResponseDTO, error) {
+func (d *userLoggingDecorator) ConfirmRegister(ctx context.Context, req userDto.MSUserRegisterConfirmRequestDTO, tenantId, correlationID string) (userDto.MSUserRegisterConfirmResponseDTO, error) {
 	start := time.Now()
 
 	d.logger.Info("Iniciando requisição",
 		zap.String("service", d.serviceName),
 		zap.String("operation", "ConfirmRegister"),
 		zap.String("correlationID", correlationID),
-		zap.String("xApplication", xApplication),
+		zap.String("tenantId", tenantId),
 		zap.String("email", req.Email),
 		zap.String("sessionID", req.RegistrationSessionID),
 	)
 
-	response, err := d.inner.ConfirmRegister(ctx, req, xApplication, correlationID)
+	response, err := d.inner.ConfirmRegister(ctx, req, tenantId, correlationID)
 	duration := time.Since(start)
 
 	if err != nil {
@@ -260,7 +260,7 @@ func (d *userLoggingDecorator) ConfirmRegister(ctx context.Context, req userDto.
 			zap.String("service", d.serviceName),
 			zap.String("operation", "ConfirmRegister"),
 			zap.String("correlationID", correlationID),
-			zap.String("xApplication", xApplication),
+			zap.String("tenantId", tenantId),
 			zap.String("email", req.Email),
 			zap.Duration("duration", duration),
 			zap.Error(err),
@@ -272,7 +272,7 @@ func (d *userLoggingDecorator) ConfirmRegister(ctx context.Context, req userDto.
 		zap.String("service", d.serviceName),
 		zap.String("operation", "ConfirmRegister"),
 		zap.String("correlationID", correlationID),
-		zap.String("xApplication", xApplication),
+		zap.String("tenantId", tenantId),
 		zap.String("email", req.Email),
 		zap.String("message", response.Message),
 		zap.Duration("duration", duration),
@@ -282,18 +282,18 @@ func (d *userLoggingDecorator) ConfirmRegister(ctx context.Context, req userDto.
 }
 
 // DeleteUser implementa DeleteUser com logging
-func (d *userLoggingDecorator) DeleteUser(ctx context.Context, userID, xApplication, correlationID string) error {
+func (d *userLoggingDecorator) DeleteUser(ctx context.Context, userID, tenantId, correlationID string) error {
 	start := time.Now()
 
 	d.logger.Info("Iniciando requisição",
 		zap.String("service", d.serviceName),
 		zap.String("operation", "DeleteUser"),
 		zap.String("correlationID", correlationID),
-		zap.String("xApplication", xApplication),
+		zap.String("tenantId", tenantId),
 		zap.String("userID", userID),
 	)
 
-	err := d.inner.DeleteUser(ctx, userID, xApplication, correlationID)
+	err := d.inner.DeleteUser(ctx, userID, tenantId, correlationID)
 	duration := time.Since(start)
 
 	if err != nil {
@@ -301,7 +301,7 @@ func (d *userLoggingDecorator) DeleteUser(ctx context.Context, userID, xApplicat
 			zap.String("service", d.serviceName),
 			zap.String("operation", "DeleteUser"),
 			zap.String("correlationID", correlationID),
-			zap.String("xApplication", xApplication),
+			zap.String("tenantId", tenantId),
 			zap.String("userID", userID),
 			zap.Duration("duration", duration),
 			zap.Error(err),
@@ -313,7 +313,7 @@ func (d *userLoggingDecorator) DeleteUser(ctx context.Context, userID, xApplicat
 		zap.String("service", d.serviceName),
 		zap.String("operation", "DeleteUser"),
 		zap.String("correlationID", correlationID),
-		zap.String("xApplication", xApplication),
+		zap.String("tenantId", tenantId),
 		zap.String("userID", userID),
 		zap.Duration("duration", duration),
 	)
@@ -322,19 +322,19 @@ func (d *userLoggingDecorator) DeleteUser(ctx context.Context, userID, xApplicat
 }
 
 // ResendRegisterToken implementa ResendRegisterToken com logging
-func (d *userLoggingDecorator) ResendRegisterToken(ctx context.Context, req userDto.MSUserRegisterResendRequestDTO, xApplication, correlationID string) (userDto.MSUserRegisterResendResponseDTO, error) {
+func (d *userLoggingDecorator) ResendRegisterToken(ctx context.Context, req userDto.MSUserRegisterResendRequestDTO, tenantId, correlationID string) (userDto.MSUserRegisterResendResponseDTO, error) {
 	start := time.Now()
 
 	d.logger.Info("Iniciando requisição",
 		zap.String("service", d.serviceName),
 		zap.String("operation", "ResendRegisterToken"),
 		zap.String("correlationID", correlationID),
-		zap.String("xApplication", xApplication),
+		zap.String("tenantId", tenantId),
 		zap.String("email", req.Email),
 		zap.String("registrationSessionID", req.RegistrationSessionID),
 	)
 
-	response, err := d.inner.ResendRegisterToken(ctx, req, xApplication, correlationID)
+	response, err := d.inner.ResendRegisterToken(ctx, req, tenantId, correlationID)
 	duration := time.Since(start)
 
 	if err != nil {
@@ -342,7 +342,7 @@ func (d *userLoggingDecorator) ResendRegisterToken(ctx context.Context, req user
 			zap.String("service", d.serviceName),
 			zap.String("operation", "ResendRegisterToken"),
 			zap.String("correlationID", correlationID),
-			zap.String("xApplication", xApplication),
+			zap.String("tenantId", tenantId),
 			zap.String("email", req.Email),
 			zap.String("registrationSessionID", req.RegistrationSessionID),
 			zap.Duration("duration", duration),
@@ -355,7 +355,7 @@ func (d *userLoggingDecorator) ResendRegisterToken(ctx context.Context, req user
 		zap.String("service", d.serviceName),
 		zap.String("operation", "ResendRegisterToken"),
 		zap.String("correlationID", correlationID),
-		zap.String("xApplication", xApplication),
+		zap.String("tenantId", tenantId),
 		zap.String("email", req.Email),
 		zap.String("registrationSessionID", req.RegistrationSessionID),
 		zap.Duration("duration", duration),

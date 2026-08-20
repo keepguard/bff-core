@@ -51,14 +51,14 @@ func NewUserClientWithoutRetry(config *config.Config, logger *zap.Logger) client
 }
 
 // CreateUser cria um novo usuário
-func (c *userClient) CreateUser(ctx context.Context, req userDto.MSUserCreateRequestDTO, xApplication, correlationID string) (userDto.MSUserResponseDTO, error) {
+func (c *userClient) CreateUser(ctx context.Context, req userDto.MSUserCreateRequestDTO, tenantId, correlationID string) (userDto.MSUserResponseDTO, error) {
 	url := fmt.Sprintf("%s/api/v1/users", c.config.Services.User.BaseURL)
 
 	resp, err := c.httpClient.R().
 		SetContext(ctx).
 		SetBody(req).
 		SetHeader("X-Correlation-ID", correlationID).
-		SetHeader("X-Application", xApplication).
+		SetHeader("X-Tenant-Id", tenantId).
 		SetHeader("Content-Type", "application/json").
 		Post(url)
 
@@ -79,14 +79,14 @@ func (c *userClient) CreateUser(ctx context.Context, req userDto.MSUserCreateReq
 }
 
 // GetUserByCodeUser busca um usuário pelo codeUser
-func (c *userClient) GetUserByCodeUser(ctx context.Context, codeUser, token, xApplication, correlationID string) (userDto.MSUserResponseDTO, error) {
+func (c *userClient) GetUserByCodeUser(ctx context.Context, codeUser, token, tenantId, correlationID string) (userDto.MSUserResponseDTO, error) {
 	url := fmt.Sprintf("%s/api/v1/users/code/%s", c.config.Services.User.BaseURL, codeUser)
 
 	resp, err := c.httpClient.R().
 		SetContext(ctx).
 		SetHeader("Authorization", "Bearer "+token).
 		SetHeader("X-Correlation-ID", correlationID).
-		SetHeader("X-Application", xApplication).
+		SetHeader("X-Tenant-Id", tenantId).
 		SetHeader("Content-Type", "application/json").
 		Get(url)
 
@@ -107,13 +107,13 @@ func (c *userClient) GetUserByCodeUser(ctx context.Context, codeUser, token, xAp
 }
 
 // GetByEmail busca um usuário por email no ms-user
-func (c *userClient) GetByEmail(ctx context.Context, email, xApplication, correlationID string) (authDto.UserByEmailResponseDTO, error) {
+func (c *userClient) GetByEmail(ctx context.Context, email, tenantId, correlationID string) (authDto.UserByEmailResponseDTO, error) {
 	url := fmt.Sprintf("%s/api/v1/users/email/%s", c.config.Services.User.BaseURL, email)
 
 	resp, err := c.httpClient.R().
 		SetContext(ctx).
 		SetHeader("X-Correlation-ID", correlationID).
-		SetHeader("X-Application", xApplication).
+		SetHeader("X-Tenant-Id", tenantId).
 		SetHeader("Content-Type", "application/json").
 		Get(url)
 
@@ -134,14 +134,14 @@ func (c *userClient) GetByEmail(ctx context.Context, email, xApplication, correl
 }
 
 // CreateUserNotify cria preferências de notificação para um usuário
-func (c *userClient) CreateUserNotify(ctx context.Context, req userDto.MSUserNotifyCreateRequestDTO, xApplication, correlationID string) (userDto.MSUserNotifyResponseDTO, error) {
+func (c *userClient) CreateUserNotify(ctx context.Context, req userDto.MSUserNotifyCreateRequestDTO, tenantId, correlationID string) (userDto.MSUserNotifyResponseDTO, error) {
 	url := fmt.Sprintf("%s/api/v1/users/notify", c.config.Services.User.BaseURL)
 
 	resp, err := c.httpClient.R().
 		SetContext(ctx).
 		SetBody(req).
 		SetHeader("X-Correlation-ID", correlationID).
-		SetHeader("X-Application", xApplication).
+		SetHeader("X-Tenant-Id", tenantId).
 		SetHeader("Content-Type", "application/json").
 		Post(url)
 
@@ -162,14 +162,14 @@ func (c *userClient) CreateUserNotify(ctx context.Context, req userDto.MSUserNot
 }
 
 // InitRegister inicializa o processo de registro de usuário
-func (c *userClient) InitRegister(ctx context.Context, req userDto.MSUserRegisterInitRequestDTO, xApplication, correlationID string) (userDto.MSUserRegisterInitResponseDTO, error) {
+func (c *userClient) InitRegister(ctx context.Context, req userDto.MSUserRegisterInitRequestDTO, tenantId, correlationID string) (userDto.MSUserRegisterInitResponseDTO, error) {
 	url := fmt.Sprintf("%s/api/v1/register/init", c.config.Services.User.BaseURL)
 
 	resp, err := c.httpClient.R().
 		SetContext(ctx).
 		SetBody(req).
 		SetHeader("X-Correlation-ID", correlationID).
-		SetHeader("X-Application", xApplication).
+		SetHeader("X-Tenant-Id", tenantId).
 		SetHeader("Content-Type", "application/json").
 		Post(url)
 
@@ -195,14 +195,14 @@ func (c *userClient) InitRegister(ctx context.Context, req userDto.MSUserRegiste
 }
 
 // ConfirmRegister confirma o registro de usuário com o token
-func (c *userClient) ConfirmRegister(ctx context.Context, req userDto.MSUserRegisterConfirmRequestDTO, xApplication, correlationID string) (userDto.MSUserRegisterConfirmResponseDTO, error) {
+func (c *userClient) ConfirmRegister(ctx context.Context, req userDto.MSUserRegisterConfirmRequestDTO, tenantId, correlationID string) (userDto.MSUserRegisterConfirmResponseDTO, error) {
 	url := fmt.Sprintf("%s/api/v1/register/confirm", c.config.Services.User.BaseURL)
 
 	resp, err := c.httpClient.R().
 		SetContext(ctx).
 		SetBody(req).
 		SetHeader("X-Correlation-ID", correlationID).
-		SetHeader("X-Application", xApplication).
+		SetHeader("X-Tenant-Id", tenantId).
 		SetHeader("Content-Type", "application/json").
 		Post(url)
 
@@ -248,13 +248,13 @@ func (c *userClient) ConfirmRegister(ctx context.Context, req userDto.MSUserRegi
 }
 
 // DeleteUser deleta um usuário (para compensação de SAGA)
-func (c *userClient) DeleteUser(ctx context.Context, userID, xApplication, correlationID string) error {
+func (c *userClient) DeleteUser(ctx context.Context, userID, tenantId, correlationID string) error {
 	url := fmt.Sprintf("%s/api/v1/users/%s", c.config.Services.User.BaseURL, userID)
 
 	resp, err := c.httpClient.R().
 		SetContext(ctx).
 		SetHeader("X-Correlation-ID", correlationID).
-		SetHeader("X-Application", xApplication).
+		SetHeader("X-Tenant-Id", tenantId).
 		SetHeader("Content-Type", "application/json").
 		Delete(url)
 
@@ -272,7 +272,7 @@ func (c *userClient) DeleteUser(ctx context.Context, userID, xApplication, corre
 // ResendRegisterToken reenvia o token de registro
 func (c *userClient) ResendRegisterToken(ctx context.Context,
 	req userDto.MSUserRegisterResendRequestDTO,
-	xApplication, correlationID string) (userDto.MSUserRegisterResendResponseDTO, error) {
+	tenantId, correlationID string) (userDto.MSUserRegisterResendResponseDTO, error) {
 
 	url := fmt.Sprintf("%s/api/v1/register/resend", c.config.Services.User.BaseURL)
 
@@ -280,7 +280,7 @@ func (c *userClient) ResendRegisterToken(ctx context.Context,
 		SetContext(ctx).
 		SetBody(req).
 		SetHeader("X-Correlation-ID", correlationID).
-		SetHeader("X-Application", xApplication).
+		SetHeader("X-Tenant-Id", tenantId).
 		SetHeader("Content-Type", "application/json").
 		Post(url)
 

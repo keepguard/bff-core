@@ -34,14 +34,14 @@ func NewCommunicationClient(config *config.Config, logger *zap.Logger) client.Co
 }
 
 // SendNotification envia uma notificação
-func (c *communicationClient) SendNotification(ctx context.Context, req client.SendNotificationRequestDTO, xApplication, correlationID string) error {
+func (c *communicationClient) SendNotification(ctx context.Context, req client.SendNotificationRequestDTO, tenantId, correlationID string) error {
 	url := fmt.Sprintf("%s/api/v1/notifications/send", c.config.Services.Communication.BaseURL)
 
 	resp, err := c.httpClient.R().
 		SetContext(ctx).
 		SetBody(req).
 		SetHeader("X-Correlation-ID", correlationID).
-		SetHeader("X-Application", xApplication).
+		SetHeader("X-Tenant-Id", tenantId).
 		SetHeader("Content-Type", "application/json").
 		Post(url)
 
@@ -57,14 +57,14 @@ func (c *communicationClient) SendNotification(ctx context.Context, req client.S
 }
 
 // SendMessage envia uma mensagem através do ms-communication
-func (c *communicationClient) SendMessage(ctx context.Context, req communicationDto.SendMessageRequestDTO, xApplication, correlationID string) (communicationDto.SendMessageResponseDTO, error) {
+func (c *communicationClient) SendMessage(ctx context.Context, req communicationDto.SendMessageRequestDTO, tenantId, correlationID string) (communicationDto.SendMessageResponseDTO, error) {
 	url := fmt.Sprintf("%s/api/v1/messages/send", c.config.Services.Communication.BaseURL)
 
 	var response communicationDto.SendMessageResponseDTO
 	resp, err := c.httpClient.R().
 		SetContext(ctx).
 		SetHeader("X-Correlation-ID", correlationID).
-		SetHeader("X-Application", xApplication).
+		SetHeader("X-Tenant-Id", tenantId).
 		SetHeader("Content-Type", "application/json").
 		SetBody(req).
 		SetResult(&response).

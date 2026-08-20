@@ -57,7 +57,7 @@ func NewCacheDecorator(
 }
 
 // GetUserByCodeUser implementa GetUserByCodeUser com cache
-func (d *cacheDecorator) GetUserByCodeUser(ctx context.Context, codeUser, token, xApplication, correlationID string) (userDto.MSUserResponseDTO, error) {
+func (d *cacheDecorator) GetUserByCodeUser(ctx context.Context, codeUser, token, tenantId, correlationID string) (userDto.MSUserResponseDTO, error) {
 	// Gera chave do cache
 	cacheKey := d.generateCacheKey("codeUser", codeUser)
 
@@ -77,7 +77,7 @@ func (d *cacheDecorator) GetUserByCodeUser(ctx context.Context, codeUser, token,
 
 	// Cache miss - busca no serviço
 	d.metrics.RecordCacheMiss("user", "codeUser")
-	response, err := d.inner.GetUserByCodeUser(ctx, codeUser, token, xApplication, correlationID)
+	response, err := d.inner.GetUserByCodeUser(ctx, codeUser, token, tenantId, correlationID)
 	if err != nil {
 		return response, err
 	}
@@ -100,33 +100,33 @@ func (d *cacheDecorator) GetUserByCodeUser(ctx context.Context, codeUser, token,
 }
 
 // CreateUser implementa CreateUser (sem cache)
-func (d *cacheDecorator) CreateUser(ctx context.Context, req userDto.MSUserCreateRequestDTO, xApplication, correlationID string) (userDto.MSUserResponseDTO, error) {
-	return d.inner.CreateUser(ctx, req, xApplication, correlationID)
+func (d *cacheDecorator) CreateUser(ctx context.Context, req userDto.MSUserCreateRequestDTO, tenantId, correlationID string) (userDto.MSUserResponseDTO, error) {
+	return d.inner.CreateUser(ctx, req, tenantId, correlationID)
 }
 
 // GetByEmail implementa GetByEmail (sem cache)
-func (d *cacheDecorator) GetByEmail(ctx context.Context, email, xApplication, correlationID string) (authDto.UserByEmailResponseDTO, error) {
-	return d.inner.GetByEmail(ctx, email, xApplication, correlationID)
+func (d *cacheDecorator) GetByEmail(ctx context.Context, email, tenantId, correlationID string) (authDto.UserByEmailResponseDTO, error) {
+	return d.inner.GetByEmail(ctx, email, tenantId, correlationID)
 }
 
 // CreateUserNotify implementa CreateUserNotify (sem cache)
-func (d *cacheDecorator) CreateUserNotify(ctx context.Context, req userDto.MSUserNotifyCreateRequestDTO, xApplication, correlationID string) (userDto.MSUserNotifyResponseDTO, error) {
-	return d.inner.CreateUserNotify(ctx, req, xApplication, correlationID)
+func (d *cacheDecorator) CreateUserNotify(ctx context.Context, req userDto.MSUserNotifyCreateRequestDTO, tenantId, correlationID string) (userDto.MSUserNotifyResponseDTO, error) {
+	return d.inner.CreateUserNotify(ctx, req, tenantId, correlationID)
 }
 
 // InitRegister implementa InitRegister (sem cache)
-func (d *cacheDecorator) InitRegister(ctx context.Context, req userDto.MSUserRegisterInitRequestDTO, xApplication, correlationID string) (userDto.MSUserRegisterInitResponseDTO, error) {
-	return d.inner.InitRegister(ctx, req, xApplication, correlationID)
+func (d *cacheDecorator) InitRegister(ctx context.Context, req userDto.MSUserRegisterInitRequestDTO, tenantId, correlationID string) (userDto.MSUserRegisterInitResponseDTO, error) {
+	return d.inner.InitRegister(ctx, req, tenantId, correlationID)
 }
 
 // ConfirmRegister implementa ConfirmRegister (sem cache)
-func (d *cacheDecorator) ConfirmRegister(ctx context.Context, req userDto.MSUserRegisterConfirmRequestDTO, xApplication, correlationID string) (userDto.MSUserRegisterConfirmResponseDTO, error) {
-	return d.inner.ConfirmRegister(ctx, req, xApplication, correlationID)
+func (d *cacheDecorator) ConfirmRegister(ctx context.Context, req userDto.MSUserRegisterConfirmRequestDTO, tenantId, correlationID string) (userDto.MSUserRegisterConfirmResponseDTO, error) {
+	return d.inner.ConfirmRegister(ctx, req, tenantId, correlationID)
 }
 
 // DeleteUser implementa DeleteUser (sem cache)
-func (d *cacheDecorator) DeleteUser(ctx context.Context, userID, xApplication, correlationID string) error {
-	return d.inner.DeleteUser(ctx, userID, xApplication, correlationID)
+func (d *cacheDecorator) DeleteUser(ctx context.Context, userID, tenantId, correlationID string) error {
+	return d.inner.DeleteUser(ctx, userID, tenantId, correlationID)
 }
 
 // generateCacheKey gera uma chave única para o cache
@@ -181,8 +181,8 @@ func (d *cacheDecorator) cleanup() {
 }
 
 // ResendRegisterToken implementa ResendRegisterToken (sem cache)
-func (d *cacheDecorator) ResendRegisterToken(ctx context.Context, req userDto.MSUserRegisterResendRequestDTO, xApplication, correlationID string) (userDto.MSUserRegisterResendResponseDTO, error) {
-	return d.inner.ResendRegisterToken(ctx, req, xApplication, correlationID)
+func (d *cacheDecorator) ResendRegisterToken(ctx context.Context, req userDto.MSUserRegisterResendRequestDTO, tenantId, correlationID string) (userDto.MSUserRegisterResendResponseDTO, error) {
+	return d.inner.ResendRegisterToken(ctx, req, tenantId, correlationID)
 }
 
 // Stop para o processo de cleanup

@@ -42,14 +42,14 @@ func (d *registerHandlersLoggingDecorator) InitRegisterHandler(c echo.Context) e
 
 	// Extrai informações da requisição
 	correlationID := c.Request().Header.Get("X-Correlation-ID")
-	xApplication := c.Request().Header.Get("X-Application")
+	tenantId := c.Request().Header.Get("X-Tenant-Id")
 	email := c.FormValue("email")
 
 	d.logger.Info("Iniciando handler",
 		zap.String("handler", "RegisterHandlers"),
 		zap.String("operation", "InitRegisterHandler"),
 		zap.String("correlationID", correlationID),
-		zap.String("xApplication", xApplication),
+		zap.String("tenantId", tenantId),
 		zap.String("email", email),
 		zap.String("method", c.Request().Method),
 		zap.String("path", c.Path()),
@@ -63,7 +63,7 @@ func (d *registerHandlersLoggingDecorator) InitRegisterHandler(c echo.Context) e
 			zap.String("handler", "RegisterHandlers"),
 			zap.String("operation", "InitRegisterHandler"),
 			zap.String("correlationID", correlationID),
-			zap.String("xApplication", xApplication),
+			zap.String("tenantId", tenantId),
 			zap.String("email", email),
 			zap.Duration("duration", duration),
 			zap.Error(err),
@@ -75,7 +75,7 @@ func (d *registerHandlersLoggingDecorator) InitRegisterHandler(c echo.Context) e
 		zap.String("handler", "RegisterHandlers"),
 		zap.String("operation", "InitRegisterHandler"),
 		zap.String("correlationID", correlationID),
-		zap.String("xApplication", xApplication),
+		zap.String("tenantId", tenantId),
 		zap.String("email", email),
 		zap.Duration("duration", duration),
 	)
@@ -89,14 +89,14 @@ func (d *registerHandlersLoggingDecorator) ConfirmRegisterHandler(c echo.Context
 
 	// Extrai informações da requisição
 	correlationID := c.Request().Header.Get("X-Correlation-ID")
-	xApplication := c.Request().Header.Get("X-Application")
+	tenantId := c.Request().Header.Get("X-Tenant-Id")
 	email := c.FormValue("email")
 
 	d.logger.Info("Iniciando handler",
 		zap.String("handler", "RegisterHandlers"),
 		zap.String("operation", "ConfirmRegisterHandler"),
 		zap.String("correlationID", correlationID),
-		zap.String("xApplication", xApplication),
+		zap.String("tenantId", tenantId),
 		zap.String("email", email),
 		zap.String("method", c.Request().Method),
 		zap.String("path", c.Path()),
@@ -110,7 +110,7 @@ func (d *registerHandlersLoggingDecorator) ConfirmRegisterHandler(c echo.Context
 			zap.String("handler", "RegisterHandlers"),
 			zap.String("operation", "ConfirmRegisterHandler"),
 			zap.String("correlationID", correlationID),
-			zap.String("xApplication", xApplication),
+			zap.String("tenantId", tenantId),
 			zap.String("email", email),
 			zap.Duration("duration", duration),
 			zap.Error(err),
@@ -122,7 +122,7 @@ func (d *registerHandlersLoggingDecorator) ConfirmRegisterHandler(c echo.Context
 		zap.String("handler", "RegisterHandlers"),
 		zap.String("operation", "ConfirmRegisterHandler"),
 		zap.String("correlationID", correlationID),
-		zap.String("xApplication", xApplication),
+		zap.String("tenantId", tenantId),
 		zap.String("email", email),
 		zap.Duration("duration", duration),
 	)
@@ -153,14 +153,14 @@ func (d *userHandlersLoggingDecorator) CreateUserHandler(c echo.Context) error {
 
 	// Extrai informações da requisição
 	correlationID := c.Request().Header.Get("X-Correlation-ID")
-	xApplication := c.Request().Header.Get("X-Application")
+	tenantId := c.Request().Header.Get("X-Tenant-Id")
 	email := c.FormValue("email")
 
 	d.logger.Info("Iniciando handler",
 		zap.String("handler", "UserHandlers"),
 		zap.String("operation", "CreateUserHandler"),
 		zap.String("correlationID", correlationID),
-		zap.String("xApplication", xApplication),
+		zap.String("tenantId", tenantId),
 		zap.String("email", email),
 		zap.String("method", c.Request().Method),
 		zap.String("path", c.Path()),
@@ -174,7 +174,7 @@ func (d *userHandlersLoggingDecorator) CreateUserHandler(c echo.Context) error {
 			zap.String("handler", "UserHandlers"),
 			zap.String("operation", "CreateUserHandler"),
 			zap.String("correlationID", correlationID),
-			zap.String("xApplication", xApplication),
+			zap.String("tenantId", tenantId),
 			zap.String("email", email),
 			zap.Duration("duration", duration),
 			zap.Error(err),
@@ -186,7 +186,7 @@ func (d *userHandlersLoggingDecorator) CreateUserHandler(c echo.Context) error {
 		zap.String("handler", "UserHandlers"),
 		zap.String("operation", "CreateUserHandler"),
 		zap.String("correlationID", correlationID),
-		zap.String("xApplication", xApplication),
+		zap.String("tenantId", tenantId),
 		zap.String("email", email),
 		zap.Duration("duration", duration),
 	)
@@ -200,14 +200,14 @@ func (d *userHandlersLoggingDecorator) GetUserByCodeHandler(c echo.Context) erro
 
 	// Extrai informações da requisição
 	correlationID := c.Request().Header.Get("X-Correlation-ID")
-	xApplication := c.Request().Header.Get("X-Application")
+	tenantId := c.Request().Header.Get("X-Tenant-Id")
 	codeUser := c.Param("codeUser")
 
 	d.logger.Info("Iniciando handler",
 		zap.String("handler", "UserHandlers"),
 		zap.String("operation", "GetUserByCodeHandler"),
 		zap.String("correlationID", correlationID),
-		zap.String("xApplication", xApplication),
+		zap.String("tenantId", tenantId),
 		zap.String("codeUser", codeUser),
 		zap.String("method", c.Request().Method),
 		zap.String("path", c.Path()),
@@ -221,7 +221,7 @@ func (d *userHandlersLoggingDecorator) GetUserByCodeHandler(c echo.Context) erro
 			zap.String("handler", "UserHandlers"),
 			zap.String("operation", "GetUserByCodeHandler"),
 			zap.String("correlationID", correlationID),
-			zap.String("xApplication", xApplication),
+			zap.String("tenantId", tenantId),
 			zap.String("codeUser", codeUser),
 			zap.Duration("duration", duration),
 			zap.Error(err),
@@ -233,7 +233,7 @@ func (d *userHandlersLoggingDecorator) GetUserByCodeHandler(c echo.Context) erro
 		zap.String("handler", "UserHandlers"),
 		zap.String("operation", "GetUserByCodeHandler"),
 		zap.String("correlationID", correlationID),
-		zap.String("xApplication", xApplication),
+		zap.String("tenantId", tenantId),
 		zap.String("codeUser", codeUser),
 		zap.Duration("duration", duration),
 	)

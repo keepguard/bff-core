@@ -31,7 +31,7 @@ func (j *JWTMiddleware) Middleware() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			correlationID := GetCorrelationID(c)
-			xApplication := GetXApplication(c)
+			tenantId := GetTenantId(c)
 
 			// Valida headers obrigatórios
 			if correlationID == "" {
@@ -43,12 +43,12 @@ func (j *JWTMiddleware) Middleware() echo.MiddlewareFunc {
 				})
 			}
 
-			if xApplication == "" {
-				j.logger.Warn("X-Application ausente",
+			if tenantId == "" {
+				j.logger.Warn("X-Tenant-Id ausente",
 					zap.String("correlationId", correlationID))
 				return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
 					Error:   "MISSING_HEADER",
-					Message: "Header X-Application é obrigatório",
+					Message: "Header X-Tenant-Id é obrigatório",
 					TraceID: correlationID,
 				})
 			}
@@ -58,7 +58,7 @@ func (j *JWTMiddleware) Middleware() echo.MiddlewareFunc {
 			if err != nil {
 				j.logger.Error("Erro ao extrair token JWT",
 					zap.String("correlationId", correlationID),
-					zap.String("xApplication", xApplication),
+					zap.String("tenantId", tenantId),
 					zap.Error(err),
 				)
 				return c.JSON(http.StatusUnauthorized, pkg.ErrorResponse{
@@ -72,11 +72,11 @@ func (j *JWTMiddleware) Middleware() echo.MiddlewareFunc {
 			c.Set("token", token)
 
 			// VALIDA TOKEN LOCALMENTE (sem chamar MS-Auth ou BFF-Auth)
-			claims, err := j.validateTokenLocal(token, xApplication)
+			claims, err := j.validateTokenLocal(token, tenantId)
 			if err != nil {
 				j.logger.Error("Token JWT inválido (validação local)",
 					zap.String("correlationId", correlationID),
-					zap.String("xApplication", xApplication),
+					zap.String("tenantId", tenantId),
 					zap.Error(err),
 				)
 				return c.JSON(http.StatusUnauthorized, pkg.ErrorResponse{
@@ -109,7 +109,7 @@ func (j *JWTMiddleware) Middleware() echo.MiddlewareFunc {
 }
 
 // validateTokenLocal valida JWT localmente usando secret compartilhado
-func (j *JWTMiddleware) validateTokenLocal(tokenString, xApplicationHeader string) (*pkg.JWTClaims, error) {
+func (j *JWTMiddleware) validateTokenLocal(tokenString, tenantIdHeader string) (*pkg.JWTClaims, error) {
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		// Verificar método de assinatura
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
@@ -150,8 +150,8 @@ func (j *JWTMiddleware) validateTokenLocal(tokenString, xApplicationHeader strin
 	if username, ok := mapClaims["username"].(string); ok {
 		claims.Username = username
 	}
-	if xApp, ok := mapClaims["xApplication"].(string); ok {
-		claims.XApplication = xApp
+	if xApp, ok := mapClaims["tenantId"].(string); ok {
+		claims.TenantId = xApp
 	}
 	if companyID, ok := mapClaims["companyId"].(string); ok {
 		claims.CompanyID = companyID
@@ -163,9 +163,9 @@ func (j *JWTMiddleware) validateTokenLocal(tokenString, xApplicationHeader strin
 		claims.Email = email
 	}
 
-	// Validar X-Application do token com header
-	if claims.XApplication != "" && claims.XApplication != xApplicationHeader {
-		return nil, fmt.Errorf("xApplication mismatch: token=%s, header=%s", claims.XApplication, xApplicationHeader)
+	// Validar X-Tenant-Id do token com header
+	if claims.TenantId != "" && claims.TenantId != tenantIdHeader {
+		return nil, fmt.Errorf("tenantId mismatch: token=%s, header=%s", claims.TenantId, tenantIdHeader)
 	}
 
 	return claims, nil

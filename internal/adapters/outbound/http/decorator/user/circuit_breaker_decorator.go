@@ -30,9 +30,9 @@ func NewCircuitBreakerDecorator(
 }
 
 // CreateUser implementa CreateUser com circuit breaker
-func (d *circuitBreakerDecorator) CreateUser(ctx context.Context, req userDto.MSUserCreateRequestDTO, xApplication, correlationID string) (userDto.MSUserResponseDTO, error) {
+func (d *circuitBreakerDecorator) CreateUser(ctx context.Context, req userDto.MSUserCreateRequestDTO, tenantId, correlationID string) (userDto.MSUserResponseDTO, error) {
 	result, err := d.circuitBreaker.Execute(ctx, d.serviceName, func() (interface{}, error) {
-		return d.inner.CreateUser(ctx, req, xApplication, correlationID)
+		return d.inner.CreateUser(ctx, req, tenantId, correlationID)
 	})
 
 	if err != nil {
@@ -43,9 +43,9 @@ func (d *circuitBreakerDecorator) CreateUser(ctx context.Context, req userDto.MS
 }
 
 // GetUserByCodeUser implementa GetUserByCodeUser com circuit breaker
-func (d *circuitBreakerDecorator) GetUserByCodeUser(ctx context.Context, codeUser, token, xApplication, correlationID string) (userDto.MSUserResponseDTO, error) {
+func (d *circuitBreakerDecorator) GetUserByCodeUser(ctx context.Context, codeUser, token, tenantId, correlationID string) (userDto.MSUserResponseDTO, error) {
 	result, err := d.circuitBreaker.Execute(ctx, d.serviceName, func() (interface{}, error) {
-		return d.inner.GetUserByCodeUser(ctx, codeUser, token, xApplication, correlationID)
+		return d.inner.GetUserByCodeUser(ctx, codeUser, token, tenantId, correlationID)
 	})
 
 	if err != nil {
@@ -56,9 +56,9 @@ func (d *circuitBreakerDecorator) GetUserByCodeUser(ctx context.Context, codeUse
 }
 
 // GetByEmail implementa GetByEmail com circuit breaker
-func (d *circuitBreakerDecorator) GetByEmail(ctx context.Context, email, xApplication, correlationID string) (authDto.UserByEmailResponseDTO, error) {
+func (d *circuitBreakerDecorator) GetByEmail(ctx context.Context, email, tenantId, correlationID string) (authDto.UserByEmailResponseDTO, error) {
 	result, err := d.circuitBreaker.Execute(ctx, d.serviceName, func() (interface{}, error) {
-		return d.inner.GetByEmail(ctx, email, xApplication, correlationID)
+		return d.inner.GetByEmail(ctx, email, tenantId, correlationID)
 	})
 
 	if err != nil {
@@ -69,9 +69,9 @@ func (d *circuitBreakerDecorator) GetByEmail(ctx context.Context, email, xApplic
 }
 
 // CreateUserNotify implementa CreateUserNotify com circuit breaker
-func (d *circuitBreakerDecorator) CreateUserNotify(ctx context.Context, req userDto.MSUserNotifyCreateRequestDTO, xApplication, correlationID string) (userDto.MSUserNotifyResponseDTO, error) {
+func (d *circuitBreakerDecorator) CreateUserNotify(ctx context.Context, req userDto.MSUserNotifyCreateRequestDTO, tenantId, correlationID string) (userDto.MSUserNotifyResponseDTO, error) {
 	result, err := d.circuitBreaker.Execute(ctx, d.serviceName, func() (interface{}, error) {
-		return d.inner.CreateUserNotify(ctx, req, xApplication, correlationID)
+		return d.inner.CreateUserNotify(ctx, req, tenantId, correlationID)
 	})
 
 	if err != nil {
@@ -82,9 +82,9 @@ func (d *circuitBreakerDecorator) CreateUserNotify(ctx context.Context, req user
 }
 
 // InitRegister implementa InitRegister com circuit breaker
-func (d *circuitBreakerDecorator) InitRegister(ctx context.Context, req userDto.MSUserRegisterInitRequestDTO, xApplication, correlationID string) (userDto.MSUserRegisterInitResponseDTO, error) {
+func (d *circuitBreakerDecorator) InitRegister(ctx context.Context, req userDto.MSUserRegisterInitRequestDTO, tenantId, correlationID string) (userDto.MSUserRegisterInitResponseDTO, error) {
 	result, err := d.circuitBreaker.Execute(ctx, d.serviceName, func() (interface{}, error) {
-		return d.inner.InitRegister(ctx, req, xApplication, correlationID)
+		return d.inner.InitRegister(ctx, req, tenantId, correlationID)
 	})
 
 	if err != nil {
@@ -95,9 +95,9 @@ func (d *circuitBreakerDecorator) InitRegister(ctx context.Context, req userDto.
 }
 
 // ConfirmRegister implementa ConfirmRegister com circuit breaker
-func (d *circuitBreakerDecorator) ConfirmRegister(ctx context.Context, req userDto.MSUserRegisterConfirmRequestDTO, xApplication, correlationID string) (userDto.MSUserRegisterConfirmResponseDTO, error) {
+func (d *circuitBreakerDecorator) ConfirmRegister(ctx context.Context, req userDto.MSUserRegisterConfirmRequestDTO, tenantId, correlationID string) (userDto.MSUserRegisterConfirmResponseDTO, error) {
 	result, err := d.circuitBreaker.Execute(ctx, d.serviceName, func() (interface{}, error) {
-		return d.inner.ConfirmRegister(ctx, req, xApplication, correlationID)
+		return d.inner.ConfirmRegister(ctx, req, tenantId, correlationID)
 	})
 
 	if err != nil {
@@ -108,18 +108,18 @@ func (d *circuitBreakerDecorator) ConfirmRegister(ctx context.Context, req userD
 }
 
 // DeleteUser implementa DeleteUser com circuit breaker
-func (d *circuitBreakerDecorator) DeleteUser(ctx context.Context, userID, xApplication, correlationID string) error {
+func (d *circuitBreakerDecorator) DeleteUser(ctx context.Context, userID, tenantId, correlationID string) error {
 	_, err := d.circuitBreaker.Execute(ctx, d.serviceName, func() (interface{}, error) {
-		return nil, d.inner.DeleteUser(ctx, userID, xApplication, correlationID)
+		return nil, d.inner.DeleteUser(ctx, userID, tenantId, correlationID)
 	})
 
 	return err
 }
 
 // ResendRegisterToken implementa ResendRegisterToken com circuit breaker
-func (d *circuitBreakerDecorator) ResendRegisterToken(ctx context.Context, req userDto.MSUserRegisterResendRequestDTO, xApplication, correlationID string) (userDto.MSUserRegisterResendResponseDTO, error) {
+func (d *circuitBreakerDecorator) ResendRegisterToken(ctx context.Context, req userDto.MSUserRegisterResendRequestDTO, tenantId, correlationID string) (userDto.MSUserRegisterResendResponseDTO, error) {
 	result, err := d.circuitBreaker.Execute(ctx, d.serviceName, func() (interface{}, error) {
-		return d.inner.ResendRegisterToken(ctx, req, xApplication, correlationID)
+		return d.inner.ResendRegisterToken(ctx, req, tenantId, correlationID)
 	})
 
 	if err != nil {

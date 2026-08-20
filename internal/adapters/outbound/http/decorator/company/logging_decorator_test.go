@@ -25,7 +25,7 @@ func TestNewCompanyLoggingDecorator(t *testing.T) {
 	assert.IsType(t, &companyLoggingDecorator{}, decorator)
 }
 
-func TestCompanyLoggingDecorator_GetByXApplication_Success(t *testing.T) {
+func TestCompanyLoggingDecorator_GetByTenantId_Success(t *testing.T) {
 	// Arrange
 	mockInner := new(MockCompanyClient)
 	core, logs := observer.New(zap.InfoLevel)
@@ -35,7 +35,7 @@ func TestCompanyLoggingDecorator_GetByXApplication_Success(t *testing.T) {
 	decorator := NewCompanyLoggingDecorator(mockInner, logger, serviceName)
 
 	ctx := context.Background()
-	xApplication := "test-app-id"
+	tenantId := "test-app-id"
 	correlationID := "test-correlation-id"
 
 	expectedResponse := companyDto.MSCompanyResponseDTO{
@@ -46,10 +46,10 @@ func TestCompanyLoggingDecorator_GetByXApplication_Success(t *testing.T) {
 		Status:      "ACTIVE",
 	}
 
-	mockInner.On("GetByXApplication", ctx, xApplication, correlationID).Return(expectedResponse, nil)
+	mockInner.On("GetByTenantId", ctx, tenantId, correlationID).Return(expectedResponse, nil)
 
 	// Act
-	result, err := decorator.GetByXApplication(ctx, xApplication, correlationID)
+	result, err := decorator.GetByTenantId(ctx, tenantId, correlationID)
 
 	// Assert
 	assert.NoError(t, err)
@@ -62,7 +62,7 @@ func TestCompanyLoggingDecorator_GetByXApplication_Success(t *testing.T) {
 	assert.Equal(t, "Requisição concluída com sucesso", logs.All()[1].Message)
 }
 
-func TestCompanyLoggingDecorator_GetByXApplication_Error(t *testing.T) {
+func TestCompanyLoggingDecorator_GetByTenantId_Error(t *testing.T) {
 	// Arrange
 	mockInner := new(MockCompanyClient)
 	core, logs := observer.New(zap.InfoLevel)
@@ -72,15 +72,15 @@ func TestCompanyLoggingDecorator_GetByXApplication_Error(t *testing.T) {
 	decorator := NewCompanyLoggingDecorator(mockInner, logger, serviceName)
 
 	ctx := context.Background()
-	xApplication := "invalid-app-id"
+	tenantId := "invalid-app-id"
 	correlationID := "test-correlation-id"
 
 	expectedError := errors.New("company not found")
 
-	mockInner.On("GetByXApplication", ctx, xApplication, correlationID).Return(companyDto.MSCompanyResponseDTO{}, expectedError)
+	mockInner.On("GetByTenantId", ctx, tenantId, correlationID).Return(companyDto.MSCompanyResponseDTO{}, expectedError)
 
 	// Act
-	result, err := decorator.GetByXApplication(ctx, xApplication, correlationID)
+	result, err := decorator.GetByTenantId(ctx, tenantId, correlationID)
 
 	// Assert
 	assert.Error(t, err)

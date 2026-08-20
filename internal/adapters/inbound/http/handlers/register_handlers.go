@@ -42,7 +42,7 @@ func NewRegisterHandlers(
 // @Accept json
 // @Produce json
 // @Param X-Correlation-ID header string true "ID de correlação para rastreamento da requisição"
-// @Param X-Application header string true "ID da aplicação cliente (UUID)"
+// @Param X-Tenant-Id header string true "ID da aplicação cliente (UUID)"
 // @Param request body dto.RegisterInitRequestDTO true "Dados para inicialização do registro"
 // @Success 201 {object} dto.RegisterInitResponseDTO "Registro inicializado com sucesso"
 // @Failure 400 {object} pkg.ErrorResponse "Erro de validação (headers ausentes ou dados inválidos)"
@@ -63,13 +63,13 @@ func (h *RegisterHandlers) InitRegisterHandler(c echo.Context) error {
 		})
 	}
 
-	xApplication := middlewarePkg.GetXApplication(c)
-	if xApplication == "" {
-		h.logger.Warn("X-Application ausente",
+	tenantId := middlewarePkg.GetTenantId(c)
+	if tenantId == "" {
+		h.logger.Warn("X-Tenant-Id ausente",
 			zap.String("correlationId", correlationID))
 		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
 			Error:   "MISSING_HEADER",
-			Message: "Header X-Application é obrigatório",
+			Message: "Header X-Tenant-Id é obrigatório",
 			TraceID: correlationID,
 		})
 	}
@@ -81,7 +81,7 @@ func (h *RegisterHandlers) InitRegisterHandler(c echo.Context) error {
 	if err := c.Bind(&req); err != nil {
 		h.logger.Error("Erro ao fazer bind da requisição de inicialização de registro",
 			zap.String("correlationId", correlationID),
-			zap.String("xApplication", xApplication),
+			zap.String("tenantId", tenantId),
 			zap.Error(err),
 		)
 		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
@@ -112,7 +112,7 @@ func (h *RegisterHandlers) InitRegisterHandler(c echo.Context) error {
 		req.UserAgent,
 		req.Geolocation,
 		req.Type,
-		xApplication,
+		tenantId,
 		correlationID,
 		c.Request().Context(),
 	)
@@ -121,7 +121,7 @@ func (h *RegisterHandlers) InitRegisterHandler(c echo.Context) error {
 	if err := command.Validate(); err != nil {
 		h.logger.Error("Erro de validação no comando de inicialização de registro",
 			zap.String("correlationId", correlationID),
-			zap.String("xApplication", xApplication),
+			zap.String("tenantId", tenantId),
 			zap.Error(err),
 		)
 		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
@@ -149,7 +149,7 @@ func (h *RegisterHandlers) InitRegisterHandler(c echo.Context) error {
 // @Accept json
 // @Produce json
 // @Param X-Correlation-ID header string true "ID de correlação para rastreamento da requisição"
-// @Param X-Application header string true "ID da aplicação cliente (UUID)"
+// @Param X-Tenant-Id header string true "ID da aplicação cliente (UUID)"
 // @Param request body dto.RegisterConfirmRequestDTO true "Dados para confirmação do registro"
 // @Success 200 {object} dto.RegisterConfirmResponseDTO "Registro confirmado com sucesso"
 // @Failure 400 {object} pkg.ErrorResponse "Token inválido ou dados inválidos"
@@ -170,13 +170,13 @@ func (h *RegisterHandlers) ConfirmRegisterHandler(c echo.Context) error {
 		})
 	}
 
-	xApplication := middlewarePkg.GetXApplication(c)
-	if xApplication == "" {
-		h.logger.Warn("X-Application ausente",
+	tenantId := middlewarePkg.GetTenantId(c)
+	if tenantId == "" {
+		h.logger.Warn("X-Tenant-Id ausente",
 			zap.String("correlationId", correlationID))
 		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
 			Error:   "MISSING_HEADER",
-			Message: "Header X-Application é obrigatório",
+			Message: "Header X-Tenant-Id é obrigatório",
 			TraceID: correlationID,
 		})
 	}
@@ -188,7 +188,7 @@ func (h *RegisterHandlers) ConfirmRegisterHandler(c echo.Context) error {
 	if err := c.Bind(&req); err != nil {
 		h.logger.Error("Erro ao fazer bind da requisição de confirmação de registro",
 			zap.String("correlationId", correlationID),
-			zap.String("xApplication", xApplication),
+			zap.String("tenantId", tenantId),
 			zap.Error(err),
 		)
 		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
@@ -205,7 +205,7 @@ func (h *RegisterHandlers) ConfirmRegisterHandler(c echo.Context) error {
 		req.Email,
 		req.RegistrationSessionID,
 		req.Token,
-		xApplication,
+		tenantId,
 		correlationID,
 		c.Request().Context(),
 	)
@@ -214,7 +214,7 @@ func (h *RegisterHandlers) ConfirmRegisterHandler(c echo.Context) error {
 	if err := command.Validate(); err != nil {
 		h.logger.Error("Erro de validação no comando de confirmação de registro",
 			zap.String("correlationId", correlationID),
-			zap.String("xApplication", xApplication),
+			zap.String("tenantId", tenantId),
 			zap.Error(err),
 		)
 		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
@@ -242,7 +242,7 @@ func (h *RegisterHandlers) ConfirmRegisterHandler(c echo.Context) error {
 // @Accept json
 // @Produce json
 // @Param X-Correlation-ID header string true "ID de correlação"
-// @Param X-Application header string true "ID da aplicação (UUID)"
+// @Param X-Tenant-Id header string true "ID da aplicação (UUID)"
 // @Param request body dto.RegisterResendRequestDTO true "Dados para reenvio"
 // @Success 200 {object} dto.RegisterResendResponseDTO "Token reenviado com sucesso"
 // @Failure 400 {object} pkg.ErrorResponse "Dados inválidos"
@@ -259,11 +259,11 @@ func (h *RegisterHandlers) ResendRegisterTokenHandler(c echo.Context) error {
 		})
 	}
 
-	xApplication := middlewarePkg.GetXApplication(c)
-	if xApplication == "" {
+	tenantId := middlewarePkg.GetTenantId(c)
+	if tenantId == "" {
 		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
 			Error:   "MISSING_HEADER",
-			Message: "Header X-Application é obrigatório",
+			Message: "Header X-Tenant-Id é obrigatório",
 			TraceID: correlationID,
 		})
 	}
@@ -285,7 +285,7 @@ func (h *RegisterHandlers) ResendRegisterTokenHandler(c echo.Context) error {
 	command := appdto.NewRegisterResendCommand(
 		req.Email,
 		req.RegistrationSessionID,
-		xApplication,
+		tenantId,
 		correlationID,
 		c.Request().Context(),
 	)

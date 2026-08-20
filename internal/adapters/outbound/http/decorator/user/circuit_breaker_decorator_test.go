@@ -44,7 +44,7 @@ func TestCircuitBreakerDecorator_CreateUser_Success(t *testing.T) {
 		CompanyID: "company123",
 		Type:      "PERSON",
 	}
-	xApplication := "test-app"
+	tenantId := "test-app"
 	correlationID := "corr-123"
 
 	expectedResponse := userDto.MSUserResponseDTO{
@@ -54,10 +54,10 @@ func TestCircuitBreakerDecorator_CreateUser_Success(t *testing.T) {
 		Type:      "PERSON",
 	}
 
-	mockInner.On("CreateUser", ctx, req, xApplication, correlationID).Return(expectedResponse, nil)
+	mockInner.On("CreateUser", ctx, req, tenantId, correlationID).Return(expectedResponse, nil)
 
 	// Act
-	result, err := decorator.CreateUser(ctx, req, xApplication, correlationID)
+	result, err := decorator.CreateUser(ctx, req, tenantId, correlationID)
 
 	// Assert
 	assert.NoError(t, err)
@@ -79,15 +79,15 @@ func TestCircuitBreakerDecorator_CreateUser_Error(t *testing.T) {
 		CompanyID: "company123",
 		Type:      "PERSON",
 	}
-	xApplication := "test-app"
+	tenantId := "test-app"
 	correlationID := "corr-123"
 
 	expectedError := errors.New("service unavailable")
 
-	mockInner.On("CreateUser", ctx, req, xApplication, correlationID).Return(userDto.MSUserResponseDTO{}, expectedError)
+	mockInner.On("CreateUser", ctx, req, tenantId, correlationID).Return(userDto.MSUserResponseDTO{}, expectedError)
 
 	// Act
-	result, err := decorator.CreateUser(ctx, req, xApplication, correlationID)
+	result, err := decorator.CreateUser(ctx, req, tenantId, correlationID)
 
 	// Assert
 	assert.Error(t, err)
@@ -107,7 +107,7 @@ func TestCircuitBreakerDecorator_GetUserByCodeUser_Success(t *testing.T) {
 	ctx := context.Background()
 	codeUser := "code123"
 	token := "token123"
-	xApplication := "test-app"
+	tenantId := "test-app"
 	correlationID := "corr-123"
 
 	expectedResponse := userDto.MSUserResponseDTO{
@@ -117,10 +117,10 @@ func TestCircuitBreakerDecorator_GetUserByCodeUser_Success(t *testing.T) {
 		Type:      "PERSON",
 	}
 
-	mockInner.On("GetUserByCodeUser", ctx, codeUser, token, xApplication, correlationID).Return(expectedResponse, nil)
+	mockInner.On("GetUserByCodeUser", ctx, codeUser, token, tenantId, correlationID).Return(expectedResponse, nil)
 
 	// Act
-	result, err := decorator.GetUserByCodeUser(ctx, codeUser, token, xApplication, correlationID)
+	result, err := decorator.GetUserByCodeUser(ctx, codeUser, token, tenantId, correlationID)
 
 	// Assert
 	assert.NoError(t, err)
@@ -138,7 +138,7 @@ func TestCircuitBreakerDecorator_GetByEmail_Success(t *testing.T) {
 
 	ctx := context.Background()
 	email := "test@example.com"
-	xApplication := "test-app"
+	tenantId := "test-app"
 	correlationID := "corr-123"
 
 	expectedResponse := authDto.UserByEmailResponseDTO{
@@ -146,10 +146,10 @@ func TestCircuitBreakerDecorator_GetByEmail_Success(t *testing.T) {
 		Email: "test@example.com",
 	}
 
-	mockInner.On("GetByEmail", ctx, email, xApplication, correlationID).Return(expectedResponse, nil)
+	mockInner.On("GetByEmail", ctx, email, tenantId, correlationID).Return(expectedResponse, nil)
 
 	// Act
-	result, err := decorator.GetByEmail(ctx, email, xApplication, correlationID)
+	result, err := decorator.GetByEmail(ctx, email, tenantId, correlationID)
 
 	// Assert
 	assert.NoError(t, err)
@@ -173,7 +173,7 @@ func TestCircuitBreakerDecorator_CreateUserNotify_Success(t *testing.T) {
 		PushEnabled:     true,
 		WhatsAppEnabled: true,
 	}
-	xApplication := "test-app"
+	tenantId := "test-app"
 	correlationID := "corr-123"
 
 	expectedResponse := userDto.MSUserNotifyResponseDTO{
@@ -181,10 +181,10 @@ func TestCircuitBreakerDecorator_CreateUserNotify_Success(t *testing.T) {
 		UserID: "user123",
 	}
 
-	mockInner.On("CreateUserNotify", ctx, req, xApplication, correlationID).Return(expectedResponse, nil)
+	mockInner.On("CreateUserNotify", ctx, req, tenantId, correlationID).Return(expectedResponse, nil)
 
 	// Act
-	result, err := decorator.CreateUserNotify(ctx, req, xApplication, correlationID)
+	result, err := decorator.CreateUserNotify(ctx, req, tenantId, correlationID)
 
 	// Assert
 	assert.NoError(t, err)
@@ -213,7 +213,7 @@ func TestCircuitBreakerDecorator_InitRegister_Success(t *testing.T) {
 		Geolocation:                "São Paulo, SP",
 		Type:                       "PERSON",
 	}
-	xApplication := "test-app"
+	tenantId := "test-app"
 	correlationID := "corr-123"
 
 	expectedResponse := userDto.MSUserRegisterInitResponseDTO{
@@ -223,10 +223,10 @@ func TestCircuitBreakerDecorator_InitRegister_Success(t *testing.T) {
 		ExpiresIn:             1800,
 	}
 
-	mockInner.On("InitRegister", ctx, req, xApplication, correlationID).Return(expectedResponse, nil)
+	mockInner.On("InitRegister", ctx, req, tenantId, correlationID).Return(expectedResponse, nil)
 
 	// Act
-	result, err := decorator.InitRegister(ctx, req, xApplication, correlationID)
+	result, err := decorator.InitRegister(ctx, req, tenantId, correlationID)
 
 	// Assert
 	assert.NoError(t, err)
@@ -248,7 +248,7 @@ func TestCircuitBreakerDecorator_ConfirmRegister_Success(t *testing.T) {
 		RegistrationSessionID: "session123",
 		Token:                 "123456",
 	}
-	xApplication := "test-app"
+	tenantId := "test-app"
 	correlationID := "corr-123"
 
 	expectedResponse := userDto.MSUserRegisterConfirmResponseDTO{
@@ -259,10 +259,10 @@ func TestCircuitBreakerDecorator_ConfirmRegister_Success(t *testing.T) {
 		Message:  "Registration confirmed",
 	}
 
-	mockInner.On("ConfirmRegister", ctx, req, xApplication, correlationID).Return(expectedResponse, nil)
+	mockInner.On("ConfirmRegister", ctx, req, tenantId, correlationID).Return(expectedResponse, nil)
 
 	// Act
-	result, err := decorator.ConfirmRegister(ctx, req, xApplication, correlationID)
+	result, err := decorator.ConfirmRegister(ctx, req, tenantId, correlationID)
 
 	// Assert
 	assert.NoError(t, err)
@@ -280,13 +280,13 @@ func TestCircuitBreakerDecorator_DeleteUser_Success(t *testing.T) {
 
 	ctx := context.Background()
 	userID := "user123"
-	xApplication := "test-app"
+	tenantId := "test-app"
 	correlationID := "corr-123"
 
-	mockInner.On("DeleteUser", ctx, userID, xApplication, correlationID).Return(nil)
+	mockInner.On("DeleteUser", ctx, userID, tenantId, correlationID).Return(nil)
 
 	// Act
-	err := decorator.DeleteUser(ctx, userID, xApplication, correlationID)
+	err := decorator.DeleteUser(ctx, userID, tenantId, correlationID)
 
 	// Assert
 	assert.NoError(t, err)
@@ -303,14 +303,14 @@ func TestCircuitBreakerDecorator_DeleteUser_Error(t *testing.T) {
 
 	ctx := context.Background()
 	userID := "user123"
-	xApplication := "test-app"
+	tenantId := "test-app"
 	correlationID := "corr-123"
 
 	expectedError := errors.New("user not found")
-	mockInner.On("DeleteUser", ctx, userID, xApplication, correlationID).Return(expectedError)
+	mockInner.On("DeleteUser", ctx, userID, tenantId, correlationID).Return(expectedError)
 
 	// Act
-	err := decorator.DeleteUser(ctx, userID, xApplication, correlationID)
+	err := decorator.DeleteUser(ctx, userID, tenantId, correlationID)
 
 	// Assert
 	assert.Error(t, err)

@@ -12,7 +12,7 @@ type CompanyDomainService interface {
 	ValidateCompanyCreation(company entities.Company) error
 	CanCompanyBeActivated(company entities.Company) error
 	CanCompanyBeBlocked(company entities.Company) error
-	ValidateXApplication(xApplication string) error
+	ValidateTenantId(tenantId string) error
 	CanCompanyCreateUsers(company entities.Company) error
 	ValidateCompanyUpdate(company entities.Company, newName, newLegalName string, newCNPJ valueobjects.CNPJ) error
 }
@@ -26,8 +26,8 @@ func NewCompanyDomainService() CompanyDomainService {
 
 // ValidateCompanyCreation valida se uma empresa pode ser criada
 func (s *companyDomainServiceImpl) ValidateCompanyCreation(company entities.Company) error {
-	// Verificar se o X-Application é válido
-	if err := s.ValidateXApplication(company.XApplication()); err != nil {
+	// Verificar se o X-Tenant-Id é válido
+	if err := s.ValidateTenantId(company.TenantId()); err != nil {
 		return err
 	}
 
@@ -75,24 +75,24 @@ func (s *companyDomainServiceImpl) CanCompanyBeBlocked(company entities.Company)
 	return nil
 }
 
-// ValidateXApplication valida se o X-Application é válido
-func (s *companyDomainServiceImpl) ValidateXApplication(xApplication string) error {
-	if xApplication == "" {
-		return errors.New("xApplication is required")
+// ValidateTenantId valida se o X-Tenant-Id é válido
+func (s *companyDomainServiceImpl) ValidateTenantId(tenantId string) error {
+	if tenantId == "" {
+		return errors.New("tenantId is required")
 	}
 
-	if len(xApplication) < 3 {
-		return errors.New("xApplication must have at least 3 characters")
+	if len(tenantId) < 3 {
+		return errors.New("tenantId must have at least 3 characters")
 	}
 
-	if len(xApplication) > 50 {
-		return errors.New("xApplication must have at most 50 characters")
+	if len(tenantId) > 50 {
+		return errors.New("tenantId must have at most 50 characters")
 	}
 
 	// Verificar se contém apenas caracteres válidos
-	for _, char := range xApplication {
-		if !isValidXApplicationChar(char) {
-			return errors.New("xApplication contains invalid characters")
+	for _, char := range tenantId {
+		if !isValidTenantIdChar(char) {
+			return errors.New("tenantId contains invalid characters")
 		}
 	}
 
@@ -137,8 +137,8 @@ func (s *companyDomainServiceImpl) ValidateCompanyUpdate(company entities.Compan
 	return nil
 }
 
-// isValidXApplicationChar verifica se um caractere é válido para X-Application
-func isValidXApplicationChar(char rune) bool {
+// isValidTenantIdChar verifica se um caractere é válido para X-Tenant-Id
+func isValidTenantIdChar(char rune) bool {
 	// Aceita letras, números, hífens e underscores
 	return (char >= 'a' && char <= 'z') ||
 		(char >= 'A' && char <= 'Z') ||

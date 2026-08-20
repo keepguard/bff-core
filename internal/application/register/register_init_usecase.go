@@ -45,7 +45,7 @@ func NewRegisterInitUseCase(
 func (uc *registerInitUseCaseImpl) Execute(command appdto.RegisterInitCommand) (dto.RegisterInitResponseDTO, error) {
 
 	// Passo 1: Verificar se a empresa existe consultando o Company Service
-	company, err := uc.companyClient.GetByXApplication(command.Context, command.XApplication, command.CorrelationID)
+	company, err := uc.companyClient.GetByTenantId(command.Context, command.TenantId, command.CorrelationID)
 	if err != nil {
 		return dto.RegisterInitResponseDTO{}, err
 	}
@@ -65,7 +65,7 @@ func (uc *registerInitUseCaseImpl) Execute(command appdto.RegisterInitCommand) (
 	}
 
 	// Passo 3: Inicializar registro no User Service
-	registerResponse, err := uc.userClient.InitRegister(command.Context, registerRequest, command.XApplication, command.CorrelationID)
+	registerResponse, err := uc.userClient.InitRegister(command.Context, registerRequest, command.TenantId, command.CorrelationID)
 	if err != nil {
 		return dto.RegisterInitResponseDTO{}, err
 	}
@@ -86,7 +86,7 @@ func (uc *registerInitUseCaseImpl) Execute(command appdto.RegisterInitCommand) (
 	}
 
 	messageReq := messaging.MessageDTO{
-		XApplication:      command.XApplication,
+		TenantId:      command.TenantId,
 		XCorrelationID:    command.CorrelationID,
 		MessageType:       enums.MessageTypeEmail.String(),
 		CommunicationType: enums.CommunicationTypeEmail.String(),

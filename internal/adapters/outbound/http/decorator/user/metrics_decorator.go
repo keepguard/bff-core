@@ -46,10 +46,10 @@ func (d *userMetricsDecorator) getStatusCodeFromError(err error) int {
 }
 
 // CreateUser implementa CreateUser com métricas
-func (d *userMetricsDecorator) CreateUser(ctx context.Context, req userDto.MSUserCreateRequestDTO, xApplication, correlationID string) (userDto.MSUserResponseDTO, error) {
+func (d *userMetricsDecorator) CreateUser(ctx context.Context, req userDto.MSUserCreateRequestDTO, tenantId, correlationID string) (userDto.MSUserResponseDTO, error) {
 	start := time.Now()
 
-	response, err := d.inner.CreateUser(ctx, req, xApplication, correlationID)
+	response, err := d.inner.CreateUser(ctx, req, tenantId, correlationID)
 
 	duration := time.Since(start)
 	statusCode := d.getStatusCodeFromError(err)
@@ -69,10 +69,10 @@ func (d *userMetricsDecorator) CreateUser(ctx context.Context, req userDto.MSUse
 }
 
 // GetUserByCodeUser implementa GetUserByCodeUser com métricas
-func (d *userMetricsDecorator) GetUserByCodeUser(ctx context.Context, codeUser, token, xApplication, correlationID string) (userDto.MSUserResponseDTO, error) {
+func (d *userMetricsDecorator) GetUserByCodeUser(ctx context.Context, codeUser, token, tenantId, correlationID string) (userDto.MSUserResponseDTO, error) {
 	start := time.Now()
 
-	response, err := d.inner.GetUserByCodeUser(ctx, codeUser, token, xApplication, correlationID)
+	response, err := d.inner.GetUserByCodeUser(ctx, codeUser, token, tenantId, correlationID)
 
 	duration := time.Since(start)
 	statusCode := d.getStatusCodeFromError(err)
@@ -92,10 +92,10 @@ func (d *userMetricsDecorator) GetUserByCodeUser(ctx context.Context, codeUser, 
 }
 
 // GetByEmail implementa GetByEmail com métricas
-func (d *userMetricsDecorator) GetByEmail(ctx context.Context, email, xApplication, correlationID string) (authDto.UserByEmailResponseDTO, error) {
+func (d *userMetricsDecorator) GetByEmail(ctx context.Context, email, tenantId, correlationID string) (authDto.UserByEmailResponseDTO, error) {
 	start := time.Now()
 
-	response, err := d.inner.GetByEmail(ctx, email, xApplication, correlationID)
+	response, err := d.inner.GetByEmail(ctx, email, tenantId, correlationID)
 
 	duration := time.Since(start)
 	statusCode := d.getStatusCodeFromError(err)
@@ -115,10 +115,10 @@ func (d *userMetricsDecorator) GetByEmail(ctx context.Context, email, xApplicati
 }
 
 // CreateUserNotify implementa CreateUserNotify com métricas
-func (d *userMetricsDecorator) CreateUserNotify(ctx context.Context, req userDto.MSUserNotifyCreateRequestDTO, xApplication, correlationID string) (userDto.MSUserNotifyResponseDTO, error) {
+func (d *userMetricsDecorator) CreateUserNotify(ctx context.Context, req userDto.MSUserNotifyCreateRequestDTO, tenantId, correlationID string) (userDto.MSUserNotifyResponseDTO, error) {
 	start := time.Now()
 
-	response, err := d.inner.CreateUserNotify(ctx, req, xApplication, correlationID)
+	response, err := d.inner.CreateUserNotify(ctx, req, tenantId, correlationID)
 
 	duration := time.Since(start)
 	statusCode := d.getStatusCodeFromError(err)
@@ -138,10 +138,10 @@ func (d *userMetricsDecorator) CreateUserNotify(ctx context.Context, req userDto
 }
 
 // InitRegister implementa InitRegister com métricas
-func (d *userMetricsDecorator) InitRegister(ctx context.Context, req userDto.MSUserRegisterInitRequestDTO, xApplication, correlationID string) (userDto.MSUserRegisterInitResponseDTO, error) {
+func (d *userMetricsDecorator) InitRegister(ctx context.Context, req userDto.MSUserRegisterInitRequestDTO, tenantId, correlationID string) (userDto.MSUserRegisterInitResponseDTO, error) {
 	start := time.Now()
 
-	response, err := d.inner.InitRegister(ctx, req, xApplication, correlationID)
+	response, err := d.inner.InitRegister(ctx, req, tenantId, correlationID)
 
 	duration := time.Since(start)
 	statusCode := d.getStatusCodeFromError(err)
@@ -161,10 +161,10 @@ func (d *userMetricsDecorator) InitRegister(ctx context.Context, req userDto.MSU
 }
 
 // ConfirmRegister implementa ConfirmRegister com métricas
-func (d *userMetricsDecorator) ConfirmRegister(ctx context.Context, req userDto.MSUserRegisterConfirmRequestDTO, xApplication, correlationID string) (userDto.MSUserRegisterConfirmResponseDTO, error) {
+func (d *userMetricsDecorator) ConfirmRegister(ctx context.Context, req userDto.MSUserRegisterConfirmRequestDTO, tenantId, correlationID string) (userDto.MSUserRegisterConfirmResponseDTO, error) {
 	start := time.Now()
 
-	response, err := d.inner.ConfirmRegister(ctx, req, xApplication, correlationID)
+	response, err := d.inner.ConfirmRegister(ctx, req, tenantId, correlationID)
 
 	duration := time.Since(start)
 	statusCode := d.getStatusCodeFromError(err)
@@ -184,10 +184,10 @@ func (d *userMetricsDecorator) ConfirmRegister(ctx context.Context, req userDto.
 }
 
 // DeleteUser implementa DeleteUser com métricas
-func (d *userMetricsDecorator) DeleteUser(ctx context.Context, userID, xApplication, correlationID string) error {
+func (d *userMetricsDecorator) DeleteUser(ctx context.Context, userID, tenantId, correlationID string) error {
 	start := time.Now()
 
-	err := d.inner.DeleteUser(ctx, userID, xApplication, correlationID)
+	err := d.inner.DeleteUser(ctx, userID, tenantId, correlationID)
 
 	duration := time.Since(start)
 	statusCode := d.getStatusCodeFromError(err)
@@ -207,10 +207,10 @@ func (d *userMetricsDecorator) DeleteUser(ctx context.Context, userID, xApplicat
 }
 
 // ResendRegisterToken implementa ResendRegisterToken com métricas
-func (d *userMetricsDecorator) ResendRegisterToken(ctx context.Context, req userDto.MSUserRegisterResendRequestDTO, xApplication, correlationID string) (userDto.MSUserRegisterResendResponseDTO, error) {
+func (d *userMetricsDecorator) ResendRegisterToken(ctx context.Context, req userDto.MSUserRegisterResendRequestDTO, tenantId, correlationID string) (userDto.MSUserRegisterResendResponseDTO, error) {
 	start := time.Now()
 
-	response, err := d.inner.ResendRegisterToken(ctx, req, xApplication, correlationID)
+	response, err := d.inner.ResendRegisterToken(ctx, req, tenantId, correlationID)
 
 	duration := time.Since(start)
 	statusCode := 200

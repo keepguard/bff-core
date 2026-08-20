@@ -47,5 +47,5 @@ type MSCompanyResponseDTO struct {
 	Status       string     `json:"status"`
 	CreatedAt    CustomTime `json:"createdAt"`
 	UpdatedAt    CustomTime `json:"updatedAt"`
-	XApplication string     `json:"xapplication"`
+	TenantId string     `json:"tenantid"`
 }

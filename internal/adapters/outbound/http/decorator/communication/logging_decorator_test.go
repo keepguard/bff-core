@@ -42,13 +42,13 @@ func TestCommunicationLoggingDecorator_SendNotification_Success(t *testing.T) {
 		Recipient:    "user@example.com",
 		Data:         map[string]string{"name": "João"},
 	}
-	xApplication := "test-app-id"
+	tenantId := "test-app-id"
 	correlationID := "test-correlation-id"
 
-	mockInner.On("SendNotification", ctx, req, xApplication, correlationID).Return(nil)
+	mockInner.On("SendNotification", ctx, req, tenantId, correlationID).Return(nil)
 
 	// Act
-	err := decorator.SendNotification(ctx, req, xApplication, correlationID)
+	err := decorator.SendNotification(ctx, req, tenantId, correlationID)
 
 	// Assert
 	assert.NoError(t, err)
@@ -78,15 +78,15 @@ func TestCommunicationLoggingDecorator_SendNotification_Error(t *testing.T) {
 		Recipient:    "invalid@example.com",
 		Data:         map[string]string{},
 	}
-	xApplication := "test-app-id"
+	tenantId := "test-app-id"
 	correlationID := "test-correlation-id"
 
 	expectedError := errors.New("template not found")
 
-	mockInner.On("SendNotification", ctx, req, xApplication, correlationID).Return(expectedError)
+	mockInner.On("SendNotification", ctx, req, tenantId, correlationID).Return(expectedError)
 
 	// Act
-	err := decorator.SendNotification(ctx, req, xApplication, correlationID)
+	err := decorator.SendNotification(ctx, req, tenantId, correlationID)
 
 	// Assert
 	assert.Error(t, err)

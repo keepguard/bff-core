@@ -15,7 +15,7 @@ type mockAuthClient struct {
 	err error
 }
 
-func (m *mockAuthClient) ValidateToken(ctx context.Context, token, xApplication, correlationID string) error {
+func (m *mockAuthClient) ValidateToken(ctx context.Context, token, tenantId, correlationID string) error {
 	return m.err
 }
 
@@ -24,7 +24,7 @@ func TestJWTMiddleware_Success(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.Header.Set("Authorization", "Bearer token123")
 	req.Header.Set("X-Correlation-ID", "corr-123")
-	req.Header.Set("X-Application", "app-123")
+	req.Header.Set("X-Tenant-Id", "app-123")
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 
@@ -65,7 +65,7 @@ func TestJWTMiddleware_MissingCorrelationID(t *testing.T) {
 	}
 }
 
-func TestJWTMiddleware_MissingXApplication(t *testing.T) {
+func TestJWTMiddleware_MissingTenantId(t *testing.T) {
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.Header.Set("Authorization", "Bearer token123")
@@ -91,7 +91,7 @@ func TestJWTMiddleware_MissingToken(t *testing.T) {
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.Header.Set("X-Correlation-ID", "corr-123")
-	req.Header.Set("X-Application", "app-123")
+	req.Header.Set("X-Tenant-Id", "app-123")
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 
@@ -114,7 +114,7 @@ func TestJWTMiddleware_InvalidToken(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.Header.Set("Authorization", "Bearer token123")
 	req.Header.Set("X-Correlation-ID", "corr-123")
-	req.Header.Set("X-Application", "app-123")
+	req.Header.Set("X-Tenant-Id", "app-123")
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 

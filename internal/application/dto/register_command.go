@@ -18,7 +18,7 @@ type RegisterInitCommand struct {
 	UserAgent                  string
 	Geolocation                string
 	Type                       string
-	XApplication               string
+	TenantId               string
 	CorrelationID              string
 	Context                    context.Context
 }
@@ -27,7 +27,7 @@ type RegisterInitCommand struct {
 func NewRegisterInitCommand(
 	nameFull, email, password, confirmPassword, phone string,
 	hasAcceptedTermsAndPrivacy, acceptedMarketing bool,
-	ipAddress, userAgent, geolocation, userType, xApplication, correlationID string,
+	ipAddress, userAgent, geolocation, userType, tenantId, correlationID string,
 	ctx context.Context,
 ) RegisterInitCommand {
 	return RegisterInitCommand{
@@ -42,7 +42,7 @@ func NewRegisterInitCommand(
 		UserAgent:                  userAgent,
 		Geolocation:                geolocation,
 		Type:                       userType,
-		XApplication:               xApplication,
+		TenantId:               tenantId,
 		CorrelationID:              correlationID,
 		Context:                    ctx,
 	}
@@ -80,8 +80,8 @@ func (c RegisterInitCommand) Validate() error {
 	if c.Type != "PERSON" && c.Type != "COMPANY" {
 		return fmt.Errorf("type deve ser PERSON ou COMPANY")
 	}
-	if c.XApplication == "" {
-		return fmt.Errorf("xApplication é obrigatório")
+	if c.TenantId == "" {
+		return fmt.Errorf("tenantId é obrigatório")
 	}
 	if c.CorrelationID == "" {
 		return fmt.Errorf("correlationId é obrigatório")
@@ -94,21 +94,21 @@ type RegisterConfirmCommand struct {
 	Email                 string
 	RegistrationSessionID string
 	Token                 string
-	XApplication          string
+	TenantId          string
 	CorrelationID         string
 	Context               context.Context
 }
 
 // NewRegisterConfirmCommand cria um novo comando de confirmação de registro
 func NewRegisterConfirmCommand(
-	email, registrationSessionID, token, xApplication, correlationID string,
+	email, registrationSessionID, token, tenantId, correlationID string,
 	ctx context.Context,
 ) RegisterConfirmCommand {
 	return RegisterConfirmCommand{
 		Email:                 email,
 		RegistrationSessionID: registrationSessionID,
 		Token:                 token,
-		XApplication:          xApplication,
+		TenantId:          tenantId,
 		CorrelationID:         correlationID,
 		Context:               ctx,
 	}
@@ -128,8 +128,8 @@ func (c RegisterConfirmCommand) Validate() error {
 	if len(c.Token) != 6 {
 		return fmt.Errorf("token deve ter exatamente 6 dígitos")
 	}
-	if c.XApplication == "" {
-		return fmt.Errorf("xApplication é obrigatório")
+	if c.TenantId == "" {
+		return fmt.Errorf("tenantId é obrigatório")
 	}
 	if c.CorrelationID == "" {
 		return fmt.Errorf("correlationId é obrigatório")
@@ -141,16 +141,16 @@ func (c RegisterConfirmCommand) Validate() error {
 type RegisterResendCommand struct {
 	Email                 string
 	RegistrationSessionID string
-	XApplication          string
+	TenantId          string
 	CorrelationID         string
 	Context               context.Context
 }
 
-func NewRegisterResendCommand(email, registrationSessionID, xApplication, correlationID string, ctx context.Context) RegisterResendCommand {
+func NewRegisterResendCommand(email, registrationSessionID, tenantId, correlationID string, ctx context.Context) RegisterResendCommand {
 	return RegisterResendCommand{
 		Email:                 email,
 		RegistrationSessionID: registrationSessionID,
-		XApplication:          xApplication,
+		TenantId:          tenantId,
 		CorrelationID:         correlationID,
 		Context:               ctx,
 	}

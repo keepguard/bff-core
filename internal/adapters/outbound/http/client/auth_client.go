@@ -50,7 +50,7 @@ func NewAuthClientWithoutRetry(config *config.Config, logger *zap.Logger) client
 }
 
 // ValidateToken valida um token no ms-auth
-func (c *authClient) ValidateToken(ctx context.Context, token, xApplication, correlationID string) error {
+func (c *authClient) ValidateToken(ctx context.Context, token, tenantId, correlationID string) error {
 	url := fmt.Sprintf("%s/api/v1/auth/validate", c.config.Services.Auth.BaseURL)
 
 	req := map[string]string{
@@ -61,7 +61,7 @@ func (c *authClient) ValidateToken(ctx context.Context, token, xApplication, cor
 		SetContext(ctx).
 		SetBody(req).
 		SetHeader("X-Correlation-ID", correlationID).
-		SetHeader("X-Application", xApplication).
+		SetHeader("X-Tenant-Id", tenantId).
 		SetHeader("Content-Type", "application/json").
 		Post(url)
 
@@ -77,7 +77,7 @@ func (c *authClient) ValidateToken(ctx context.Context, token, xApplication, cor
 }
 
 // GenerateResetToken gera um token de recuperação de senha no ms-auth
-func (c *authClient) GenerateResetToken(ctx context.Context, req authDto.GenerateResetTokenMSRequestDTO, xApplication, correlationID string) (authDto.GenerateResetTokenMSResponseDTO, error) {
+func (c *authClient) GenerateResetToken(ctx context.Context, req authDto.GenerateResetTokenMSRequestDTO, tenantId, correlationID string) (authDto.GenerateResetTokenMSResponseDTO, error) {
 	var response authDto.GenerateResetTokenMSResponseDTO
 
 	url := fmt.Sprintf("%s/api/v1/auth/generate-reset-token", c.config.Services.Auth.BaseURL)
@@ -87,7 +87,7 @@ func (c *authClient) GenerateResetToken(ctx context.Context, req authDto.Generat
 		SetBody(req).
 		SetResult(&response).
 		SetHeader("X-Correlation-ID", correlationID).
-		SetHeader("X-Application", xApplication).
+		SetHeader("X-Tenant-Id", tenantId).
 		Post(url)
 
 	if err != nil {
@@ -106,14 +106,14 @@ func (c *authClient) GenerateResetToken(ctx context.Context, req authDto.Generat
 }
 
 // RegisterLogin realiza login após registro usando senha criptografada
-func (c *authClient) RegisterLogin(ctx context.Context, req authDto.AuthRegisterLoginRequestDTO, xApplication, correlationID string) (authDto.AuthLoginResponseDTO, error) {
+func (c *authClient) RegisterLogin(ctx context.Context, req authDto.AuthRegisterLoginRequestDTO, tenantId, correlationID string) (authDto.AuthLoginResponseDTO, error) {
 	url := fmt.Sprintf("%s/api/v1/auth/register-login", c.config.Services.Auth.BaseURL)
 
 	resp, err := c.httpClient.R().
 		SetContext(ctx).
 		SetBody(req).
 		SetHeader("X-Correlation-ID", correlationID).
-		SetHeader("X-Application", xApplication).
+		SetHeader("X-Tenant-Id", tenantId).
 		SetHeader("Content-Type", "application/json").
 		Post(url)
 
@@ -138,7 +138,7 @@ func (c *authClient) RegisterLogin(ctx context.Context, req authDto.AuthRegister
 }
 
 // CreateUser cria um novo usuário no ms-auth
-func (c *authClient) CreateUser(ctx context.Context, req authDto.AuthUserCreateRequestDTO, xApplication, correlationID string) (authDto.AuthUserCreateResponseDTO, error) {
+func (c *authClient) CreateUser(ctx context.Context, req authDto.AuthUserCreateRequestDTO, tenantId, correlationID string) (authDto.AuthUserCreateResponseDTO, error) {
 	url := fmt.Sprintf("%s/api/v1/users/create", c.config.Services.Auth.BaseURL)
 
 	// Converte diretamente para o DTO do ms-auth
@@ -150,14 +150,14 @@ func (c *authClient) CreateUser(ctx context.Context, req authDto.AuthUserCreateR
 		CodeUser:       req.CodeUser,
 		CompanyID:      req.CompanyID,
 		CompanyCode:    req.CompanyCode,
-		XApplication:   req.XApplication,
+		TenantId:   req.TenantId,
 	}
 
 	resp, err := c.httpClient.R().
 		SetContext(ctx).
 		SetBody(authReq).
 		SetHeader("X-Correlation-ID", correlationID).
-		SetHeader("X-Application", xApplication).
+		SetHeader("X-Tenant-Id", tenantId).
 		SetHeader("Content-Type", "application/json").
 		Post(url)
 
@@ -182,13 +182,13 @@ func (c *authClient) CreateUser(ctx context.Context, req authDto.AuthUserCreateR
 }
 
 // HardDeleteUser remove permanentemente um usuário (para compensação de SAGA)
-func (c *authClient) HardDeleteUser(ctx context.Context, idUserExternal, xApplication, correlationID string) error {
+func (c *authClient) HardDeleteUser(ctx context.Context, idUserExternal, tenantId, correlationID string) error {
 	url := fmt.Sprintf("%s/api/v1/users/hard-delete/%s", c.config.Services.Auth.BaseURL, idUserExternal)
 
 	resp, err := c.httpClient.R().
 		SetContext(ctx).
 		SetHeader("X-Correlation-ID", correlationID).
-		SetHeader("X-Application", xApplication).
+		SetHeader("X-Tenant-Id", tenantId).
 		SetHeader("Content-Type", "application/json").
 		Delete(url)
 

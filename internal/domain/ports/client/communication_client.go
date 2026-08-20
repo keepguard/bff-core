@@ -18,7 +18,7 @@ type SendNotificationRequestDTO struct {
 // CommunicationClient interface para comunicação com o serviço de comunicação
 type CommunicationClient interface {
 	// SendNotification envia uma notificação
-	SendNotification(ctx context.Context, req SendNotificationRequestDTO, xApplication, correlationID string) error
+	SendNotification(ctx context.Context, req SendNotificationRequestDTO, tenantId, correlationID string) error
 	// SendMessage envia uma mensagem através do ms-communication
-	SendMessage(ctx context.Context, req communicationDto.SendMessageRequestDTO, xApplication, correlationID string) (communicationDto.SendMessageResponseDTO, error)
+	SendMessage(ctx context.Context, req communicationDto.SendMessageRequestDTO, tenantId, correlationID string) (communicationDto.SendMessageResponseDTO, error)
 }

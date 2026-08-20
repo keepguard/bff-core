@@ -8,6 +8,6 @@ import (
 
 // CompanyClient interface para comunicação com o serviço de empresas (ms-company)
 type CompanyClient interface {
-	// GetByXApplication busca uma empresa pelo X-Application
-	GetByXApplication(ctx context.Context, xApplication, correlationID string) (companyDto.MSCompanyResponseDTO, error)
+	// GetByTenantId busca uma empresa pelo X-Tenant-Id
+	GetByTenantId(ctx context.Context, tenantId, correlationID string) (companyDto.MSCompanyResponseDTO, error)
 }

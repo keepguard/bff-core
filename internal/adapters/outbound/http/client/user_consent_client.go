@@ -50,7 +50,7 @@ func NewUserConsentClientWithoutRetry(config *config.Config, logger *zap.Logger)
 }
 
 // Accept registra o aceite de um consentimento
-func (c *userConsentClient) Accept(ctx context.Context, req userConsentDto.UserConsentAcceptRequestDTO, token, xApplication, correlationID string) (userConsentDto.UserConsentResponseDTO, error) {
+func (c *userConsentClient) Accept(ctx context.Context, req userConsentDto.UserConsentAcceptRequestDTO, token, tenantId, correlationID string) (userConsentDto.UserConsentResponseDTO, error) {
 	url := fmt.Sprintf("%s/api/v1/user-consents/accept", c.config.Services.UserConsents.BaseURL)
 
 	resp, err := c.httpClient.R().
@@ -58,7 +58,7 @@ func (c *userConsentClient) Accept(ctx context.Context, req userConsentDto.UserC
 		SetBody(req).
 		SetHeader("Authorization", "Bearer "+token).
 		SetHeader("X-Correlation-ID", correlationID).
-		SetHeader("X-Application", xApplication).
+		SetHeader("X-Tenant-Id", tenantId).
 		SetHeader("Content-Type", "application/json").
 		Post(url)
 
@@ -83,14 +83,14 @@ func (c *userConsentClient) Accept(ctx context.Context, req userConsentDto.UserC
 }
 
 // FindByID busca um consentimento por ID
-func (c *userConsentClient) FindByID(ctx context.Context, id, token, xApplication, correlationID string) (userConsentDto.UserConsentResponseDTO, error) {
+func (c *userConsentClient) FindByID(ctx context.Context, id, token, tenantId, correlationID string) (userConsentDto.UserConsentResponseDTO, error) {
 	url := fmt.Sprintf("%s/api/v1/user-consents/%s", c.config.Services.UserConsents.BaseURL, id)
 
 	resp, err := c.httpClient.R().
 		SetContext(ctx).
 		SetHeader("Authorization", "Bearer "+token).
 		SetHeader("X-Correlation-ID", correlationID).
-		SetHeader("X-Application", xApplication).
+		SetHeader("X-Tenant-Id", tenantId).
 		SetHeader("Content-Type", "application/json").
 		Get(url)
 
@@ -115,14 +115,14 @@ func (c *userConsentClient) FindByID(ctx context.Context, id, token, xApplicatio
 }
 
 // FindByUserID busca todos os consentimentos de um usuário
-func (c *userConsentClient) FindByUserID(ctx context.Context, userID, token, xApplication, correlationID string) ([]userConsentDto.UserConsentResponseDTO, error) {
+func (c *userConsentClient) FindByUserID(ctx context.Context, userID, token, tenantId, correlationID string) ([]userConsentDto.UserConsentResponseDTO, error) {
 	url := fmt.Sprintf("%s/api/v1/user-consents/user/%s", c.config.Services.UserConsents.BaseURL, userID)
 
 	resp, err := c.httpClient.R().
 		SetContext(ctx).
 		SetHeader("Authorization", "Bearer "+token).
 		SetHeader("X-Correlation-ID", correlationID).
-		SetHeader("X-Application", xApplication).
+		SetHeader("X-Tenant-Id", tenantId).
 		SetHeader("Content-Type", "application/json").
 		Get(url)
 
@@ -147,14 +147,14 @@ func (c *userConsentClient) FindByUserID(ctx context.Context, userID, token, xAp
 }
 
 // FindByUserIDAndConsentDocumentID busca consentimentos de um usuário para um documento específico
-func (c *userConsentClient) FindByUserIDAndConsentDocumentID(ctx context.Context, userID, consentDocumentID, token, xApplication, correlationID string) ([]userConsentDto.UserConsentResponseDTO, error) {
+func (c *userConsentClient) FindByUserIDAndConsentDocumentID(ctx context.Context, userID, consentDocumentID, token, tenantId, correlationID string) ([]userConsentDto.UserConsentResponseDTO, error) {
 	url := fmt.Sprintf("%s/api/v1/user-consents/user/%s/document/%s", c.config.Services.UserConsents.BaseURL, userID, consentDocumentID)
 
 	resp, err := c.httpClient.R().
 		SetContext(ctx).
 		SetHeader("Authorization", "Bearer "+token).
 		SetHeader("X-Correlation-ID", correlationID).
-		SetHeader("X-Application", xApplication).
+		SetHeader("X-Tenant-Id", tenantId).
 		SetHeader("Content-Type", "application/json").
 		Get(url)
 
@@ -179,14 +179,14 @@ func (c *userConsentClient) FindByUserIDAndConsentDocumentID(ctx context.Context
 }
 
 // FindLatestByUserIDAndConsentDocumentID busca o último consentimento de um usuário para um documento
-func (c *userConsentClient) FindLatestByUserIDAndConsentDocumentID(ctx context.Context, userID, consentDocumentID, token, xApplication, correlationID string) (userConsentDto.UserConsentResponseDTO, error) {
+func (c *userConsentClient) FindLatestByUserIDAndConsentDocumentID(ctx context.Context, userID, consentDocumentID, token, tenantId, correlationID string) (userConsentDto.UserConsentResponseDTO, error) {
 	url := fmt.Sprintf("%s/api/v1/user-consents/user/%s/document/%s/latest", c.config.Services.UserConsents.BaseURL, userID, consentDocumentID)
 
 	resp, err := c.httpClient.R().
 		SetContext(ctx).
 		SetHeader("Authorization", "Bearer "+token).
 		SetHeader("X-Correlation-ID", correlationID).
-		SetHeader("X-Application", xApplication).
+		SetHeader("X-Tenant-Id", tenantId).
 		SetHeader("Content-Type", "application/json").
 		Get(url)
 
@@ -211,14 +211,14 @@ func (c *userConsentClient) FindLatestByUserIDAndConsentDocumentID(ctx context.C
 }
 
 // HasAccepted verifica se o usuário aceitou uma versão específica
-func (c *userConsentClient) HasAccepted(ctx context.Context, userID, consentDocumentID string, version int, token, xApplication, correlationID string) (bool, error) {
+func (c *userConsentClient) HasAccepted(ctx context.Context, userID, consentDocumentID string, version int, token, tenantId, correlationID string) (bool, error) {
 	url := fmt.Sprintf("%s/api/v1/user-consents/user/%s/document/%s/version/%d/check", c.config.Services.UserConsents.BaseURL, userID, consentDocumentID, version)
 
 	resp, err := c.httpClient.R().
 		SetContext(ctx).
 		SetHeader("Authorization", "Bearer "+token).
 		SetHeader("X-Correlation-ID", correlationID).
-		SetHeader("X-Application", xApplication).
+		SetHeader("X-Tenant-Id", tenantId).
 		SetHeader("Content-Type", "application/json").
 		Get(url)
 
@@ -243,14 +243,14 @@ func (c *userConsentClient) HasAccepted(ctx context.Context, userID, consentDocu
 }
 
 // AcceptAll registra o aceite de todos os documentos de consentimento publicados
-func (c *userConsentClient) AcceptAll(ctx context.Context, req userConsentDto.UserConsentAcceptAllRequestDTO, xApplication, correlationID string) (userConsentDto.UserConsentAcceptAllResponseDTO, error) {
+func (c *userConsentClient) AcceptAll(ctx context.Context, req userConsentDto.UserConsentAcceptAllRequestDTO, tenantId, correlationID string) (userConsentDto.UserConsentAcceptAllResponseDTO, error) {
 	url := fmt.Sprintf("%s/api/v1/user-consents/accept-all", c.config.Services.UserConsents.BaseURL)
 
 	resp, err := c.httpClient.R().
 		SetContext(ctx).
 		SetBody(req).
 		SetHeader("X-Correlation-ID", correlationID).
-		SetHeader("X-Application", xApplication).
+		SetHeader("X-Tenant-Id", tenantId).
 		SetHeader("Content-Type", "application/json").
 		Post(url)
 
@@ -275,13 +275,13 @@ func (c *userConsentClient) AcceptAll(ctx context.Context, req userConsentDto.Us
 }
 
 // DeleteAllByUserId deleta todos os consentimentos de um usuário (para compensação de SAGA)
-func (c *userConsentClient) DeleteAllByUserId(ctx context.Context, userID, xApplication, correlationID string) error {
+func (c *userConsentClient) DeleteAllByUserId(ctx context.Context, userID, tenantId, correlationID string) error {
 	url := fmt.Sprintf("%s/api/v1/user-consents/user/%s", c.config.Services.UserConsents.BaseURL, userID)
 
 	resp, err := c.httpClient.R().
 		SetContext(ctx).
 		SetHeader("X-Correlation-ID", correlationID).
-		SetHeader("X-Application", xApplication).
+		SetHeader("X-Tenant-Id", tenantId).
 		SetHeader("Content-Type", "application/json").
 		Delete(url)
 

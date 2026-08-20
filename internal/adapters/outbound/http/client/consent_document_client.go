@@ -37,14 +37,14 @@ func NewConsentDocumentClient(config *config.Config, logger *zap.Logger) client.
 }
 
 // FindLatestPublishedByType busca a última versão publicada por tipo
-func (c *consentDocumentClient) FindLatestPublishedByType(ctx context.Context, consentType, token, xApplication, correlationID string) (consentDocumentDto.ConsentDocumentResponseDTO, error) {
+func (c *consentDocumentClient) FindLatestPublishedByType(ctx context.Context, consentType, token, tenantId, correlationID string) (consentDocumentDto.ConsentDocumentResponseDTO, error) {
 	url := fmt.Sprintf("%s/api/v1/consent-documents/type/%s/latest-published", c.config.Services.UserConsents.BaseURL, consentType)
 
 	resp, err := c.httpClient.R().
 		SetContext(ctx).
 		SetHeader("Authorization", "Bearer "+token).
 		SetHeader("X-Correlation-ID", correlationID).
-		SetHeader("X-Application", xApplication).
+		SetHeader("X-Tenant-Id", tenantId).
 		SetHeader("Content-Type", "application/json").
 		Get(url)
 

@@ -30,20 +30,20 @@ func NewCommunicationLoggingDecorator(
 }
 
 // SendNotification implementa SendNotification com logging
-func (d *communicationLoggingDecorator) SendNotification(ctx context.Context, req portsclient.SendNotificationRequestDTO, xApplication, correlationID string) error {
+func (d *communicationLoggingDecorator) SendNotification(ctx context.Context, req portsclient.SendNotificationRequestDTO, tenantId, correlationID string) error {
 	start := time.Now()
 
 	d.logger.Info("Iniciando requisição",
 		zap.String("service", d.serviceName),
 		zap.String("operation", "SendNotification"),
 		zap.String("correlationID", correlationID),
-		zap.String("xApplication", xApplication),
+		zap.String("tenantId", tenantId),
 		zap.String("recipient", req.Recipient),
 		zap.String("templateType", req.TemplateType),
 		zap.String("channel", req.Channel),
 	)
 
-	err := d.inner.SendNotification(ctx, req, xApplication, correlationID)
+	err := d.inner.SendNotification(ctx, req, tenantId, correlationID)
 	duration := time.Since(start)
 
 	if err != nil {
@@ -51,7 +51,7 @@ func (d *communicationLoggingDecorator) SendNotification(ctx context.Context, re
 			zap.String("service", d.serviceName),
 			zap.String("operation", "SendNotification"),
 			zap.String("correlationID", correlationID),
-			zap.String("xApplication", xApplication),
+			zap.String("tenantId", tenantId),
 			zap.String("recipient", req.Recipient),
 			zap.Duration("duration", duration),
 			zap.Error(err),
@@ -63,7 +63,7 @@ func (d *communicationLoggingDecorator) SendNotification(ctx context.Context, re
 		zap.String("service", d.serviceName),
 		zap.String("operation", "SendNotification"),
 		zap.String("correlationID", correlationID),
-		zap.String("xApplication", xApplication),
+		zap.String("tenantId", tenantId),
 		zap.String("recipient", req.Recipient),
 		zap.Duration("duration", duration),
 	)
@@ -72,21 +72,21 @@ func (d *communicationLoggingDecorator) SendNotification(ctx context.Context, re
 }
 
 // SendMessage implementa SendMessage com logging
-func (d *communicationLoggingDecorator) SendMessage(ctx context.Context, req communicationDto.SendMessageRequestDTO, xApplication, correlationID string) (communicationDto.SendMessageResponseDTO, error) {
+func (d *communicationLoggingDecorator) SendMessage(ctx context.Context, req communicationDto.SendMessageRequestDTO, tenantId, correlationID string) (communicationDto.SendMessageResponseDTO, error) {
 	start := time.Now()
 
 	d.logger.Info("Iniciando requisição",
 		zap.String("service", d.serviceName),
 		zap.String("operation", "SendMessage"),
 		zap.String("correlationID", correlationID),
-		zap.String("xApplication", xApplication),
+		zap.String("tenantId", tenantId),
 		zap.String("recipient", req.Recipient),
 		zap.String("messageType", req.MessageType),
 		zap.String("templateType", req.TemplateType),
 		zap.String("communicationType", req.CommunicationType),
 	)
 
-	response, err := d.inner.SendMessage(ctx, req, xApplication, correlationID)
+	response, err := d.inner.SendMessage(ctx, req, tenantId, correlationID)
 	duration := time.Since(start)
 
 	if err != nil {
@@ -94,7 +94,7 @@ func (d *communicationLoggingDecorator) SendMessage(ctx context.Context, req com
 			zap.String("service", d.serviceName),
 			zap.String("operation", "SendMessage"),
 			zap.String("correlationID", correlationID),
-			zap.String("xApplication", xApplication),
+			zap.String("tenantId", tenantId),
 			zap.String("recipient", req.Recipient),
 			zap.Duration("duration", duration),
 			zap.Error(err),
@@ -106,7 +106,7 @@ func (d *communicationLoggingDecorator) SendMessage(ctx context.Context, req com
 		zap.String("service", d.serviceName),
 		zap.String("operation", "SendMessage"),
 		zap.String("correlationID", correlationID),
-		zap.String("xApplication", xApplication),
+		zap.String("tenantId", tenantId),
 		zap.String("recipient", req.Recipient),
 		zap.Bool("success", response.Success),
 		zap.Duration("duration", duration),

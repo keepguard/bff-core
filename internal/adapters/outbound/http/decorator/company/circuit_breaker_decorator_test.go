@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-func TestCircuitBreakerDecorator_GetByXApplication_Success(t *testing.T) {
+func TestCircuitBreakerDecorator_GetByTenantId_Success(t *testing.T) {
 	// Arrange
 	mockClient := &MockCompanyClient{}
 	metricsInstance := getTestMetrics()
@@ -38,10 +38,10 @@ func TestCircuitBreakerDecorator_GetByXApplication_Success(t *testing.T) {
 		Name: "Test Company",
 	}
 
-	mockClient.On("GetByXApplication", mock.Anything, "test-app", "corr-123").Return(expectedResponse, nil).Once()
+	mockClient.On("GetByTenantId", mock.Anything, "test-app", "corr-123").Return(expectedResponse, nil).Once()
 
 	// Act
-	result, err := decorator.GetByXApplication(context.Background(), "test-app", "corr-123")
+	result, err := decorator.GetByTenantId(context.Background(), "test-app", "corr-123")
 
 	// Assert
 	assert.NoError(t, err)
@@ -49,7 +49,7 @@ func TestCircuitBreakerDecorator_GetByXApplication_Success(t *testing.T) {
 	mockClient.AssertExpectations(t)
 }
 
-func TestCircuitBreakerDecorator_GetByXApplication_Error(t *testing.T) {
+func TestCircuitBreakerDecorator_GetByTenantId_Error(t *testing.T) {
 	// Arrange
 	mockClient := &MockCompanyClient{}
 	metricsInstance := getTestMetrics()
@@ -71,10 +71,10 @@ func TestCircuitBreakerDecorator_GetByXApplication_Error(t *testing.T) {
 
 	expectedError := assert.AnError
 
-	mockClient.On("GetByXApplication", mock.Anything, "test-app", "corr-123").Return(companyDto.MSCompanyResponseDTO{}, expectedError).Once()
+	mockClient.On("GetByTenantId", mock.Anything, "test-app", "corr-123").Return(companyDto.MSCompanyResponseDTO{}, expectedError).Once()
 
 	// Act
-	result, err := decorator.GetByXApplication(context.Background(), "test-app", "corr-123")
+	result, err := decorator.GetByTenantId(context.Background(), "test-app", "corr-123")
 
 	// Assert
 	assert.Error(t, err)
@@ -83,7 +83,7 @@ func TestCircuitBreakerDecorator_GetByXApplication_Error(t *testing.T) {
 	mockClient.AssertExpectations(t)
 }
 
-func TestCircuitBreakerDecorator_GetByXApplication_CircuitOpen(t *testing.T) {
+func TestCircuitBreakerDecorator_GetByTenantId_CircuitOpen(t *testing.T) {
 	// Arrange
 	mockClient := &MockCompanyClient{}
 	metricsInstance := getTestMetrics()
@@ -104,15 +104,15 @@ func TestCircuitBreakerDecorator_GetByXApplication_CircuitOpen(t *testing.T) {
 	decorator := NewCircuitBreakerDecorator(mockClient, cbManager, "test-company").(*circuitBreakerDecorator)
 
 	// Primeira chamada falha para abrir o circuit
-	mockClient.On("GetByXApplication", mock.Anything, "test-app", "corr-123").Return(companyDto.MSCompanyResponseDTO{}, assert.AnError).Once()
+	mockClient.On("GetByTenantId", mock.Anything, "test-app", "corr-123").Return(companyDto.MSCompanyResponseDTO{}, assert.AnError).Once()
 
 	// Act
 	// Primeira chamada - deve falhar e abrir o circuit
-	result1, err1 := decorator.GetByXApplication(context.Background(), "test-app", "corr-123")
+	result1, err1 := decorator.GetByTenantId(context.Background(), "test-app", "corr-123")
 	assert.Error(t, err1)
 
 	// Segunda chamada - circuit deve estar aberto
-	result2, err2 := decorator.GetByXApplication(context.Background(), "test-app", "corr-123")
+	result2, err2 := decorator.GetByTenantId(context.Background(), "test-app", "corr-123")
 	assert.Error(t, err2)
 
 	// Assert

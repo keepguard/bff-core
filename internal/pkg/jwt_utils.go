@@ -12,7 +12,7 @@ type JWTClaims struct {
 	CodeUser      string `json:"codeUser"`
 	Sub           string `json:"sub"`
 	Username      string `json:"username"`
-	XApplication  string `json:"xApplication"`
+	TenantId  string `json:"tenantId"`
 	CompanyID     string `json:"companyId"`
 	UserID        string `json:"userId"`
 	Email         string `json:"email"`

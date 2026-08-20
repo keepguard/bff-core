@@ -12,7 +12,7 @@ type MockCompanyClient struct {
 	mock.Mock
 }
 
-func (m *MockCompanyClient) GetByXApplication(ctx context.Context, xApplication, correlationID string) (companyDto.MSCompanyResponseDTO, error) {
-	args := m.Called(ctx, xApplication, correlationID)
+func (m *MockCompanyClient) GetByTenantId(ctx context.Context, tenantId, correlationID string) (companyDto.MSCompanyResponseDTO, error) {
+	args := m.Called(ctx, tenantId, correlationID)
 	return args.Get(0).(companyDto.MSCompanyResponseDTO), args.Error(1)
 }

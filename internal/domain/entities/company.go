@@ -10,7 +10,7 @@ import (
 // Company representa uma empresa no domínio
 type Company struct {
 	id           string
-	xApplication string
+	tenantId string
 	name         string
 	legalName    string
 	cnpj         valueobjects.CNPJ
@@ -30,9 +30,9 @@ const (
 )
 
 // NewCompany cria uma nova empresa
-func NewCompany(xApplication, name, legalName string, cnpj valueobjects.CNPJ) (*Company, error) {
-	if xApplication == "" {
-		return nil, errors.New("xApplication cannot be empty")
+func NewCompany(tenantId, name, legalName string, cnpj valueobjects.CNPJ) (*Company, error) {
+	if tenantId == "" {
+		return nil, errors.New("tenantId cannot be empty")
 	}
 
 	if name == "" {
@@ -46,7 +46,7 @@ func NewCompany(xApplication, name, legalName string, cnpj valueobjects.CNPJ) (*
 	now := time.Now()
 	return &Company{
 		id:           generateCompanyID(),
-		xApplication: xApplication,
+		tenantId: tenantId,
 		name:         name,
 		legalName:    legalName,
 		cnpj:         cnpj,
@@ -61,8 +61,8 @@ func (c *Company) ID() string {
 	return c.id
 }
 
-func (c *Company) XApplication() string {
-	return c.xApplication
+func (c *Company) TenantId() string {
+	return c.tenantId
 }
 
 func (c *Company) Name() string {

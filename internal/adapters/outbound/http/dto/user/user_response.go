@@ -9,7 +9,7 @@ type MSUserResponseDTO struct {
 	ID              string                `json:"id"`
 	CodeUser        string                `json:"codeUser"`
 	CompanyID       string                `json:"companyId"`
-	XApplication    string                `json:"xApplication"`
+	TenantId    string                `json:"tenantId"`
 	Type            string                `json:"type"`
 	Status          string                `json:"status"`
 	Email           string                `json:"email"`

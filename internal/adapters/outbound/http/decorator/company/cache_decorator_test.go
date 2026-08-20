@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-func TestCacheDecorator_GetByXApplication_CacheHit(t *testing.T) {
+func TestCacheDecorator_GetByTenantId_CacheHit(t *testing.T) {
 	// Arrange
 	mockClient := &MockCompanyClient{}
 	metricsInstance := getTestMetrics()
@@ -29,16 +29,16 @@ func TestCacheDecorator_GetByXApplication_CacheHit(t *testing.T) {
 	}
 
 	// Primeira chamada - deve ir para o mock
-	mockClient.On("GetByXApplication", mock.Anything, "test-app", "corr-123").Return(expectedResponse, nil).Once()
+	mockClient.On("GetByTenantId", mock.Anything, "test-app", "corr-123").Return(expectedResponse, nil).Once()
 
 	// Act & Assert
 	// Primeira chamada - cache miss
-	result1, err1 := decorator.GetByXApplication(context.Background(), "test-app", "corr-123")
+	result1, err1 := decorator.GetByTenantId(context.Background(), "test-app", "corr-123")
 	assert.NoError(t, err1)
 	assert.Equal(t, expectedResponse, result1)
 
 	// Segunda chamada - cache hit (não deve chamar o mock novamente)
-	result2, err2 := decorator.GetByXApplication(context.Background(), "test-app", "corr-123")
+	result2, err2 := decorator.GetByTenantId(context.Background(), "test-app", "corr-123")
 	assert.NoError(t, err2)
 	assert.Equal(t, expectedResponse, result2)
 
@@ -46,7 +46,7 @@ func TestCacheDecorator_GetByXApplication_CacheHit(t *testing.T) {
 	mockClient.AssertExpectations(t)
 }
 
-func TestCacheDecorator_GetByXApplication_CacheExpired(t *testing.T) {
+func TestCacheDecorator_GetByTenantId_CacheExpired(t *testing.T) {
 	// Arrange
 	mockClient := &MockCompanyClient{}
 	metricsInstance := getTestMetrics()
@@ -65,11 +65,11 @@ func TestCacheDecorator_GetByXApplication_CacheExpired(t *testing.T) {
 	}
 
 	// Deve chamar o mock duas vezes (cache miss + cache expired)
-	mockClient.On("GetByXApplication", mock.Anything, "test-app", "corr-123").Return(expectedResponse, nil).Twice()
+	mockClient.On("GetByTenantId", mock.Anything, "test-app", "corr-123").Return(expectedResponse, nil).Twice()
 
 	// Act & Assert
 	// Primeira chamada - cache miss
-	result1, err1 := decorator.GetByXApplication(context.Background(), "test-app", "corr-123")
+	result1, err1 := decorator.GetByTenantId(context.Background(), "test-app", "corr-123")
 	assert.NoError(t, err1)
 	assert.Equal(t, expectedResponse, result1)
 
@@ -77,7 +77,7 @@ func TestCacheDecorator_GetByXApplication_CacheExpired(t *testing.T) {
 	time.Sleep(150 * time.Millisecond)
 
 	// Segunda chamada - cache expired, deve chamar o mock novamente
-	result2, err2 := decorator.GetByXApplication(context.Background(), "test-app", "corr-123")
+	result2, err2 := decorator.GetByTenantId(context.Background(), "test-app", "corr-123")
 	assert.NoError(t, err2)
 	assert.Equal(t, expectedResponse, result2)
 
@@ -85,7 +85,7 @@ func TestCacheDecorator_GetByXApplication_CacheExpired(t *testing.T) {
 	mockClient.AssertExpectations(t)
 }
 
-func TestCacheDecorator_GetByXApplication_Error(t *testing.T) {
+func TestCacheDecorator_GetByTenantId_Error(t *testing.T) {
 	// Arrange
 	mockClient := &MockCompanyClient{}
 	metricsInstance := getTestMetrics()
@@ -100,10 +100,10 @@ func TestCacheDecorator_GetByXApplication_Error(t *testing.T) {
 	expectedError := assert.AnError
 
 	// Mock retorna erro
-	mockClient.On("GetByXApplication", mock.Anything, "test-app", "corr-123").Return(companyDto.MSCompanyResponseDTO{}, expectedError).Once()
+	mockClient.On("GetByTenantId", mock.Anything, "test-app", "corr-123").Return(companyDto.MSCompanyResponseDTO{}, expectedError).Once()
 
 	// Act
-	result, err := decorator.GetByXApplication(context.Background(), "test-app", "corr-123")
+	result, err := decorator.GetByTenantId(context.Background(), "test-app", "corr-123")
 
 	// Assert
 	assert.Error(t, err)
@@ -113,7 +113,7 @@ func TestCacheDecorator_GetByXApplication_Error(t *testing.T) {
 	mockClient.AssertExpectations(t)
 }
 
-func TestCacheDecorator_GetByXApplication_MaxSizeExceeded(t *testing.T) {
+func TestCacheDecorator_GetByTenantId_MaxSizeExceeded(t *testing.T) {
 	// Arrange
 	mockClient := &MockCompanyClient{}
 	metricsInstance := getTestMetrics()
@@ -126,29 +126,29 @@ func TestCacheDecorator_GetByXApplication_MaxSizeExceeded(t *testing.T) {
 	decorator := NewCacheDecorator(mockClient, config, metricsInstance).(*cacheDecorator)
 
 	// Mock para 3 chamadas diferentes
-	mockClient.On("GetByXApplication", mock.Anything, "app1", "corr-1").Return(companyDto.MSCompanyResponseDTO{ID: "1"}, nil).Once()
-	mockClient.On("GetByXApplication", mock.Anything, "app2", "corr-2").Return(companyDto.MSCompanyResponseDTO{ID: "2"}, nil).Once()
-	mockClient.On("GetByXApplication", mock.Anything, "app3", "corr-3").Return(companyDto.MSCompanyResponseDTO{ID: "3"}, nil).Once()
+	mockClient.On("GetByTenantId", mock.Anything, "app1", "corr-1").Return(companyDto.MSCompanyResponseDTO{ID: "1"}, nil).Once()
+	mockClient.On("GetByTenantId", mock.Anything, "app2", "corr-2").Return(companyDto.MSCompanyResponseDTO{ID: "2"}, nil).Once()
+	mockClient.On("GetByTenantId", mock.Anything, "app3", "corr-3").Return(companyDto.MSCompanyResponseDTO{ID: "3"}, nil).Once()
 
 	// Act
 	// Primeira chamada - app1
-	result1, err1 := decorator.GetByXApplication(context.Background(), "app1", "corr-1")
+	result1, err1 := decorator.GetByTenantId(context.Background(), "app1", "corr-1")
 	assert.NoError(t, err1)
 	assert.Equal(t, "1", result1.ID)
 
 	// Segunda chamada - app2
-	result2, err2 := decorator.GetByXApplication(context.Background(), "app2", "corr-2")
+	result2, err2 := decorator.GetByTenantId(context.Background(), "app2", "corr-2")
 	assert.NoError(t, err2)
 	assert.Equal(t, "2", result2.ID)
 
 	// Terceira chamada - app3 (deve evictar app1)
-	result3, err3 := decorator.GetByXApplication(context.Background(), "app3", "corr-3")
+	result3, err3 := decorator.GetByTenantId(context.Background(), "app3", "corr-3")
 	assert.NoError(t, err3)
 	assert.Equal(t, "3", result3.ID)
 
 	// Quarta chamada - app1 novamente (deve chamar o mock, pois foi evictado)
-	mockClient.On("GetByXApplication", mock.Anything, "app1", "corr-1").Return(companyDto.MSCompanyResponseDTO{ID: "1"}, nil).Once()
-	result4, err4 := decorator.GetByXApplication(context.Background(), "app1", "corr-1")
+	mockClient.On("GetByTenantId", mock.Anything, "app1", "corr-1").Return(companyDto.MSCompanyResponseDTO{ID: "1"}, nil).Once()
+	result4, err4 := decorator.GetByTenantId(context.Background(), "app1", "corr-1")
 	assert.NoError(t, err4)
 	assert.Equal(t, "1", result4.ID)
 
@@ -201,5 +201,5 @@ func TestCacheDecorator_GenerateCacheKey(t *testing.T) {
 	assert.NotEmpty(t, key3)
 	assert.Equal(t, key1, key3)    // Mesmo input deve gerar mesma chave
 	assert.NotEqual(t, key1, key2) // Inputs diferentes devem gerar chaves diferentes
-	assert.Contains(t, key1, "company:xApplication:")
+	assert.Contains(t, key1, "company:tenantId:")
 }

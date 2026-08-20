@@ -55,10 +55,10 @@ func NewCacheDecorator(
 	return decorator
 }
 
-// GetByXApplication implementa GetByXApplication com cache
-func (d *cacheDecorator) GetByXApplication(ctx context.Context, xApplication, correlationID string) (companyDto.MSCompanyResponseDTO, error) {
+// GetByTenantId implementa GetByTenantId com cache
+func (d *cacheDecorator) GetByTenantId(ctx context.Context, tenantId, correlationID string) (companyDto.MSCompanyResponseDTO, error) {
 	// Gera chave do cache
-	cacheKey := d.generateCacheKey(xApplication)
+	cacheKey := d.generateCacheKey(tenantId)
 
 	// Tenta buscar no cache
 	d.mutex.RLock()
@@ -66,7 +66,7 @@ func (d *cacheDecorator) GetByXApplication(ctx context.Context, xApplication, co
 		if time.Now().Before(entry.expiresAt) {
 			// Cache hit
 			d.mutex.RUnlock()
-			d.metrics.RecordCacheHit("company", "xApplication")
+			d.metrics.RecordCacheHit("company", "tenantId")
 			return entry.value, nil
 		}
 		// Cache expirado, remove
@@ -75,8 +75,8 @@ func (d *cacheDecorator) GetByXApplication(ctx context.Context, xApplication, co
 	d.mutex.RUnlock()
 
 	// Cache miss - busca no serviço
-	d.metrics.RecordCacheMiss("company", "xApplication")
-	response, err := d.inner.GetByXApplication(ctx, xApplication, correlationID)
+	d.metrics.RecordCacheMiss("company", "tenantId")
+	response, err := d.inner.GetByTenantId(ctx, tenantId, correlationID)
 	if err != nil {
 		return response, err
 	}
@@ -99,9 +99,9 @@ func (d *cacheDecorator) GetByXApplication(ctx context.Context, xApplication, co
 }
 
 // generateCacheKey gera uma chave única para o cache
-func (d *cacheDecorator) generateCacheKey(xApplication string) string {
-	hash := md5.Sum([]byte(xApplication))
-	return fmt.Sprintf("company:xApplication:%x", hash)
+func (d *cacheDecorator) generateCacheKey(tenantId string) string {
+	hash := md5.Sum([]byte(tenantId))
+	return fmt.Sprintf("company:tenantId:%x", hash)
 }
 
 // evictOldest remove a entrada mais antiga do cache

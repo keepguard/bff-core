@@ -46,7 +46,7 @@ func (uc *registerResendUseCaseImpl) Execute(command appdto.RegisterResendComman
 		zap.String("correlation_id", command.CorrelationID))
 
 	// Passo 1: Buscar informações da empresa
-	company, err := uc.companyClient.GetByXApplication(command.Context, command.XApplication, command.CorrelationID)
+	company, err := uc.companyClient.GetByTenantId(command.Context, command.TenantId, command.CorrelationID)
 	if err != nil {
 		return dto.RegisterResendResponseDTO{}, err
 	}
@@ -57,7 +57,7 @@ func (uc *registerResendUseCaseImpl) Execute(command appdto.RegisterResendComman
 		RegistrationSessionID: command.RegistrationSessionID,
 	}
 
-	resp, err := uc.userClient.ResendRegisterToken(command.Context, req, command.XApplication, command.CorrelationID)
+	resp, err := uc.userClient.ResendRegisterToken(command.Context, req, command.TenantId, command.CorrelationID)
 	if err != nil {
 		return dto.RegisterResendResponseDTO{}, err
 	}
@@ -78,7 +78,7 @@ func (uc *registerResendUseCaseImpl) Execute(command appdto.RegisterResendComman
 
 	// Passo 4: Enviar email com token usando novo template RESEND
 	messageReq := messaging.MessageDTO{
-		XApplication:      command.XApplication,
+		TenantId:      command.TenantId,
 		XCorrelationID:    command.CorrelationID,
 		MessageType:       enums.MessageTypeEmail.String(),
 		CommunicationType: enums.CommunicationTypeEmail.String(),

@@ -23,43 +23,43 @@ type MockUserClient struct {
 	mock.Mock
 }
 
-func (m *MockUserClient) GetUserByCodeUser(ctx context.Context, codeUser, token, xApplication, correlationID string) (userDto.MSUserResponseDTO, error) {
-	args := m.Called(ctx, codeUser, token, xApplication, correlationID)
+func (m *MockUserClient) GetUserByCodeUser(ctx context.Context, codeUser, token, tenantId, correlationID string) (userDto.MSUserResponseDTO, error) {
+	args := m.Called(ctx, codeUser, token, tenantId, correlationID)
 	return args.Get(0).(userDto.MSUserResponseDTO), args.Error(1)
 }
 
-func (m *MockUserClient) CreateUser(ctx context.Context, req userDto.MSUserCreateRequestDTO, xApplication, correlationID string) (userDto.MSUserResponseDTO, error) {
-	args := m.Called(ctx, req, xApplication, correlationID)
+func (m *MockUserClient) CreateUser(ctx context.Context, req userDto.MSUserCreateRequestDTO, tenantId, correlationID string) (userDto.MSUserResponseDTO, error) {
+	args := m.Called(ctx, req, tenantId, correlationID)
 	return args.Get(0).(userDto.MSUserResponseDTO), args.Error(1)
 }
 
-func (m *MockUserClient) GetByEmail(ctx context.Context, email, xApplication, correlationID string) (authDto.UserByEmailResponseDTO, error) {
-	args := m.Called(ctx, email, xApplication, correlationID)
+func (m *MockUserClient) GetByEmail(ctx context.Context, email, tenantId, correlationID string) (authDto.UserByEmailResponseDTO, error) {
+	args := m.Called(ctx, email, tenantId, correlationID)
 	return args.Get(0).(authDto.UserByEmailResponseDTO), args.Error(1)
 }
 
-func (m *MockUserClient) CreateUserNotify(ctx context.Context, req userDto.MSUserNotifyCreateRequestDTO, xApplication, correlationID string) (userDto.MSUserNotifyResponseDTO, error) {
-	args := m.Called(ctx, req, xApplication, correlationID)
+func (m *MockUserClient) CreateUserNotify(ctx context.Context, req userDto.MSUserNotifyCreateRequestDTO, tenantId, correlationID string) (userDto.MSUserNotifyResponseDTO, error) {
+	args := m.Called(ctx, req, tenantId, correlationID)
 	return args.Get(0).(userDto.MSUserNotifyResponseDTO), args.Error(1)
 }
 
-func (m *MockUserClient) InitRegister(ctx context.Context, req userDto.MSUserRegisterInitRequestDTO, xApplication, correlationID string) (userDto.MSUserRegisterInitResponseDTO, error) {
-	args := m.Called(ctx, req, xApplication, correlationID)
+func (m *MockUserClient) InitRegister(ctx context.Context, req userDto.MSUserRegisterInitRequestDTO, tenantId, correlationID string) (userDto.MSUserRegisterInitResponseDTO, error) {
+	args := m.Called(ctx, req, tenantId, correlationID)
 	return args.Get(0).(userDto.MSUserRegisterInitResponseDTO), args.Error(1)
 }
 
-func (m *MockUserClient) ConfirmRegister(ctx context.Context, req userDto.MSUserRegisterConfirmRequestDTO, xApplication, correlationID string) (userDto.MSUserRegisterConfirmResponseDTO, error) {
-	args := m.Called(ctx, req, xApplication, correlationID)
+func (m *MockUserClient) ConfirmRegister(ctx context.Context, req userDto.MSUserRegisterConfirmRequestDTO, tenantId, correlationID string) (userDto.MSUserRegisterConfirmResponseDTO, error) {
+	args := m.Called(ctx, req, tenantId, correlationID)
 	return args.Get(0).(userDto.MSUserRegisterConfirmResponseDTO), args.Error(1)
 }
 
-func (m *MockUserClient) DeleteUser(ctx context.Context, userID, xApplication, correlationID string) error {
-	args := m.Called(ctx, userID, xApplication, correlationID)
+func (m *MockUserClient) DeleteUser(ctx context.Context, userID, tenantId, correlationID string) error {
+	args := m.Called(ctx, userID, tenantId, correlationID)
 	return args.Error(0)
 }
 
-func (m *MockUserClient) ResendRegisterToken(ctx context.Context, req userDto.MSUserRegisterResendRequestDTO, xApplication, correlationID string) (userDto.MSUserRegisterResendResponseDTO, error) {
-	args := m.Called(ctx, req, xApplication, correlationID)
+func (m *MockUserClient) ResendRegisterToken(ctx context.Context, req userDto.MSUserRegisterResendRequestDTO, tenantId, correlationID string) (userDto.MSUserRegisterResendResponseDTO, error) {
+	args := m.Called(ctx, req, tenantId, correlationID)
 	return args.Get(0).(userDto.MSUserRegisterResendResponseDTO), args.Error(1)
 }
 
@@ -67,28 +67,28 @@ type MockAuthClient struct {
 	mock.Mock
 }
 
-func (m *MockAuthClient) CreateUser(ctx context.Context, req authDto.AuthUserCreateRequestDTO, xApplication, correlationID string) (authDto.AuthUserCreateResponseDTO, error) {
-	args := m.Called(ctx, req, xApplication, correlationID)
+func (m *MockAuthClient) CreateUser(ctx context.Context, req authDto.AuthUserCreateRequestDTO, tenantId, correlationID string) (authDto.AuthUserCreateResponseDTO, error) {
+	args := m.Called(ctx, req, tenantId, correlationID)
 	return args.Get(0).(authDto.AuthUserCreateResponseDTO), args.Error(1)
 }
 
-func (m *MockAuthClient) RegisterLogin(ctx context.Context, req authDto.AuthRegisterLoginRequestDTO, xApplication, correlationID string) (authDto.AuthLoginResponseDTO, error) {
-	args := m.Called(ctx, req, xApplication, correlationID)
+func (m *MockAuthClient) RegisterLogin(ctx context.Context, req authDto.AuthRegisterLoginRequestDTO, tenantId, correlationID string) (authDto.AuthLoginResponseDTO, error) {
+	args := m.Called(ctx, req, tenantId, correlationID)
 	return args.Get(0).(authDto.AuthLoginResponseDTO), args.Error(1)
 }
 
-func (m *MockAuthClient) ValidateToken(ctx context.Context, token, xApplication, correlationID string) error {
-	args := m.Called(ctx, token, xApplication, correlationID)
+func (m *MockAuthClient) ValidateToken(ctx context.Context, token, tenantId, correlationID string) error {
+	args := m.Called(ctx, token, tenantId, correlationID)
 	return args.Error(0)
 }
 
-func (m *MockAuthClient) GenerateResetToken(ctx context.Context, req authDto.GenerateResetTokenMSRequestDTO, xApplication, correlationID string) (authDto.GenerateResetTokenMSResponseDTO, error) {
-	args := m.Called(ctx, req, xApplication, correlationID)
+func (m *MockAuthClient) GenerateResetToken(ctx context.Context, req authDto.GenerateResetTokenMSRequestDTO, tenantId, correlationID string) (authDto.GenerateResetTokenMSResponseDTO, error) {
+	args := m.Called(ctx, req, tenantId, correlationID)
 	return args.Get(0).(authDto.GenerateResetTokenMSResponseDTO), args.Error(1)
 }
 
-func (m *MockAuthClient) HardDeleteUser(ctx context.Context, idUserExternal, xApplication, correlationID string) error {
-	args := m.Called(ctx, idUserExternal, xApplication, correlationID)
+func (m *MockAuthClient) HardDeleteUser(ctx context.Context, idUserExternal, tenantId, correlationID string) error {
+	args := m.Called(ctx, idUserExternal, tenantId, correlationID)
 	return args.Error(0)
 }
 
@@ -96,43 +96,43 @@ type MockUserConsentClient struct {
 	mock.Mock
 }
 
-func (m *MockUserConsentClient) Accept(ctx context.Context, req userConsentDto.UserConsentAcceptRequestDTO, token, xApplication, correlationID string) (userConsentDto.UserConsentResponseDTO, error) {
-	args := m.Called(ctx, req, token, xApplication, correlationID)
+func (m *MockUserConsentClient) Accept(ctx context.Context, req userConsentDto.UserConsentAcceptRequestDTO, token, tenantId, correlationID string) (userConsentDto.UserConsentResponseDTO, error) {
+	args := m.Called(ctx, req, token, tenantId, correlationID)
 	return args.Get(0).(userConsentDto.UserConsentResponseDTO), args.Error(1)
 }
 
-func (m *MockUserConsentClient) FindByID(ctx context.Context, id, token, xApplication, correlationID string) (userConsentDto.UserConsentResponseDTO, error) {
-	args := m.Called(ctx, id, token, xApplication, correlationID)
+func (m *MockUserConsentClient) FindByID(ctx context.Context, id, token, tenantId, correlationID string) (userConsentDto.UserConsentResponseDTO, error) {
+	args := m.Called(ctx, id, token, tenantId, correlationID)
 	return args.Get(0).(userConsentDto.UserConsentResponseDTO), args.Error(1)
 }
 
-func (m *MockUserConsentClient) FindByUserID(ctx context.Context, userID, token, xApplication, correlationID string) ([]userConsentDto.UserConsentResponseDTO, error) {
-	args := m.Called(ctx, userID, token, xApplication, correlationID)
+func (m *MockUserConsentClient) FindByUserID(ctx context.Context, userID, token, tenantId, correlationID string) ([]userConsentDto.UserConsentResponseDTO, error) {
+	args := m.Called(ctx, userID, token, tenantId, correlationID)
 	return args.Get(0).([]userConsentDto.UserConsentResponseDTO), args.Error(1)
 }
 
-func (m *MockUserConsentClient) FindByUserIDAndConsentDocumentID(ctx context.Context, userID, consentDocumentID, token, xApplication, correlationID string) ([]userConsentDto.UserConsentResponseDTO, error) {
-	args := m.Called(ctx, userID, consentDocumentID, token, xApplication, correlationID)
+func (m *MockUserConsentClient) FindByUserIDAndConsentDocumentID(ctx context.Context, userID, consentDocumentID, token, tenantId, correlationID string) ([]userConsentDto.UserConsentResponseDTO, error) {
+	args := m.Called(ctx, userID, consentDocumentID, token, tenantId, correlationID)
 	return args.Get(0).([]userConsentDto.UserConsentResponseDTO), args.Error(1)
 }
 
-func (m *MockUserConsentClient) FindLatestByUserIDAndConsentDocumentID(ctx context.Context, userID, consentDocumentID, token, xApplication, correlationID string) (userConsentDto.UserConsentResponseDTO, error) {
-	args := m.Called(ctx, userID, consentDocumentID, token, xApplication, correlationID)
+func (m *MockUserConsentClient) FindLatestByUserIDAndConsentDocumentID(ctx context.Context, userID, consentDocumentID, token, tenantId, correlationID string) (userConsentDto.UserConsentResponseDTO, error) {
+	args := m.Called(ctx, userID, consentDocumentID, token, tenantId, correlationID)
 	return args.Get(0).(userConsentDto.UserConsentResponseDTO), args.Error(1)
 }
 
-func (m *MockUserConsentClient) HasAccepted(ctx context.Context, userID, consentDocumentID string, version int, token, xApplication, correlationID string) (bool, error) {
-	args := m.Called(ctx, userID, consentDocumentID, version, token, xApplication, correlationID)
+func (m *MockUserConsentClient) HasAccepted(ctx context.Context, userID, consentDocumentID string, version int, token, tenantId, correlationID string) (bool, error) {
+	args := m.Called(ctx, userID, consentDocumentID, version, token, tenantId, correlationID)
 	return args.Bool(0), args.Error(1)
 }
 
-func (m *MockUserConsentClient) AcceptAll(ctx context.Context, req userConsentDto.UserConsentAcceptAllRequestDTO, xApplication, correlationID string) (userConsentDto.UserConsentAcceptAllResponseDTO, error) {
-	args := m.Called(ctx, req, xApplication, correlationID)
+func (m *MockUserConsentClient) AcceptAll(ctx context.Context, req userConsentDto.UserConsentAcceptAllRequestDTO, tenantId, correlationID string) (userConsentDto.UserConsentAcceptAllResponseDTO, error) {
+	args := m.Called(ctx, req, tenantId, correlationID)
 	return args.Get(0).(userConsentDto.UserConsentAcceptAllResponseDTO), args.Error(1)
 }
 
-func (m *MockUserConsentClient) DeleteAllByUserId(ctx context.Context, userID, xApplication, correlationID string) error {
-	args := m.Called(ctx, userID, xApplication, correlationID)
+func (m *MockUserConsentClient) DeleteAllByUserId(ctx context.Context, userID, tenantId, correlationID string) error {
+	args := m.Called(ctx, userID, tenantId, correlationID)
 	return args.Error(0)
 }
 
@@ -140,8 +140,8 @@ type MockCompanyClient struct {
 	mock.Mock
 }
 
-func (m *MockCompanyClient) GetByXApplication(ctx context.Context, xApplication, correlationID string) (companyDto.MSCompanyResponseDTO, error) {
-	args := m.Called(ctx, xApplication, correlationID)
+func (m *MockCompanyClient) GetByTenantId(ctx context.Context, tenantId, correlationID string) (companyDto.MSCompanyResponseDTO, error) {
+	args := m.Called(ctx, tenantId, correlationID)
 	return args.Get(0).(companyDto.MSCompanyResponseDTO), args.Error(1)
 }
 
@@ -149,13 +149,13 @@ type MockCommunicationClient struct {
 	mock.Mock
 }
 
-func (m *MockCommunicationClient) SendMessage(ctx context.Context, req communicationDto.SendMessageRequestDTO, xApplication, correlationID string) (communicationDto.SendMessageResponseDTO, error) {
-	args := m.Called(ctx, req, xApplication, correlationID)
+func (m *MockCommunicationClient) SendMessage(ctx context.Context, req communicationDto.SendMessageRequestDTO, tenantId, correlationID string) (communicationDto.SendMessageResponseDTO, error) {
+	args := m.Called(ctx, req, tenantId, correlationID)
 	return args.Get(0).(communicationDto.SendMessageResponseDTO), args.Error(1)
 }
 
-func (m *MockCommunicationClient) SendNotification(ctx context.Context, req client.SendNotificationRequestDTO, xApplication, correlationID string) error {
-	args := m.Called(ctx, req, xApplication, correlationID)
+func (m *MockCommunicationClient) SendNotification(ctx context.Context, req client.SendNotificationRequestDTO, tenantId, correlationID string) error {
+	args := m.Called(ctx, req, tenantId, correlationID)
 	return args.Error(0)
 }
 
@@ -239,7 +239,7 @@ func TestRegisterConfirmUseCase_SAGASuccess(t *testing.T) {
 	}
 
 	// Setup mocks
-	mockCompanyClient.On("GetByXApplication", mock.Anything, "test-app", "corr-123").Return(company, nil)
+	mockCompanyClient.On("GetByTenantId", mock.Anything, "test-app", "corr-123").Return(company, nil)
 	mockUserClient.On("ConfirmRegister", mock.Anything, mock.Anything, "test-app", "corr-123").Return(confirmResponse, nil)
 	mockUserClient.On("CreateUser", mock.Anything, mock.Anything, "test-app", "corr-123").Return(userResponse, nil)
 	mockUserClient.On("CreateUserNotify", mock.Anything, mock.Anything, "test-app", "corr-123").Return(notifyResponse, nil)
@@ -253,7 +253,7 @@ func TestRegisterConfirmUseCase_SAGASuccess(t *testing.T) {
 		Email:                 "test@example.com",
 		RegistrationSessionID: "session-123",
 		Token:                 "token-123",
-		XApplication:          "test-app",
+		TenantId:          "test-app",
 		CorrelationID:         "corr-123",
 	}
 
@@ -333,7 +333,7 @@ func TestRegisterConfirmUseCase_SAGAFailureWithCompensation(t *testing.T) {
 	}
 
 	// Setup mocks - sucesso até CreateAuthUser, depois falha no AcceptAllConsents
-	mockCompanyClient.On("GetByXApplication", mock.Anything, "test-app", "corr-123").Return(company, nil)
+	mockCompanyClient.On("GetByTenantId", mock.Anything, "test-app", "corr-123").Return(company, nil)
 	mockUserClient.On("ConfirmRegister", mock.Anything, mock.Anything, "test-app", "corr-123").Return(confirmResponse, nil)
 	mockUserClient.On("CreateUser", mock.Anything, mock.Anything, "test-app", "corr-123").Return(userResponse, nil)
 	mockUserClient.On("CreateUserNotify", mock.Anything, mock.Anything, "test-app", "corr-123").Return(notifyResponse, nil)
@@ -353,7 +353,7 @@ func TestRegisterConfirmUseCase_SAGAFailureWithCompensation(t *testing.T) {
 		Email:                 "test@example.com",
 		RegistrationSessionID: "session-123",
 		Token:                 "token-123",
-		XApplication:          "test-app",
+		TenantId:          "test-app",
 		CorrelationID:         "corr-123",
 	}
 
@@ -418,7 +418,7 @@ func TestRegisterConfirmUseCase_SAGATimeout(t *testing.T) {
 	}
 
 	// Setup mocks - sucesso até CreateUser, depois timeout no CreateUserNotify
-	mockCompanyClient.On("GetByXApplication", mock.Anything, "test-app", "corr-123").Return(company, nil)
+	mockCompanyClient.On("GetByTenantId", mock.Anything, "test-app", "corr-123").Return(company, nil)
 	mockUserClient.On("ConfirmRegister", mock.Anything, mock.Anything, "test-app", "corr-123").Return(confirmResponse, nil)
 	mockUserClient.On("CreateUser", mock.Anything, mock.Anything, "test-app", "corr-123").Return(userResponse, nil)
 
@@ -437,7 +437,7 @@ func TestRegisterConfirmUseCase_SAGATimeout(t *testing.T) {
 		Email:                 "test@example.com",
 		RegistrationSessionID: "session-123",
 		Token:                 "token-123",
-		XApplication:          "test-app",
+		TenantId:          "test-app",
 		CorrelationID:         "corr-123",
 	}
 

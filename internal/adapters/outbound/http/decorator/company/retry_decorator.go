@@ -131,9 +131,9 @@ func (d *retryDecorator) retry(ctx context.Context, operation func() (companyDto
 	return lastResult, lastErr
 }
 
-// GetByXApplication implementa GetByXApplication com retry
-func (d *retryDecorator) GetByXApplication(ctx context.Context, xApplication, correlationID string) (companyDto.MSCompanyResponseDTO, error) {
+// GetByTenantId implementa GetByTenantId com retry
+func (d *retryDecorator) GetByTenantId(ctx context.Context, tenantId, correlationID string) (companyDto.MSCompanyResponseDTO, error) {
 	return d.retry(ctx, func() (companyDto.MSCompanyResponseDTO, error) {
-		return d.inner.GetByXApplication(ctx, xApplication, correlationID)
+		return d.inner.GetByTenantId(ctx, tenantId, correlationID)
 	})
 }

@@ -29,26 +29,26 @@ func NewCompanyLoggingDecorator(
 	}
 }
 
-// GetByXApplication implementa GetByXApplication com logging
-func (d *companyLoggingDecorator) GetByXApplication(ctx context.Context, xApplication, correlationID string) (companyDto.MSCompanyResponseDTO, error) {
+// GetByTenantId implementa GetByTenantId com logging
+func (d *companyLoggingDecorator) GetByTenantId(ctx context.Context, tenantId, correlationID string) (companyDto.MSCompanyResponseDTO, error) {
 	start := time.Now()
 
 	d.logger.Info("Iniciando requisição",
 		zap.String("service", d.serviceName),
-		zap.String("operation", "GetByXApplication"),
+		zap.String("operation", "GetByTenantId"),
 		zap.String("correlationID", correlationID),
-		zap.String("xApplication", xApplication),
+		zap.String("tenantId", tenantId),
 	)
 
-	response, err := d.inner.GetByXApplication(ctx, xApplication, correlationID)
+	response, err := d.inner.GetByTenantId(ctx, tenantId, correlationID)
 	duration := time.Since(start)
 
 	if err != nil {
 		d.logger.Error("Erro na requisição",
 			zap.String("service", d.serviceName),
-			zap.String("operation", "GetByXApplication"),
+			zap.String("operation", "GetByTenantId"),
 			zap.String("correlationID", correlationID),
-			zap.String("xApplication", xApplication),
+			zap.String("tenantId", tenantId),
 			zap.Duration("duration", duration),
 			zap.Error(err),
 		)
@@ -57,9 +57,9 @@ func (d *companyLoggingDecorator) GetByXApplication(ctx context.Context, xApplic
 
 	d.logger.Info("Requisição concluída com sucesso",
 		zap.String("service", d.serviceName),
-		zap.String("operation", "GetByXApplication"),
+		zap.String("operation", "GetByTenantId"),
 		zap.String("correlationID", correlationID),
-		zap.String("xApplication", xApplication),
+		zap.String("tenantId", tenantId),
 		zap.String("companyID", response.ID),
 		zap.String("companyName", response.Name),
 		zap.Duration("duration", duration),

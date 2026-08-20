@@ -101,7 +101,7 @@ func TestRegisterHandlers_InitRegisterHandler_Success(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/register/init", bytes.NewBuffer(reqBody))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Correlation-ID", "corr-123")
-	req.Header.Set("X-Application", "test-app")
+	req.Header.Set("X-Tenant-Id", "test-app")
 
 	rec := httptest.NewRecorder()
 	c := echo.New().NewContext(req, rec)
@@ -149,7 +149,7 @@ func TestRegisterHandlers_InitRegisterHandler_MissingCorrelationID(t *testing.T)
 	reqBody, _ := json.Marshal(requestBody)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/register/init", bytes.NewBuffer(reqBody))
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Application", "test-app")
+	req.Header.Set("X-Tenant-Id", "test-app")
 
 	rec := httptest.NewRecorder()
 	c := echo.New().NewContext(req, rec)
@@ -170,7 +170,7 @@ func TestRegisterHandlers_InitRegisterHandler_MissingCorrelationID(t *testing.T)
 	mockInitUseCase.AssertNotCalled(t, "Execute")
 }
 
-func TestRegisterHandlers_InitRegisterHandler_MissingXApplication(t *testing.T) {
+func TestRegisterHandlers_InitRegisterHandler_MissingTenantId(t *testing.T) {
 	// Arrange
 	mockInitUseCase := &MockRegisterInitUseCase{}
 	mockConfirmUseCase := &MockRegisterConfirmUseCase{}
@@ -179,7 +179,7 @@ func TestRegisterHandlers_InitRegisterHandler_MissingXApplication(t *testing.T) 
 
 	handlers := NewRegisterHandlers(mockInitUseCase, mockConfirmUseCase, mockResendUseCase, logger)
 
-	// Create request without X-Application
+	// Create request without X-Tenant-Id
 	requestBody := dto.RegisterInitRequestDTO{
 		NameFull:                   "Test User",
 		Email:                      "test@example.com",
@@ -212,7 +212,7 @@ func TestRegisterHandlers_InitRegisterHandler_MissingXApplication(t *testing.T) 
 	err = json.Unmarshal(rec.Body.Bytes(), &response)
 	assert.NoError(t, err)
 	assert.Equal(t, "MISSING_HEADER", response.Error)
-	assert.Equal(t, "Header X-Application é obrigatório", response.Message)
+	assert.Equal(t, "Header X-Tenant-Id é obrigatório", response.Message)
 
 	mockInitUseCase.AssertNotCalled(t, "Execute")
 }
@@ -230,7 +230,7 @@ func TestRegisterHandlers_InitRegisterHandler_InvalidJSON(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/register/init", bytes.NewBuffer([]byte("invalid json")))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Correlation-ID", "corr-123")
-	req.Header.Set("X-Application", "test-app")
+	req.Header.Set("X-Tenant-Id", "test-app")
 
 	rec := httptest.NewRecorder()
 	c := echo.New().NewContext(req, rec)
@@ -281,7 +281,7 @@ func TestRegisterHandlers_InitRegisterHandler_UseCaseError(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/register/init", bytes.NewBuffer(reqBody))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Correlation-ID", "corr-123")
-	req.Header.Set("X-Application", "test-app")
+	req.Header.Set("X-Tenant-Id", "test-app")
 
 	rec := httptest.NewRecorder()
 	c := echo.New().NewContext(req, rec)
@@ -331,7 +331,7 @@ func TestRegisterHandlers_ConfirmRegisterHandler_Success(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/register/confirm", bytes.NewBuffer(reqBody))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Correlation-ID", "corr-123")
-	req.Header.Set("X-Application", "test-app")
+	req.Header.Set("X-Tenant-Id", "test-app")
 
 	rec := httptest.NewRecorder()
 	c := echo.New().NewContext(req, rec)
@@ -371,7 +371,7 @@ func TestRegisterHandlers_ConfirmRegisterHandler_MissingCorrelationID(t *testing
 	reqBody, _ := json.Marshal(requestBody)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/register/confirm", bytes.NewBuffer(reqBody))
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Application", "test-app")
+	req.Header.Set("X-Tenant-Id", "test-app")
 
 	rec := httptest.NewRecorder()
 	c := echo.New().NewContext(req, rec)
@@ -415,7 +415,7 @@ func TestRegisterHandlers_ConfirmRegisterHandler_UseCaseError(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/register/confirm", bytes.NewBuffer(reqBody))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Correlation-ID", "corr-123")
-	req.Header.Set("X-Application", "test-app")
+	req.Header.Set("X-Tenant-Id", "test-app")
 
 	rec := httptest.NewRecorder()
 	c := echo.New().NewContext(req, rec)
@@ -457,7 +457,7 @@ func TestRegisterHandlers_VerifyCommandValidation(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/register/init", bytes.NewBuffer(reqBody))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Correlation-ID", "corr-123")
-	req.Header.Set("X-Application", "test-app")
+	req.Header.Set("X-Tenant-Id", "test-app")
 
 	rec := httptest.NewRecorder()
 	c := echo.New().NewContext(req, rec)

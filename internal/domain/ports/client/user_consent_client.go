@@ -9,26 +9,26 @@ import (
 // UserConsentClient interface para comunicação com o serviço de consentimentos de usuários
 type UserConsentClient interface {
 	// Accept registra o aceite de um consentimento
-	Accept(ctx context.Context, req userConsentDto.UserConsentAcceptRequestDTO, token, xApplication, correlationID string) (userConsentDto.UserConsentResponseDTO, error)
+	Accept(ctx context.Context, req userConsentDto.UserConsentAcceptRequestDTO, token, tenantId, correlationID string) (userConsentDto.UserConsentResponseDTO, error)
 
 	// FindByID busca um consentimento por ID
-	FindByID(ctx context.Context, id, token, xApplication, correlationID string) (userConsentDto.UserConsentResponseDTO, error)
+	FindByID(ctx context.Context, id, token, tenantId, correlationID string) (userConsentDto.UserConsentResponseDTO, error)
 
 	// FindByUserID busca todos os consentimentos de um usuário
-	FindByUserID(ctx context.Context, userID, token, xApplication, correlationID string) ([]userConsentDto.UserConsentResponseDTO, error)
+	FindByUserID(ctx context.Context, userID, token, tenantId, correlationID string) ([]userConsentDto.UserConsentResponseDTO, error)
 
 	// FindByUserIDAndConsentDocumentID busca consentimentos de um usuário para um documento específico
-	FindByUserIDAndConsentDocumentID(ctx context.Context, userID, consentDocumentID, token, xApplication, correlationID string) ([]userConsentDto.UserConsentResponseDTO, error)
+	FindByUserIDAndConsentDocumentID(ctx context.Context, userID, consentDocumentID, token, tenantId, correlationID string) ([]userConsentDto.UserConsentResponseDTO, error)
 
 	// FindLatestByUserIDAndConsentDocumentID busca o último consentimento de um usuário para um documento
-	FindLatestByUserIDAndConsentDocumentID(ctx context.Context, userID, consentDocumentID, token, xApplication, correlationID string) (userConsentDto.UserConsentResponseDTO, error)
+	FindLatestByUserIDAndConsentDocumentID(ctx context.Context, userID, consentDocumentID, token, tenantId, correlationID string) (userConsentDto.UserConsentResponseDTO, error)
 
 	// HasAccepted verifica se o usuário aceitou uma versão específica
-	HasAccepted(ctx context.Context, userID, consentDocumentID string, version int, token, xApplication, correlationID string) (bool, error)
+	HasAccepted(ctx context.Context, userID, consentDocumentID string, version int, token, tenantId, correlationID string) (bool, error)
 
 	// AcceptAll registra o aceite de todos os documentos de consentimento publicados
-	AcceptAll(ctx context.Context, req userConsentDto.UserConsentAcceptAllRequestDTO, xApplication, correlationID string) (userConsentDto.UserConsentAcceptAllResponseDTO, error)
+	AcceptAll(ctx context.Context, req userConsentDto.UserConsentAcceptAllRequestDTO, tenantId, correlationID string) (userConsentDto.UserConsentAcceptAllResponseDTO, error)
 
 	// DeleteAllByUserId deleta todos os consentimentos de um usuário (para compensação de SAGA)
-	DeleteAllByUserId(ctx context.Context, userID, xApplication, correlationID string) error
+	DeleteAllByUserId(ctx context.Context, userID, tenantId, correlationID string) error
 }

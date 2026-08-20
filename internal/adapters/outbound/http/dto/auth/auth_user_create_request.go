@@ -9,5 +9,5 @@ type AuthUserCreateRequestDTO struct {
 	CodeUser       string `json:"code_user"`
 	CompanyID      string `json:"company_id"`
 	CompanyCode    string `json:"company_code"`
-	XApplication   string `json:"x_application"`
+	TenantId   string `json:"tenant_id"`
 }

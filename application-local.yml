@@ -37,8 +37,8 @@ rabbitmq:
   user: "guest"
   password: "guest"
   vhost: "/"
-  #exchange: "ms-communication-exchange-local"
-  exchange: "ms-communication-exchange-dev"
+  exchange: "ms-communication-exchange-local"
+  #exchange: "ms-communication-exchange-dev"
   routing_key: "communication.message.send"
   durable: true
   auto_delete: false

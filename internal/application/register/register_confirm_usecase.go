@@ -82,7 +82,7 @@ func (uc *registerConfirmUseCaseImpl) Execute(command appdto.RegisterConfirmComm
 	}
 
 	// Enviar email de boas-vindas APENAS se SAGA completou com sucesso
-	uc.sendWelcomeEmail(command.Context, sagaData, command.XApplication, command.CorrelationID)
+	uc.sendWelcomeEmail(command.Context, sagaData, command.TenantId, command.CorrelationID)
 
 	uc.logger.Info("Registro confirmado com sucesso via SAGA",
 		zap.String("email", command.Email),
@@ -104,7 +104,7 @@ func (uc *registerConfirmUseCaseImpl) buildRegisterConfirmSaga() saga.InMemorySa
 				Name: "ValidateCompany",
 				Execute: func(ctx context.Context, data map[string]interface{}) error {
 					command := data["command"].(appdto.RegisterConfirmCommand)
-					company, err := uc.companyClient.GetByXApplication(ctx, command.XApplication, command.CorrelationID)
+					company, err := uc.companyClient.GetByTenantId(ctx, command.TenantId, command.CorrelationID)
 					if err != nil {
 						return err
 					}
@@ -125,7 +125,7 @@ func (uc *registerConfirmUseCaseImpl) buildRegisterConfirmSaga() saga.InMemorySa
 						RegistrationSessionID: command.RegistrationSessionID,
 						Token:                 command.Token,
 					}
-					confirmResponse, err := uc.userClient.ConfirmRegister(ctx, confirmRequest, command.XApplication, command.CorrelationID)
+					confirmResponse, err := uc.userClient.ConfirmRegister(ctx, confirmRequest, command.TenantId, command.CorrelationID)
 					if err != nil {
 						return err
 					}
@@ -159,7 +159,7 @@ func (uc *registerConfirmUseCaseImpl) buildRegisterConfirmSaga() saga.InMemorySa
 							PEP:       false,
 						},
 					}
-					userResponse, err := uc.userClient.CreateUser(ctx, userRequest, command.XApplication, command.CorrelationID)
+					userResponse, err := uc.userClient.CreateUser(ctx, userRequest, command.TenantId, command.CorrelationID)
 					if err != nil {
 						return err
 					}
@@ -169,7 +169,7 @@ func (uc *registerConfirmUseCaseImpl) buildRegisterConfirmSaga() saga.InMemorySa
 				Compensate: func(ctx context.Context, data map[string]interface{}) error {
 					command := data["command"].(appdto.RegisterConfirmCommand)
 					user := data["user"].(userDto.MSUserResponseDTO)
-					return uc.userClient.DeleteUser(ctx, user.ID, command.XApplication, command.CorrelationID)
+					return uc.userClient.DeleteUser(ctx, user.ID, command.TenantId, command.CorrelationID)
 				},
 				MaxRetries: 1, // Sem retry - delegado ao decorator se necessário
 				Timeout:    10 * time.Second,
@@ -188,7 +188,7 @@ func (uc *registerConfirmUseCaseImpl) buildRegisterConfirmSaga() saga.InMemorySa
 						PushEnabled:     true,
 						WhatsAppEnabled: true,
 					}
-					_, err := uc.userClient.CreateUserNotify(ctx, notifyRequest, command.XApplication, command.CorrelationID)
+					_, err := uc.userClient.CreateUserNotify(ctx, notifyRequest, command.TenantId, command.CorrelationID)
 					return err
 				},
 				Compensate: nil, // compensação em cascata via DELETE do User
@@ -212,15 +212,15 @@ func (uc *registerConfirmUseCaseImpl) buildRegisterConfirmSaga() saga.InMemorySa
 						CodeUser:       user.CodeUser,
 						CompanyID:      user.CompanyID,
 						CompanyCode:    company.CodeCompany,
-						XApplication:   command.XApplication,
+						TenantId:   command.TenantId,
 					}
-					_, err := uc.authClient.CreateUser(ctx, authUserRequest, command.XApplication, command.CorrelationID)
+					_, err := uc.authClient.CreateUser(ctx, authUserRequest, command.TenantId, command.CorrelationID)
 					return err
 				},
 				Compensate: func(ctx context.Context, data map[string]interface{}) error {
 					command := data["command"].(appdto.RegisterConfirmCommand)
 					user := data["user"].(userDto.MSUserResponseDTO)
-					return uc.authClient.HardDeleteUser(ctx, user.ID, command.XApplication, command.CorrelationID)
+					return uc.authClient.HardDeleteUser(ctx, user.ID, command.TenantId, command.CorrelationID)
 				},
 				MaxRetries: 1, // Sem retry - delegado ao decorator se necessário
 				Timeout:    10 * time.Second,
@@ -239,13 +239,13 @@ func (uc *registerConfirmUseCaseImpl) buildRegisterConfirmSaga() saga.InMemorySa
 						AcceptedAt:  time.Now(),
 						Geolocation: confirmResponse.Geolocation,
 					}
-					_, err := uc.userConsentClient.AcceptAll(ctx, acceptAllRequest, command.XApplication, command.CorrelationID)
+					_, err := uc.userConsentClient.AcceptAll(ctx, acceptAllRequest, command.TenantId, command.CorrelationID)
 					return err
 				},
 				Compensate: func(ctx context.Context, data map[string]interface{}) error {
 					command := data["command"].(appdto.RegisterConfirmCommand)
 					user := data["user"].(userDto.MSUserResponseDTO)
-					return uc.userConsentClient.DeleteAllByUserId(ctx, user.ID, command.XApplication, command.CorrelationID)
+					return uc.userConsentClient.DeleteAllByUserId(ctx, user.ID, command.TenantId, command.CorrelationID)
 				},
 				MaxRetries: 1, // Sem retry - delegado ao decorator se necessário
 				Timeout:    5 * time.Second,
@@ -261,9 +261,9 @@ func (uc *registerConfirmUseCaseImpl) buildRegisterConfirmSaga() saga.InMemorySa
 					registerLoginRequest := authDto.AuthRegisterLoginRequestDTO{
 						Username:     user.Email,
 						PasswordHash: confirmResponse.PasswordHash,
-						XApplication: command.XApplication,
+						TenantId: command.TenantId,
 					}
-					loginResponse, err := uc.authClient.RegisterLogin(ctx, registerLoginRequest, command.XApplication, command.CorrelationID)
+					loginResponse, err := uc.authClient.RegisterLogin(ctx, registerLoginRequest, command.TenantId, command.CorrelationID)
 					if err != nil {
 						return err
 					}
@@ -279,7 +279,7 @@ func (uc *registerConfirmUseCaseImpl) buildRegisterConfirmSaga() saga.InMemorySa
 }
 
 // sendWelcomeEmail envia email de boas-vindas (fora do SAGA)
-func (uc *registerConfirmUseCaseImpl) sendWelcomeEmail(ctx context.Context, sagaData map[string]interface{}, xApplication, correlationID string) {
+func (uc *registerConfirmUseCaseImpl) sendWelcomeEmail(ctx context.Context, sagaData map[string]interface{}, tenantId, correlationID string) {
 	company := sagaData["company"].(companyDto.MSCompanyResponseDTO)
 	user := sagaData["user"].(userDto.MSUserResponseDTO)
 	confirmResponse := sagaData["confirmResponse"].(userDto.MSUserRegisterConfirmResponseDTO)
@@ -294,7 +294,7 @@ func (uc *registerConfirmUseCaseImpl) sendWelcomeEmail(ctx context.Context, saga
 	}
 
 	messageReq := messaging.MessageDTO{
-		XApplication:      xApplication,
+		TenantId:      tenantId,
 		XCorrelationID:    correlationID,
 		MessageType:       enums.MessageTypeEmail.String(),
 		CommunicationType: enums.CommunicationTypeEmail.String(),

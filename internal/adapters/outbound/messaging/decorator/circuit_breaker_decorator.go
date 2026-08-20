@@ -96,7 +96,7 @@ func (d *circuitBreakerDecorator) publishViaHTTPFallback(ctx context.Context, me
 	}
 
 	// Chamar HTTP client
-	_, err := d.communicationClient.SendMessage(ctx, request, message.XApplication, message.XCorrelationID)
+	_, err := d.communicationClient.SendMessage(ctx, request, message.TenantId, message.XCorrelationID)
 	if err != nil {
 		d.logger.Error("Falha no fallback HTTP",
 			zap.String("correlationID", message.XCorrelationID),

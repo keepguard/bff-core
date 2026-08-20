@@ -35,7 +35,7 @@ func TestMiddleware_Logging(t *testing.T) {
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	req.Header.Set("X-Correlation-ID", "corr-123")
-	req.Header.Set("X-Application", "app-123")
+	req.Header.Set("X-Tenant-Id", "app-123")
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	c.SetPath("/test")
@@ -213,29 +213,29 @@ func TestSetCorrelationID(t *testing.T) {
 	}
 }
 
-func TestGetXApplication(t *testing.T) {
+func TestGetTenantId(t *testing.T) {
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	req.Header.Set("X-Application", "app-123")
+	req.Header.Set("X-Tenant-Id", "app-123")
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 
-	xApplication := GetXApplication(c)
-	if xApplication != "app-123" {
-		t.Fatalf("expected app-123, got %s", xApplication)
+	tenantId := GetTenantId(c)
+	if tenantId != "app-123" {
+		t.Fatalf("expected app-123, got %s", tenantId)
 	}
 }
 
-func TestSetXApplication(t *testing.T) {
+func TestSetTenantId(t *testing.T) {
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 
-	SetXApplication(c, "app-456")
+	SetTenantId(c, "app-456")
 
-	xApplication := c.Request().Header.Get("X-Application")
-	if xApplication != "app-456" {
-		t.Fatalf("expected app-456, got %s", xApplication)
+	tenantId := c.Request().Header.Get("X-Tenant-Id")
+	if tenantId != "app-456" {
+		t.Fatalf("expected app-456, got %s", tenantId)
 	}
 }

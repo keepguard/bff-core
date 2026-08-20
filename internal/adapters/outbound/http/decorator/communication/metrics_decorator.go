@@ -45,10 +45,10 @@ func (d *communicationMetricsDecorator) getStatusCodeFromError(err error) int {
 }
 
 // SendNotification implementa SendNotification com métricas
-func (d *communicationMetricsDecorator) SendNotification(ctx context.Context, req portsclient.SendNotificationRequestDTO, xApplication, correlationID string) error {
+func (d *communicationMetricsDecorator) SendNotification(ctx context.Context, req portsclient.SendNotificationRequestDTO, tenantId, correlationID string) error {
 	start := time.Now()
 
-	err := d.inner.SendNotification(ctx, req, xApplication, correlationID)
+	err := d.inner.SendNotification(ctx, req, tenantId, correlationID)
 
 	duration := time.Since(start)
 	statusCode := d.getStatusCodeFromError(err)
@@ -68,10 +68,10 @@ func (d *communicationMetricsDecorator) SendNotification(ctx context.Context, re
 }
 
 // SendMessage implementa SendMessage com métricas
-func (d *communicationMetricsDecorator) SendMessage(ctx context.Context, req communicationDto.SendMessageRequestDTO, xApplication, correlationID string) (communicationDto.SendMessageResponseDTO, error) {
+func (d *communicationMetricsDecorator) SendMessage(ctx context.Context, req communicationDto.SendMessageRequestDTO, tenantId, correlationID string) (communicationDto.SendMessageResponseDTO, error) {
 	start := time.Now()
 
-	response, err := d.inner.SendMessage(ctx, req, xApplication, correlationID)
+	response, err := d.inner.SendMessage(ctx, req, tenantId, correlationID)
 
 	duration := time.Since(start)
 	statusCode := d.getStatusCodeFromError(err)
