@@ -181,6 +181,11 @@ func (h *RegisterHandlers) ConfirmRegisterHandler(c echo.Context) error {
 		})
 	}
 
+	clientId := c.Request().Header.Get("X-Client-ID")
+	if clientId == "" {
+		clientId = "keepguard-default-client"
+	}
+
 	// ========================================================================
 	// BIND E VALIDAÇÃO DO BODY
 	// ========================================================================
@@ -207,6 +212,7 @@ func (h *RegisterHandlers) ConfirmRegisterHandler(c echo.Context) error {
 		req.Token,
 		tenantId,
 		correlationID,
+		clientId,
 		c.Request().Context(),
 	)
 

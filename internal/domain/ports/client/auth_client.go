@@ -13,7 +13,7 @@ type AuthClient interface {
 	CreateUser(ctx context.Context, req authDto.AuthUserCreateRequestDTO, tenantId, correlationID string) (authDto.AuthUserCreateResponseDTO, error)
 
 	// RegisterLogin realiza login após registro usando senha criptografada
-	RegisterLogin(ctx context.Context, req authDto.AuthRegisterLoginRequestDTO, tenantId, correlationID string) (authDto.AuthLoginResponseDTO, error)
+	RegisterLogin(ctx context.Context, req authDto.AuthRegisterLoginRequestDTO, tenantId, correlationID, clientId string) (authDto.AuthLoginResponseDTO, error)
 
 	// HardDeleteUser remove permanentemente um usuário (para compensação de SAGA)
 	HardDeleteUser(ctx context.Context, idUserExternal, tenantId, correlationID string) error

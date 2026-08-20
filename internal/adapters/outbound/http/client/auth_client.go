@@ -106,7 +106,7 @@ func (c *authClient) GenerateResetToken(ctx context.Context, req authDto.Generat
 }
 
 // RegisterLogin realiza login após registro usando senha criptografada
-func (c *authClient) RegisterLogin(ctx context.Context, req authDto.AuthRegisterLoginRequestDTO, tenantId, correlationID string) (authDto.AuthLoginResponseDTO, error) {
+func (c *authClient) RegisterLogin(ctx context.Context, req authDto.AuthRegisterLoginRequestDTO, tenantId, correlationID, clientId string) (authDto.AuthLoginResponseDTO, error) {
 	url := fmt.Sprintf("%s/api/v1/auth/register-login", c.config.Services.Auth.BaseURL)
 
 	resp, err := c.httpClient.R().

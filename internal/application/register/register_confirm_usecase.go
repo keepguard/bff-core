@@ -122,7 +122,7 @@ func (uc *registerConfirmUseCaseImpl) buildRegisterConfirmSaga() saga.InMemorySa
 					command := data["command"].(appdto.RegisterConfirmCommand)
 					confirmRequest := userDto.MSUserRegisterConfirmRequestDTO{
 						Email:                 command.Email,
-						RegistrationSessionID: command.RegistrationSessionID,
+						RegistrationSessionID: command.RegistrationSessionId,
 						Token:                 command.Token,
 					}
 					confirmResponse, err := uc.userClient.ConfirmRegister(ctx, confirmRequest, command.TenantId, command.CorrelationID)
@@ -263,7 +263,7 @@ func (uc *registerConfirmUseCaseImpl) buildRegisterConfirmSaga() saga.InMemorySa
 						PasswordHash: confirmResponse.PasswordHash,
 						TenantId: command.TenantId,
 					}
-					loginResponse, err := uc.authClient.RegisterLogin(ctx, registerLoginRequest, command.TenantId, command.CorrelationID)
+					loginResponse, err := uc.authClient.RegisterLogin(ctx, registerLoginRequest, command.TenantId, command.CorrelationID, command.ClientId)
 					if err != nil {
 						return err
 					}

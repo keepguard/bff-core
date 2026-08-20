@@ -92,23 +92,25 @@ func (c RegisterInitCommand) Validate() error {
 // RegisterConfirmCommand comando para confirmar registro de usuário
 type RegisterConfirmCommand struct {
 	Email                 string
-	RegistrationSessionID string
+	RegistrationSessionId string
 	Token                 string
-	TenantId          string
+	TenantId              string
+	ClientId              string
 	CorrelationID         string
 	Context               context.Context
 }
 
 // NewRegisterConfirmCommand cria um novo comando de confirmação de registro
 func NewRegisterConfirmCommand(
-	email, registrationSessionID, token, tenantId, correlationID string,
+	email, registrationSessionId, token, tenantId, correlationID, clientId string,
 	ctx context.Context,
 ) RegisterConfirmCommand {
 	return RegisterConfirmCommand{
 		Email:                 email,
-		RegistrationSessionID: registrationSessionID,
+		RegistrationSessionId: registrationSessionId,
 		Token:                 token,
-		TenantId:          tenantId,
+		TenantId:              tenantId,
+		ClientId:              clientId,
 		CorrelationID:         correlationID,
 		Context:               ctx,
 	}
@@ -119,7 +121,7 @@ func (c RegisterConfirmCommand) Validate() error {
 	if c.Email == "" {
 		return fmt.Errorf("email é obrigatório")
 	}
-	if c.RegistrationSessionID == "" {
+	if c.RegistrationSessionId == "" {
 		return fmt.Errorf("registrationSessionId é obrigatório")
 	}
 	if c.Token == "" {

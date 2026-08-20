@@ -72,7 +72,7 @@ func (m *MockAuthClient) CreateUser(ctx context.Context, req authDto.AuthUserCre
 	return args.Get(0).(authDto.AuthUserCreateResponseDTO), args.Error(1)
 }
 
-func (m *MockAuthClient) RegisterLogin(ctx context.Context, req authDto.AuthRegisterLoginRequestDTO, tenantId, correlationID string) (authDto.AuthLoginResponseDTO, error) {
+func (m *MockAuthClient) RegisterLogin(ctx context.Context, req authDto.AuthRegisterLoginRequestDTO, tenantId, correlationID, clientId string) (authDto.AuthLoginResponseDTO, error) {
 	args := m.Called(ctx, req, tenantId, correlationID)
 	return args.Get(0).(authDto.AuthLoginResponseDTO), args.Error(1)
 }
@@ -245,7 +245,7 @@ func TestRegisterConfirmUseCase_SAGASuccess(t *testing.T) {
 	mockUserClient.On("CreateUserNotify", mock.Anything, mock.Anything, "test-app", "corr-123").Return(notifyResponse, nil)
 	mockAuthClient.On("CreateUser", mock.Anything, mock.Anything, "test-app", "corr-123").Return(authUserResponse, nil)
 	mockUserConsentClient.On("AcceptAll", mock.Anything, mock.Anything, "test-app", "corr-123").Return(consentResponse, nil)
-	mockAuthClient.On("RegisterLogin", mock.Anything, mock.Anything, "test-app", "corr-123").Return(loginResponse, nil)
+	mockAuthClient.On("RegisterLogin", mock.Anything, mock.Anything, "test-app", "corr-123", mock.Anything).Return(loginResponse, nil)
 	mockMessagePublisher.On("PublishMessage", mock.Anything, mock.Anything).Return(nil)
 
 	command := appdto.RegisterConfirmCommand{
