@@ -78,36 +78,126 @@ func (uc *registerInitUseCaseImpl) Execute(command appdto.RegisterInitCommand) (
 		"appName":   company.Name,
 	}
 
-	// Passo 5: Criar requisição de envio de mensagem
-	// Converte map[string]string para map[string]interface{}
 	interfaceVariables := make(map[string]interface{})
 	for k, v := range variables {
 		interfaceVariables[k] = v
 	}
 
-	messageReq := messaging.MessageDTO{
-		TenantId:      command.TenantId,
-		XCorrelationID:    command.CorrelationID,
-		MessageType:       enums.MessageTypeEmail.String(),
-		CommunicationType: enums.CommunicationTypeEmail.String(),
-		TemplateType:      enums.TemplateTypeAutenticacaoEmailToken.String(),
-		Recipient:         registerResponse.Email,
-		CodeUser:          registerResponse.RegistrationSessionID,
-		Variables:         interfaceVariables,
+	// Passo 5: Enviar mensagem através dos canais de MFA habilitados na Empresa
+	// Se a empresa não tiver canais customizados definidos, o padrão é EMAIL
+	hasCustomChannels := len(company.MfaChannels) > 0
+	emailSent := false
+	smsSent := false
+	var requiredChannels []string
+
+	if hasCustomChannels {
+		for _, mfaChannel := range company.MfaChannels {
+			if !mfaChannel.Enabled || !mfaChannel.Required {
+				continue
+			}
+
+			requiredChannels = append(requiredChannels, mfaChannel.Channel)
+
+			switch mfaChannel.Channel {
+			case "EMAIL":
+				if !emailSent {
+					emailToken := registerResponse.EmailToken
+					if emailToken == "" {
+						emailToken = registerResponse.Token
+					}
+					emailVars := make(map[string]interface{})
+					for k, v := range variables {
+						emailVars[k] = v
+					}
+					emailVars["token"] = emailToken
+
+					emailReq := messaging.MessageDTO{
+						TenantId:          command.TenantId,
+						XCorrelationID:    command.CorrelationID,
+						MessageType:       enums.MessageTypeEmail.String(),
+						CommunicationType: enums.CommunicationTypeEmail.String(),
+						TemplateType:      enums.TemplateTypeAutenticacaoEmailToken.String(),
+						Recipient:         registerResponse.Email,
+						CodeUser:          registerResponse.RegistrationSessionID,
+						Variables:         emailVars,
+					}
+					_ = uc.messagePublisher.PublishMessage(command.Context, emailReq)
+					emailSent = true
+				}
+			case "SMS":
+				if !smsSent && command.Phone != "" {
+					smsToken := registerResponse.SmsToken
+					if smsToken == "" {
+						smsToken = registerResponse.Token
+					}
+					smsVars := make(map[string]interface{})
+					for k, v := range variables {
+						smsVars[k] = v
+					}
+					smsVars["token"] = smsToken
+
+					smsReq := messaging.MessageDTO{
+						TenantId:          command.TenantId,
+						XCorrelationID:    command.CorrelationID,
+						MessageType:       enums.MessageTypeSMS.String(),
+						CommunicationType: enums.CommunicationTypeSMS.String(),
+						TemplateType:      enums.TemplateTypeAutenticacaoSMSToken.String(),
+						Recipient:         command.Phone,
+						CodeUser:          registerResponse.RegistrationSessionID,
+						Variables:         smsVars,
+					}
+					_ = uc.messagePublisher.PublishMessage(command.Context, smsReq)
+					smsSent = true
+				}
+			case "WHATSAPP":
+				if command.Phone != "" {
+					whatsToken := registerResponse.WhatsAppToken
+					if whatsToken == "" {
+						whatsToken = registerResponse.Token
+					}
+					whatsVars := make(map[string]interface{})
+					for k, v := range variables {
+						whatsVars[k] = v
+					}
+					whatsVars["token"] = whatsToken
+
+					whatsReq := messaging.MessageDTO{
+						TenantId:          command.TenantId,
+						XCorrelationID:    command.CorrelationID,
+						MessageType:       enums.MessageTypeWhatsApp.String(),
+						CommunicationType: enums.CommunicationTypeWhatsApp.String(),
+						TemplateType:      enums.TemplateTypeAutenticacaoWhatsAppToken.String(),
+						Recipient:         command.Phone,
+						CodeUser:          registerResponse.RegistrationSessionID,
+						Variables:         whatsVars,
+					}
+					_ = uc.messagePublisher.PublishMessage(command.Context, whatsReq)
+				}
+			}
+		}
+	} else {
+		// Fallback default: Envia EMAIL
+		requiredChannels = append(requiredChannels, "EMAIL")
+		messageReq := messaging.MessageDTO{
+			TenantId:          command.TenantId,
+			XCorrelationID:    command.CorrelationID,
+			MessageType:       enums.MessageTypeEmail.String(),
+			CommunicationType: enums.CommunicationTypeEmail.String(),
+			TemplateType:      enums.TemplateTypeAutenticacaoEmailToken.String(),
+			Recipient:         registerResponse.Email,
+			CodeUser:          registerResponse.RegistrationSessionID,
+			Variables:         interfaceVariables,
+		}
+		_ = uc.messagePublisher.PublishMessage(command.Context, messageReq)
 	}
 
-	// Passo 6: Enviar mensagem através do Message Publisher (RabbitMQ com fallback HTTP)
-	err = uc.messagePublisher.PublishMessage(command.Context, messageReq)
-	if err != nil {
-		// Não falha o registro se o email não for enviado
-		// Log será feito pelo decorator
-	}
-
-	// Passo 7: Retornar resposta
+	// Passo 7: Retornar resposta com canais exigidos
 	response := dto.RegisterInitResponseDTO{
 		RegistrationSessionID: registerResponse.RegistrationSessionID,
 		Email:                 registerResponse.Email,
+		Phone:                 command.Phone,
 		ExpiresIn:             registerResponse.ExpiresIn,
+		RequiredChannels:      requiredChannels,
 	}
 
 	return response, nil

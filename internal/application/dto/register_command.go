@@ -94,6 +94,9 @@ type RegisterConfirmCommand struct {
 	Email                 string
 	RegistrationSessionId string
 	Token                 string
+	EmailToken            string
+	SmsToken              string
+	WhatsAppToken         string
 	TenantId              string
 	ClientId              string
 	CorrelationID         string
@@ -109,6 +112,32 @@ func NewRegisterConfirmCommand(
 		Email:                 email,
 		RegistrationSessionId: registrationSessionId,
 		Token:                 token,
+		EmailToken:            token,
+		TenantId:              tenantId,
+		ClientId:              clientId,
+		CorrelationID:         correlationID,
+		Context:               ctx,
+	}
+}
+
+// NewMultiChannelRegisterConfirmCommand cria comando completo de confirmação multicanal
+func NewMultiChannelRegisterConfirmCommand(
+	email, registrationSessionId, token, emailToken, smsToken, whatsAppToken, tenantId, correlationID, clientId string,
+	ctx context.Context,
+) RegisterConfirmCommand {
+	if emailToken == "" && token != "" {
+		emailToken = token
+	}
+	if token == "" && emailToken != "" {
+		token = emailToken
+	}
+	return RegisterConfirmCommand{
+		Email:                 email,
+		RegistrationSessionId: registrationSessionId,
+		Token:                 token,
+		EmailToken:            emailToken,
+		SmsToken:              smsToken,
+		WhatsAppToken:         whatsAppToken,
 		TenantId:              tenantId,
 		ClientId:              clientId,
 		CorrelationID:         correlationID,
@@ -124,11 +153,17 @@ func (c RegisterConfirmCommand) Validate() error {
 	if c.RegistrationSessionId == "" {
 		return fmt.Errorf("registrationSessionId é obrigatório")
 	}
-	if c.Token == "" {
-		return fmt.Errorf("token é obrigatório")
+	if c.Token == "" && c.EmailToken == "" {
+		return fmt.Errorf("token de confirmação é obrigatório")
 	}
-	if len(c.Token) != 6 {
+	if c.Token != "" && len(c.Token) != 6 {
 		return fmt.Errorf("token deve ter exatamente 6 dígitos")
+	}
+	if c.EmailToken != "" && len(c.EmailToken) != 6 {
+		return fmt.Errorf("emailToken deve ter exatamente 6 dígitos")
+	}
+	if c.SmsToken != "" && len(c.SmsToken) != 6 {
+		return fmt.Errorf("smsToken deve ter exatamente 6 dígitos")
 	}
 	if c.TenantId == "" {
 		return fmt.Errorf("tenantId é obrigatório")

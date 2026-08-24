@@ -124,6 +124,9 @@ func (uc *registerConfirmUseCaseImpl) buildRegisterConfirmSaga() saga.InMemorySa
 						Email:                 command.Email,
 						RegistrationSessionID: command.RegistrationSessionId,
 						Token:                 command.Token,
+						EmailToken:            command.EmailToken,
+						SmsToken:              command.SmsToken,
+						WhatsAppToken:         command.WhatsAppToken,
 					}
 					confirmResponse, err := uc.userClient.ConfirmRegister(ctx, confirmRequest, command.TenantId, command.CorrelationID)
 					if err != nil {

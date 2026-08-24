@@ -67,3 +67,39 @@ func (c *consentDocumentClient) FindLatestPublishedByType(ctx context.Context, c
 
 	return document, nil
 }
+
+// FindAllPublished busca todos os documentos de consentimento publicados
+func (c *consentDocumentClient) FindAllPublished(ctx context.Context, token, tenantId, correlationID string) ([]consentDocumentDto.ConsentDocumentResponseDTO, error) {
+	url := fmt.Sprintf("%s/api/v1/consent-documents/published", c.config.Services.UserConsents.BaseURL)
+
+	req := c.httpClient.R().
+		SetContext(ctx).
+		SetHeader("X-Correlation-ID", correlationID).
+		SetHeader("X-Tenant-Id", tenantId).
+		SetHeader("Content-Type", "application/json")
+
+	if token != "" {
+		req.SetHeader("Authorization", "Bearer "+token)
+	}
+
+	resp, err := req.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("erro ao comunicar com user consents service: %w", err)
+	}
+
+	if resp.StatusCode() != http.StatusOK {
+		return nil, &appdto.HTTPError{
+			Code:    resp.StatusCode(),
+			Message: "user consents service retornou erro",
+			Details: string(resp.Body()),
+		}
+	}
+
+	var documents []consentDocumentDto.ConsentDocumentResponseDTO
+	if err := json.Unmarshal(resp.Body(), &documents); err != nil {
+		return nil, fmt.Errorf("erro ao fazer parse da resposta: %w", err)
+	}
+
+	return documents, nil
+}
+

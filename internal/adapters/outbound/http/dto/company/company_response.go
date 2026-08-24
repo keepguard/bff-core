@@ -37,15 +37,24 @@ func (ct *CustomTime) UnmarshalJSON(b []byte) error {
 	return err
 }
 
+// CompanyMfaChannelDTO representa a configuração de canal de MFA da empresa
+type CompanyMfaChannelDTO struct {
+	ID       string `json:"id"`
+	Channel  string `json:"channel"`
+	Required bool   `json:"required"`
+	Enabled  bool   `json:"enabled"`
+}
+
 // MSCompanyResponseDTO representa a resposta com dados da empresa do ms-company
 type MSCompanyResponseDTO struct {
-	ID           string     `json:"id"`
-	CodeCompany  string     `json:"codeCompany"`
-	Name         string     `json:"name"`
-	LegalName    string     `json:"legalName"`
-	CNPJ         string     `json:"cnpj"`
-	Status       string     `json:"status"`
-	CreatedAt    CustomTime `json:"createdAt"`
-	UpdatedAt    CustomTime `json:"updatedAt"`
-	TenantId string     `json:"tenantid"`
+	ID          string                 `json:"id"`
+	CodeCompany string                 `json:"codeCompany"`
+	Name        string                 `json:"name"`
+	LegalName   string                 `json:"legalName"`
+	CNPJ        string                 `json:"cnpj"`
+	Status      string                 `json:"status"`
+	MfaChannels []CompanyMfaChannelDTO `json:"mfaChannels"`
+	CreatedAt   CustomTime             `json:"createdAt"`
+	UpdatedAt   CustomTime             `json:"updatedAt"`
+	TenantId    string                 `json:"tenantId"`
 }

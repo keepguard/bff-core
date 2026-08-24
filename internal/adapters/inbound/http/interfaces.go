@@ -13,6 +13,8 @@ type Handler interface {
 	InitRegisterHandler(c echo.Context) error
 	ConfirmRegisterHandler(c echo.Context) error
 	ResendRegisterTokenHandler(c echo.Context) error
+	GetPublishedConsentsHandler(c echo.Context) error
+	GetLatestByTypeHandler(c echo.Context) error
 }
 
 // Middleware define a interface para middlewares HTTP

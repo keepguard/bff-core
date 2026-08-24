@@ -105,7 +105,7 @@ func (d *registerConfirmLoggingDecorator) Execute(command appdto.RegisterConfirm
 		zap.String("correlationID", command.CorrelationID),
 		zap.String("tenantId", command.TenantId),
 		zap.String("email", command.Email),
-		zap.String("registrationSessionId", command.RegistrationSessionID),
+		zap.String("registrationSessionId", command.RegistrationSessionId),
 	)
 
 	response, err := d.inner.Execute(command)

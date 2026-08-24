@@ -10,4 +10,6 @@ import (
 type ConsentDocumentClient interface {
 	// FindLatestPublishedByType busca a última versão publicada por tipo
 	FindLatestPublishedByType(ctx context.Context, consentType, token, tenantId, correlationID string) (consentDocumentDto.ConsentDocumentResponseDTO, error)
+	// FindAllPublished busca todos os documentos de consentimento publicados
+	FindAllPublished(ctx context.Context, token, tenantId, correlationID string) ([]consentDocumentDto.ConsentDocumentResponseDTO, error)
 }

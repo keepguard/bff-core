@@ -81,12 +81,14 @@ func (s *serverImpl) SetupRoutes(handlers Handler) {
 	userGroup := s.echo.Group("/api/v1")
 
 	// ========================================================================
-	// ROTAS PÚBLICAS - Registro de usuários (não precisam de token)
+	// ROTAS PÚBLICAS - Registro de usuários e Documentos Legais
 	// Similar a @PublicEndpoint no Java
 	// ========================================================================
 	userGroup.POST("/register/init", handlers.InitRegisterHandler, publicEndpoint.Middleware())
 	userGroup.POST("/register/confirm", handlers.ConfirmRegisterHandler, publicEndpoint.Middleware())
 	userGroup.POST("/register/resend", handlers.ResendRegisterTokenHandler, publicEndpoint.Middleware())
+	userGroup.GET("/consents/published", handlers.GetPublishedConsentsHandler, publicEndpoint.Middleware())
+	userGroup.GET("/consents/type/:type/latest", handlers.GetLatestByTypeHandler, publicEndpoint.Middleware())
 
 	// ========================================================================
 	// ROTAS PROTEGIDAS (Futuro - usar JWTMiddleware com cfg.JWT.Secret)

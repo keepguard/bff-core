@@ -6,6 +6,9 @@ type MSUserRegisterInitResponseDTO struct {
 	Email                 string `json:"email"`
 	ExpiresIn             int    `json:"expiresIn"`
 	Token                 string `json:"token"`
+	EmailToken            string `json:"emailToken"`
+	SmsToken              string `json:"smsToken"`
+	WhatsAppToken         string `json:"whatsAppToken"`
 }
 
 // MSUserRegisterConfirmResponseDTO representa a resposta da confirmação de registro do ms-user

@@ -17,18 +17,23 @@ type RegisterInitRequestDTO struct {
 
 // RegisterInitResponseDTO representa a resposta da inicialização do registro
 type RegisterInitResponseDTO struct {
-	RegistrationSessionID string `json:"registrationSessionId"`
-	Email                 string `json:"email"`
-	ExpiresIn             int    `json:"expiresIn"`
-	Token                 string `json:"token,omitempty"`
-	TokenExpiresIn        int64  `json:"tokenExpiresIn,omitempty"`
+	RegistrationSessionID string   `json:"registrationSessionId"`
+	Email                 string   `json:"email"`
+	Phone                 string   `json:"phone,omitempty"`
+	ExpiresIn             int      `json:"expiresIn"`
+	RequiredChannels      []string `json:"requiredChannels,omitempty"`
+	Token                 string   `json:"token,omitempty"`
+	TokenExpiresIn        int64    `json:"tokenExpiresIn,omitempty"`
 }
 
 // RegisterConfirmRequestDTO representa a requisição para confirmar o registro de usuário
 type RegisterConfirmRequestDTO struct {
 	Email                 string `json:"email" validate:"required,email"`
 	RegistrationSessionID string `json:"registrationSessionId" validate:"required,uuid"`
-	Token                 string `json:"token" validate:"required,len=6"`
+	Token                 string `json:"token,omitempty"`
+	EmailToken            string `json:"emailToken,omitempty"`
+	SmsToken              string `json:"smsToken,omitempty"`
+	WhatsAppToken         string `json:"whatsAppToken,omitempty"`
 }
 
 // RegisterConfirmResponseDTO representa a resposta da confirmação do registro

@@ -19,6 +19,9 @@ type MSUserRegisterConfirmRequestDTO struct {
 	Email                 string `json:"email"`
 	RegistrationSessionID string `json:"registrationSessionId"`
 	Token                 string `json:"token"`
+	EmailToken            string `json:"emailToken,omitempty"`
+	SmsToken              string `json:"smsToken,omitempty"`
+	WhatsAppToken         string `json:"whatsAppToken,omitempty"`
 }
 
 // MSUserRegisterResendRequestDTO representa requisição de reenvio ao ms-user

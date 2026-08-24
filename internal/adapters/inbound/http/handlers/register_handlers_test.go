@@ -52,12 +52,10 @@ func TestNewRegisterHandlers(t *testing.T) {
 	mockInitUseCase := &MockRegisterInitUseCase{}
 	mockConfirmUseCase := &MockRegisterConfirmUseCase{}
 	mockResendUseCase := &MockRegisterResendUseCase{}
-	mockConfirmUseCase := &MockRegisterConfirmUseCase{}
-	mockResendUseCase := &MockRegisterResendUseCase{}
 	logger := zap.NewNop()
 
 	// Act
-	handlers := NewRegisterHandlers(mockInitUseCase, mockConfirmUseCase, mockResendUseCase, logger)
+	handlers := NewRegisterHandlers(mockInitUseCase, mockConfirmUseCase, mockResendUseCase, nil, logger)
 
 	// Assert
 	assert.NotNil(t, handlers)
@@ -71,7 +69,7 @@ func TestRegisterHandlers_InitRegisterHandler_Success(t *testing.T) {
 	mockResendUseCase := &MockRegisterResendUseCase{}
 	logger, _ := zap.NewDevelopment()
 
-	handlers := NewRegisterHandlers(mockInitUseCase, mockConfirmUseCase, mockResendUseCase, logger)
+	handlers := NewRegisterHandlers(mockInitUseCase, mockConfirmUseCase, mockResendUseCase, nil, logger)
 
 	// Mock response
 	expectedResponse := dto.RegisterInitResponseDTO{
@@ -88,6 +86,7 @@ func TestRegisterHandlers_InitRegisterHandler_Success(t *testing.T) {
 		NameFull:                   "Test User",
 		Email:                      "test@example.com",
 		Password:                   "password123",
+		ConfirmPassword:            "password123",
 		Phone:                      "+5511999999999",
 		HasAcceptedTermsAndPrivacy: true,
 		AcceptedMarketing:          &[]bool{false}[0],
@@ -130,7 +129,7 @@ func TestRegisterHandlers_InitRegisterHandler_MissingCorrelationID(t *testing.T)
 	mockResendUseCase := &MockRegisterResendUseCase{}
 	logger, _ := zap.NewDevelopment()
 
-	handlers := NewRegisterHandlers(mockInitUseCase, mockConfirmUseCase, mockResendUseCase, logger)
+	handlers := NewRegisterHandlers(mockInitUseCase, mockConfirmUseCase, mockResendUseCase, nil, logger)
 
 	// Create request without X-Correlation-ID
 	requestBody := dto.RegisterInitRequestDTO{
@@ -177,7 +176,7 @@ func TestRegisterHandlers_InitRegisterHandler_MissingTenantId(t *testing.T) {
 	mockResendUseCase := &MockRegisterResendUseCase{}
 	logger, _ := zap.NewDevelopment()
 
-	handlers := NewRegisterHandlers(mockInitUseCase, mockConfirmUseCase, mockResendUseCase, logger)
+	handlers := NewRegisterHandlers(mockInitUseCase, mockConfirmUseCase, mockResendUseCase, nil, logger)
 
 	// Create request without X-Tenant-Id
 	requestBody := dto.RegisterInitRequestDTO{
@@ -224,7 +223,7 @@ func TestRegisterHandlers_InitRegisterHandler_InvalidJSON(t *testing.T) {
 	mockResendUseCase := &MockRegisterResendUseCase{}
 	logger, _ := zap.NewDevelopment()
 
-	handlers := NewRegisterHandlers(mockInitUseCase, mockConfirmUseCase, mockResendUseCase, logger)
+	handlers := NewRegisterHandlers(mockInitUseCase, mockConfirmUseCase, mockResendUseCase, nil, logger)
 
 	// Create request with invalid JSON
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/register/init", bytes.NewBuffer([]byte("invalid json")))
@@ -258,7 +257,7 @@ func TestRegisterHandlers_InitRegisterHandler_UseCaseError(t *testing.T) {
 	mockResendUseCase := &MockRegisterResendUseCase{}
 	logger, _ := zap.NewDevelopment()
 
-	handlers := NewRegisterHandlers(mockInitUseCase, mockConfirmUseCase, mockResendUseCase, logger)
+	handlers := NewRegisterHandlers(mockInitUseCase, mockConfirmUseCase, mockResendUseCase, nil, logger)
 
 	// Setup mock to return error
 	mockInitUseCase.On("Execute", mock.Anything).Return(dto.RegisterInitResponseDTO{}, errors.New("email already exists"))
@@ -268,6 +267,7 @@ func TestRegisterHandlers_InitRegisterHandler_UseCaseError(t *testing.T) {
 		NameFull:                   "Test User",
 		Email:                      "test@example.com",
 		Password:                   "password123",
+		ConfirmPassword:            "password123",
 		Phone:                      "+5511999999999",
 		HasAcceptedTermsAndPrivacy: true,
 		AcceptedMarketing:          &[]bool{false}[0],
@@ -309,7 +309,7 @@ func TestRegisterHandlers_ConfirmRegisterHandler_Success(t *testing.T) {
 	mockResendUseCase := &MockRegisterResendUseCase{}
 	logger, _ := zap.NewDevelopment()
 
-	handlers := NewRegisterHandlers(mockInitUseCase, mockConfirmUseCase, mockResendUseCase, logger)
+	handlers := NewRegisterHandlers(mockInitUseCase, mockConfirmUseCase, mockResendUseCase, nil, logger)
 
 	// Mock response
 	expectedResponse := dto.RegisterConfirmResponseDTO{
@@ -359,7 +359,7 @@ func TestRegisterHandlers_ConfirmRegisterHandler_MissingCorrelationID(t *testing
 	mockResendUseCase := &MockRegisterResendUseCase{}
 	logger, _ := zap.NewDevelopment()
 
-	handlers := NewRegisterHandlers(mockInitUseCase, mockConfirmUseCase, mockResendUseCase, logger)
+	handlers := NewRegisterHandlers(mockInitUseCase, mockConfirmUseCase, mockResendUseCase, nil, logger)
 
 	// Create request without X-Correlation-ID
 	requestBody := dto.RegisterConfirmRequestDTO{
@@ -399,7 +399,7 @@ func TestRegisterHandlers_ConfirmRegisterHandler_UseCaseError(t *testing.T) {
 	mockResendUseCase := &MockRegisterResendUseCase{}
 	logger, _ := zap.NewDevelopment()
 
-	handlers := NewRegisterHandlers(mockInitUseCase, mockConfirmUseCase, mockResendUseCase, logger)
+	handlers := NewRegisterHandlers(mockInitUseCase, mockConfirmUseCase, mockResendUseCase, nil, logger)
 
 	// Setup mock to return error
 	mockConfirmUseCase.On("Execute", mock.Anything).Return(dto.RegisterConfirmResponseDTO{}, errors.New("invalid token"))
@@ -443,7 +443,7 @@ func TestRegisterHandlers_VerifyCommandValidation(t *testing.T) {
 	mockResendUseCase := &MockRegisterResendUseCase{}
 	logger, _ := zap.NewDevelopment()
 
-	handlers := NewRegisterHandlers(mockInitUseCase, mockConfirmUseCase, mockResendUseCase, logger)
+	handlers := NewRegisterHandlers(mockInitUseCase, mockConfirmUseCase, mockResendUseCase, nil, logger)
 
 	// Test with missing required fields
 	requestBody := dto.RegisterInitRequestDTO{

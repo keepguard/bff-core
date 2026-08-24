@@ -251,7 +251,7 @@ func TestRegisterConfirmUseCase_SAGASuccess(t *testing.T) {
 	command := appdto.RegisterConfirmCommand{
 		Context:               context.Background(),
 		Email:                 "test@example.com",
-		RegistrationSessionID: "session-123",
+		RegistrationSessionId: "session-123",
 		Token:                 "token-123",
 		TenantId:          "test-app",
 		CorrelationID:         "corr-123",
@@ -351,7 +351,7 @@ func TestRegisterConfirmUseCase_SAGAFailureWithCompensation(t *testing.T) {
 	command := appdto.RegisterConfirmCommand{
 		Context:               context.Background(),
 		Email:                 "test@example.com",
-		RegistrationSessionID: "session-123",
+		RegistrationSessionId: "session-123",
 		Token:                 "token-123",
 		TenantId:          "test-app",
 		CorrelationID:         "corr-123",
@@ -422,10 +422,14 @@ func TestRegisterConfirmUseCase_SAGATimeout(t *testing.T) {
 	mockUserClient.On("ConfirmRegister", mock.Anything, mock.Anything, "test-app", "corr-123").Return(confirmResponse, nil)
 	mockUserClient.On("CreateUser", mock.Anything, mock.Anything, "test-app", "corr-123").Return(userResponse, nil)
 
-	// Timeout no CreateUserNotify (simula timeout com delay)
+	// Timeout no CreateUserNotify (simula timeout respeitando o context)
 	mockUserClient.On("CreateUserNotify", mock.Anything, mock.Anything, "test-app", "corr-123").Run(func(args mock.Arguments) {
-		time.Sleep(6 * time.Second) // Timeout maior que o configurado (5s)
-	}).Return(userDto.MSUserNotifyResponseDTO{}, nil)
+		ctx := args.Get(0).(context.Context)
+		select {
+		case <-ctx.Done():
+		case <-time.After(6 * time.Second):
+		}
+	}).Return(userDto.MSUserNotifyResponseDTO{}, context.DeadlineExceeded)
 
 	// Não configurar CreateAuthUser pois o teste deve falhar antes
 
@@ -435,7 +439,7 @@ func TestRegisterConfirmUseCase_SAGATimeout(t *testing.T) {
 	command := appdto.RegisterConfirmCommand{
 		Context:               context.Background(),
 		Email:                 "test@example.com",
-		RegistrationSessionID: "session-123",
+		RegistrationSessionId: "session-123",
 		Token:                 "token-123",
 		TenantId:          "test-app",
 		CorrelationID:         "corr-123",

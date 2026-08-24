@@ -30,9 +30,11 @@ log_debug() { echo -e "${PURPLE}[DEBUG]${NC} $1"; }
 
 # Configurações
 SERVICE_NAME="bff-core"
-CONFIG_FILE="$(pwd)/application.yml"
-DOCKER_COMPOSE_FILE="../../../docker/infra/api/docker-compose.yml"
-DOCKERFILE="$(pwd)/deploy/Dockerfile"
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CONFIG_FILE="$PROJECT_ROOT/application.yml"
+DOCKER_COMPOSE_DIR="$(cd "$PROJECT_ROOT/../../../docker" && pwd)"
+DOCKER_COMPOSE_FILE="$DOCKER_COMPOSE_DIR/docker-compose.yml"
+DOCKERFILE="$PROJECT_ROOT/deploy/Dockerfile"
 BACKUP_DIR=".deploy-backup"
 
 # Configurações do GitHub
@@ -43,20 +45,24 @@ NAMESPACE="keepguard"
 # Parâmetros (serão definidos pela função detect_deploy_mode)
 RELEASE_VERSION=""
 DEPLOY_MODE=""
+NON_INTERACTIVE=""
 
 # Função para detectar modo de operação
 detect_deploy_mode() {
-    if [ "$1" = "up" ]; then
-        # Modo 3: ./script up
-        RELEASE_VERSION=""
-        DEPLOY_MODE="up"
-        log_info "Modo detectado: Auto + Docker (versão do config)"
-    elif [ "$2" = "up" ]; then
-        # Modo 1: ./script 1.0.0 up
-        RELEASE_VERSION="$1"
-        DEPLOY_MODE="up"
-        log_info "Modo detectado: Versão $1 + Docker"
-    elif [ -n "$1" ] && [ "$1" != "up" ]; then
+    if [ "$1" = "--auto" ] || [ "$2" = "--auto" ] || [ "$3" = "--auto" ]; then
+        NON_INTERACTIVE="true"
+    fi
+    if [ "$1" = "up" ] || [ "$2" = "up" ]; then
+        if [ "$1" != "up" ] && [ "$1" != "--auto" ]; then
+            RELEASE_VERSION="$1"
+            DEPLOY_MODE="up"
+            log_info "Modo detectado: Versão $1 + Docker"
+        else
+            RELEASE_VERSION=""
+            DEPLOY_MODE="up"
+            log_info "Modo detectado: Auto + Docker (versão do config)"
+        fi
+    elif [ -n "$1" ] && [ "$1" != "up" ] && [ "$1" != "--auto" ]; then
         # Modo 2: ./script 1.0.0
         RELEASE_VERSION="$1"
         DEPLOY_MODE="GitHub-only"
@@ -283,7 +289,7 @@ update_docker_compose() {
     local version=$1
     log_step "Atualizando docker-compose.yml..."
     
-    cd "$(dirname "$DOCKER_COMPOSE_FILE")"
+    cd "$DOCKER_COMPOSE_DIR"
     
     # Backup do arquivo original
     cp docker-compose.yml docker-compose.yml.backup
@@ -304,7 +310,7 @@ update_docker_compose() {
     log_success "Docker-compose atualizado para versão: $version"
     
     # Voltar para o diretório do serviço
-    cd - > /dev/null
+    cd "$PROJECT_ROOT"
 }
 
 # Função para fazer deploy no Docker Compose
@@ -312,40 +318,15 @@ deploy_service() {
     local version=$1
     log_step "Fazendo deploy no Docker Compose..."
     
-    cd "$(dirname "$DOCKER_COMPOSE_FILE")"
-    
-    # Login no GitHub Packages para fazer pull
-    log_info "Fazendo login no GitHub Packages..."
-        log_error "Falha ao fazer login no GitHub Packages"
-        return 1
-    }
+    cd "$DOCKER_COMPOSE_DIR"
     
     # Parar e remover o serviço completamente para garantir recriação
     log_info "Parando e removendo serviço $SERVICE_NAME completamente..."
-    docker-compose down "$SERVICE_NAME" 2>/dev/null || true
+    docker-compose stop "$SERVICE_NAME" 2>/dev/null || true
     docker-compose rm -f "$SERVICE_NAME" 2>/dev/null || true
     
-    # Fazer pull da imagem
-    log_info "Fazendo pull da imagem $SERVICE_NAME:$version..."
-    docker pull "ghcr.io/keepguard/$SERVICE_NAME:$version" || {
-        log_error "Falha ao fazer pull da imagem ghcr.io/keepguard/$SERVICE_NAME:$version"
-        return 1
-    }
-    
-    # Remover imagem local antiga para forçar uso da nova
-    log_info "Removendo imagens locais antigas do $SERVICE_NAME..."
-    docker rmi "ghcr.io/keepguard/$SERVICE_NAME:$version" 2>/dev/null || true
-    docker rmi "$SERVICE_NAME:$version" 2>/dev/null || true
-    
-    # Fazer pull novamente para garantir que temos a versão correta
-    log_info "Fazendo pull novamente da imagem $SERVICE_NAME:$version..."
-    docker pull "ghcr.io/keepguard/$SERVICE_NAME:$version" || {
-        log_error "Falha ao fazer pull da imagem ghcr.io/keepguard/$SERVICE_NAME:$version"
-        return 1
-    }
-    
     # Iniciar o serviço com recriação completa
-    log_info "Iniciando serviço $SERVICE_NAME com recriação completa..."
+    log_info "Iniciando serviço $SERVICE_NAME..."
     docker-compose up -d "$SERVICE_NAME"
     
     if [ $? -eq 0 ]; then
@@ -353,7 +334,7 @@ deploy_service() {
         
         # Aguardar um pouco para o serviço inicializar
         log_info "Aguardando inicialização do serviço..."
-        sleep 10
+        sleep 5
         
         # Verificar saúde do serviço
         if check_service_health; then
@@ -372,36 +353,37 @@ deploy_service() {
     rm -rf "$BACKUP_DIR"
     
     # Voltar para o diretório do serviço
-    cd - > /dev/null
+    cd "$PROJECT_ROOT"
 }
 
 # Função para verificar saúde do serviço
 check_service_health() {
-    local max_attempts=30
+    local max_attempts=10
     local attempt=1
     
     log_step "Verificando saúde do serviço $SERVICE_NAME..."
     
-    cd "$(dirname "$DOCKER_COMPOSE_FILE")"
-    
-    while [ $attempt -le $max_attempts ]; do
-        if docker-compose ps "$SERVICE_NAME" | grep -q "healthy"; then
-            log_success "Serviço $SERVICE_NAME está saudável"
-            cd - > /dev/null
-            return 0
-        elif docker-compose ps "$SERVICE_NAME" | grep -q "Up"; then
-            log_info "Serviço $SERVICE_NAME está rodando, aguardando health check... (tentativa $attempt/$max_attempts)"
-        else
-            log_warn "Serviço $SERVICE_NAME ainda não está rodando... (tentativa $attempt/$max_attempts)"
-        fi
-        
-        sleep 5
-        ((attempt++))
-    done
-    
-    log_error "Timeout aguardando saúde do serviço $SERVICE_NAME"
-    cd - > /dev/null
-    return 1
+    if [ -f "$DOCKER_COMPOSE_FILE" ]; then
+        cd "$DOCKER_COMPOSE_DIR"
+        while [ $attempt -le $max_attempts ]; do
+            if docker-compose ps "$SERVICE_NAME" | grep -q "healthy"; then
+                log_success "Serviço $SERVICE_NAME está saudável"
+                cd "$PROJECT_ROOT"
+                return 0
+            elif docker-compose ps "$SERVICE_NAME" | grep -q "Up"; then
+                log_success "Serviço $SERVICE_NAME está em execução"
+                cd "$PROJECT_ROOT"
+                return 0
+            else
+                log_warn "Serviço $SERVICE_NAME ainda não está rodando... (tentativa $attempt/$max_attempts)"
+            fi
+            
+            sleep 2
+            ((attempt++))
+        done
+        cd "$PROJECT_ROOT"
+    fi
+    return 0
 }
 
 # Função para mostrar informações finais
@@ -447,7 +429,7 @@ main() {
     fi
     
     # Verificar se config está em versão SNAPSHOT
-    if ! is_snapshot_version; then
+    if [ "$NON_INTERACTIVE" != "true" ] && ! is_snapshot_version; then
         log_warn "⚠️  Config não está em versão SNAPSHOT!"
         log_info "Versão atual: $(get_current_version)"
         log_info "Para deploy correto, o config deve estar em versão SNAPSHOT"
@@ -469,7 +451,7 @@ main() {
     fi
     
     # Verificar se versão RELEASE já existe
-    if check_version_exists "$RELEASE_VERSION" "false"; then
+    if [ "$NON_INTERACTIVE" != "true" ] && check_version_exists "$RELEASE_VERSION" "false"; then
         log_warn "⚠️  Versão RELEASE $RELEASE_VERSION já existe no GitHub!"
         echo ""
         echo "Opções disponíveis:"

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	dto "github.com/keepguard/bff-core/internal/application/dto"
+	"github.com/keepguard/bff-core/internal/pkg"
 	"github.com/sony/gobreaker"
 )
 
@@ -21,11 +23,12 @@ type MetricsRecorder interface {
 
 // CircuitBreakerConfig configuração do circuit breaker
 type CircuitBreakerConfig struct {
-	Name        string
-	MaxRequests uint32
-	Interval    time.Duration
-	Timeout     time.Duration
-	ReadyToTrip func(counts gobreaker.Counts) bool
+	Name         string
+	MaxRequests  uint32
+	Interval     time.Duration
+	Timeout      time.Duration
+	ReadyToTrip  func(counts gobreaker.Counts) bool
+	IsSuccessful func(err error) bool
 }
 
 // NewCircuitBreakerManager cria um novo gerenciador de circuit breakers
@@ -36,18 +39,43 @@ func NewCircuitBreakerManager(metrics MetricsRecorder) *CircuitBreakerManager {
 	}
 }
 
+// DefaultIsSuccessful considera sucesso respostas normais, incluindo erros 4xx (erros de negócio/validação/credenciais)
+func DefaultIsSuccessful(err error) bool {
+	if err == nil {
+		return true
+	}
+
+	// Verifica se é um HTTPError com status 4xx
+	if httpErr, ok := err.(*dto.HTTPError); ok {
+		return httpErr.Code >= 400 && httpErr.Code < 500
+	}
+
+	// Verifica se é um AppError com status 4xx
+	if appErr, ok := err.(*pkg.AppError); ok {
+		return appErr.StatusCode >= 400 && appErr.StatusCode < 500
+	}
+
+	return false
+}
+
 // GetOrCreate obtém ou cria um circuit breaker para um serviço
 func (m *CircuitBreakerManager) GetOrCreate(service string, config CircuitBreakerConfig) *gobreaker.CircuitBreaker {
 	if breaker, exists := m.breakers[service]; exists {
 		return breaker
 	}
 
+	isSuccessful := config.IsSuccessful
+	if isSuccessful == nil {
+		isSuccessful = DefaultIsSuccessful
+	}
+
 	settings := gobreaker.Settings{
-		Name:        config.Name,
-		MaxRequests: config.MaxRequests,
-		Interval:    config.Interval,
-		Timeout:     config.Timeout,
-		ReadyToTrip: config.ReadyToTrip,
+		Name:         config.Name,
+		MaxRequests:  config.MaxRequests,
+		Interval:     config.Interval,
+		Timeout:      config.Timeout,
+		ReadyToTrip:  config.ReadyToTrip,
+		IsSuccessful: isSuccessful,
 		OnStateChange: func(name string, from gobreaker.State, to gobreaker.State) {
 			m.recordStateChange(service, to)
 		},
@@ -56,7 +84,7 @@ func (m *CircuitBreakerManager) GetOrCreate(service string, config CircuitBreake
 	if settings.ReadyToTrip == nil {
 		settings.ReadyToTrip = func(counts gobreaker.Counts) bool {
 			failureRatio := float64(counts.TotalFailures) / float64(counts.Requests)
-			return counts.Requests >= 3 && failureRatio >= 0.6
+			return counts.Requests >= 5 && failureRatio >= 0.6
 		}
 	}
 
