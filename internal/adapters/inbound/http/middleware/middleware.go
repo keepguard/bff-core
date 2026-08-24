@@ -149,6 +149,11 @@ func (m *middlewareImpl) CORSMiddleware() echo.MiddlewareFunc {
 			"X-User-ID",
 			"X-Correlation-ID",
 			"X-Tenant-Id",
+			"X-Client-Id",
+			"X-Client-ID",
+			"X-Device-Id",
+			"X-Device-Name",
+			"X-Device-Type",
 			"Idempotency-Key",
 		},
 		ExposeHeaders: []string{
@@ -156,6 +161,7 @@ func (m *middlewareImpl) CORSMiddleware() echo.MiddlewareFunc {
 			"X-User-ID",
 			"X-Correlation-ID",
 			"X-Tenant-Id",
+			"X-Device-Id",
 		},
 		MaxAge: 86400, // 24 horas
 	})
