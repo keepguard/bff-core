@@ -3,6 +3,7 @@ package metrics
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -12,16 +13,17 @@ import (
 
 // Metrics representa o sistema de métricas
 type Metrics struct {
-	httpRequestsTotal     *prometheus.CounterVec
-	httpRequestDuration   *prometheus.HistogramVec
-	upstreamRequests      *prometheus.CounterVec
-	upstreamDuration      *prometheus.HistogramVec
-	upstreamErrors        *prometheus.CounterVec
-	cacheHits             *prometheus.CounterVec
-	cacheMisses           *prometheus.CounterVec
-	circuitBreakerState   *prometheus.GaugeVec
-	rabbitmqPublishTotal  *prometheus.CounterVec
-	rabbitmqPublishDuration *prometheus.HistogramVec
+	httpRequestsTotal        *prometheus.CounterVec
+	httpRequestDuration      *prometheus.HistogramVec
+	rateLimitBlockedTotal    *prometheus.CounterVec
+	upstreamRequests         *prometheus.CounterVec
+	upstreamDuration         *prometheus.HistogramVec
+	upstreamErrors           *prometheus.CounterVec
+	cacheHits                *prometheus.CounterVec
+	cacheMisses              *prometheus.CounterVec
+	circuitBreakerState      *prometheus.GaugeVec
+	rabbitmqPublishTotal     *prometheus.CounterVec
+	rabbitmqPublishDuration  *prometheus.HistogramVec
 	rabbitmqConnectionStatus *prometheus.GaugeVec
 }
 
@@ -42,6 +44,13 @@ func New() *Metrics {
 				Buckets: prometheus.DefBuckets,
 			},
 			[]string{"method", "route", "status"},
+		),
+		rateLimitBlockedTotal: promauto.NewCounterVec(
+			prometheus.CounterOpts{
+				Name: "rate_limit_blocked_total",
+				Help: "Total number of requests blocked by rate limiting",
+			},
+			[]string{"action", "identifier_type"},
 		),
 		upstreamRequests: promauto.NewCounterVec(
 			prometheus.CounterOpts{
@@ -113,13 +122,15 @@ func New() *Metrics {
 
 // RecordHTTPRequest registra uma requisição HTTP
 func (m *Metrics) RecordHTTPRequest(method, route string, statusCode int, duration time.Duration) {
-	status := http.StatusText(statusCode)
-	if status == "" {
-		status = "unknown"
-	}
+	status := strconv.Itoa(statusCode)
 
 	m.httpRequestsTotal.WithLabelValues(method, route, status).Inc()
 	m.httpRequestDuration.WithLabelValues(method, route, status).Observe(duration.Seconds())
+}
+
+// RecordRateLimitBlocked registra um bloqueio por rate limit
+func (m *Metrics) RecordRateLimitBlocked(action, identifierType string) {
+	m.rateLimitBlockedTotal.WithLabelValues(action, identifierType).Inc()
 }
 
 // RecordUpstreamRequest registra uma requisição para um serviço upstream

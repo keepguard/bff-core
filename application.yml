@@ -1,4 +1,4 @@
-version: "1.0.23-SNAPSHOT"
+version: "1.0.24-SNAPSHOT"
 
 server:
   port: "8282"
@@ -51,7 +51,7 @@ jwt:
 metrics:
   enabled: true
   scrape_path: "/metrics"
-  port: "9090"
+  port: "9092"
 
 log:
   level: "info"

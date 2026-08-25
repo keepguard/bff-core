@@ -206,7 +206,7 @@ func setDefaults() {
 	// Metrics
 	viper.SetDefault("metrics.enabled", true)
 	viper.SetDefault("metrics.scrape_path", "/metrics")
-	viper.SetDefault("metrics.port", "9090")
+	viper.SetDefault("metrics.port", "9092")
 
 	// Log
 	viper.SetDefault("log.level", "info")

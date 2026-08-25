@@ -19,7 +19,7 @@ func TestRateLimiterMiddleware_Disabled(t *testing.T) {
 	c := e.NewContext(req, rec)
 
 	logger, _ := zap.NewDevelopment()
-	mw := NewRateLimiterMiddleware(nil, config.RateLimitConfig{Enabled: false}, logger)
+	mw := NewRateLimiterMiddleware(nil, config.RateLimitConfig{Enabled: false}, logger, nil)
 
 	handler := mw.Limit("register_init", config.RateLimitRule{Limit: 5, Window: time.Minute})(func(c echo.Context) error {
 		return c.String(http.StatusOK, "ok")
@@ -37,7 +37,7 @@ func TestRateLimiterMiddleware_NilRedisFailOpen(t *testing.T) {
 	c := e.NewContext(req, rec)
 
 	logger, _ := zap.NewDevelopment()
-	mw := NewRateLimiterMiddleware(nil, config.RateLimitConfig{Enabled: true}, logger)
+	mw := NewRateLimiterMiddleware(nil, config.RateLimitConfig{Enabled: true}, logger, nil)
 
 	handler := mw.Limit("register_init", config.RateLimitRule{Limit: 5, Window: time.Minute})(func(c echo.Context) error {
 		return c.String(http.StatusOK, "ok")
