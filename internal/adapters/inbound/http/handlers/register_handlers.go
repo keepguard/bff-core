@@ -52,6 +52,8 @@ func NewRegisterHandlers(
 // @Success 201 {object} dto.RegisterInitResponseDTO "Registro inicializado com sucesso"
 // @Failure 400 {object} pkg.ErrorResponse "Erro de validação (headers ausentes ou dados inválidos)"
 // @Failure 409 {object} pkg.ErrorResponse "Email já cadastrado ou sessão ativa existe"
+// @Failure 429 {object} pkg.ErrorResponse "Muitas tentativas (Rate limit excedido)"
+// @Failure 503 {object} pkg.ErrorResponse "Serviço temporariamente indisponível (Circuit breaker)"
 // @Failure 500 {object} pkg.ErrorResponse "Erro interno do servidor"
 // @Router /api/v1/register/init [post]
 func (h *RegisterHandlers) InitRegisterHandler(c echo.Context) error {
