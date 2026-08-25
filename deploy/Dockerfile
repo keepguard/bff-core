@@ -14,8 +14,8 @@ RUN go mod download
 COPY . .
 
 # Build da aplicação e do utilitário de healthcheck
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o bff-core cmd/bff-core/main.go \
-    && CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o healthcheck deploy/healthcheck/main.go
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -installsuffix cgo -o bff-core cmd/bff-core/main.go \
+    && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -installsuffix cgo -o healthcheck deploy/healthcheck/main.go
 
 # Runtime stage
 FROM alpine:latest

@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	companyDto "github.com/keepguard/bff-core/internal/adapters/outbound/http/dto/company"
 	portsclient "github.com/keepguard/bff-core/internal/domain/ports/client"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"

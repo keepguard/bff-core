@@ -47,3 +47,8 @@ func (m *MockUserClient) DeleteUser(ctx context.Context, userID, tenantId, corre
 	args := m.Called(ctx, userID, tenantId, correlationID)
 	return args.Error(0)
 }
+
+func (m *MockUserClient) ResendRegisterToken(ctx context.Context, req userDto.MSUserRegisterResendRequestDTO, tenantId, correlationID string) (userDto.MSUserRegisterResendResponseDTO, error) {
+	args := m.Called(ctx, req, tenantId, correlationID)
+	return args.Get(0).(userDto.MSUserRegisterResendResponseDTO), args.Error(1)
+}

@@ -3,6 +3,7 @@ package cache
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -19,14 +20,21 @@ type RedisConfig struct {
 
 // NewRedisClient cria uma nova conexão de cliente com o Redis
 func NewRedisClient(cfg RedisConfig, logger *zap.Logger) (*redis.Client, error) {
-	if cfg.Host == "" {
-		cfg.Host = "localhost"
+	host := cfg.Host
+	if envHost := os.Getenv("BFF_CORE_REDIS_HOST"); envHost != "" {
+		host = envHost
+	} else if envHost := os.Getenv("REDIS_HOST"); envHost != "" {
+		host = envHost
+	}
+
+	if host == "" {
+		host = "localhost"
 	}
 	if cfg.Port == 0 {
 		cfg.Port = 6379
 	}
 
-	addr := fmt.Sprintf("%s:%d", cfg.Host, cfg.Port)
+	addr := fmt.Sprintf("%s:%d", host, cfg.Port)
 	client := redis.NewClient(&redis.Options{
 		Addr:         addr,
 		Password:     cfg.Password,

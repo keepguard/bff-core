@@ -61,10 +61,12 @@ func (d *retryDecorator) isRetryableError(err error) bool {
 		case http.StatusInternalServerError, // 500
 			http.StatusBadGateway,         // 502
 			http.StatusServiceUnavailable, // 503
-			http.StatusGatewayTimeout:     // 504
+			http.StatusGatewayTimeout,     // 504
+			http.StatusRequestTimeout,     // 408
+			http.StatusTooManyRequests:    // 429
 			return true
 		}
-		// NUNCA retry para 4xx (erros de negócio/validação)
+		// NUNCA retry para 4xx de validação/negócio (400, 401, 403, 404, 422)
 		return false
 	}
 

@@ -1,0 +1,23 @@
+FROM alpine:latest
+
+RUN apk --no-cache add ca-certificates tzdata
+
+WORKDIR /app
+
+# Copiar binário da aplicação
+COPY .bin/bff-core ./bff-core
+
+# Copiar utilitário de healthcheck
+COPY .bin/healthcheck ./healthcheck
+
+# Copiar arquivos de configuração
+COPY application*.yml ./
+
+# Porta da aplicação
+EXPOSE 8382
+
+# Configuração padrão do healthcheck
+ENV HEALTHCHECK_URL=http://localhost:8382/health
+
+# Executar aplicação
+CMD ["./bff-core"]

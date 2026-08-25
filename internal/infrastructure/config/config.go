@@ -1,6 +1,7 @@
 package config
 
 import (
+	"os"
 	"strings"
 	"time"
 
@@ -121,24 +122,29 @@ func Load() (*Config, error) {
 	viper.AutomaticEnv()
 
 	// Determina o ambiente
-	env := viper.GetString("env")
+	env := os.Getenv("BFF_CORE_ENV")
+	if env == "" {
+		env = os.Getenv("APP_ENV")
+	}
+	if env == "" {
+		env = viper.GetString("env")
+	}
 	if env == "" {
 		env = "local"
 	}
 
-	// Carrega arquivo específico do ambiente
-	viper.SetConfigName("application-" + env)
+	// Carrega arquivo de configuração base application.yml
+	viper.SetConfigName("application")
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath(".")
+	viper.AddConfigPath("/app")
 	viper.AddConfigPath("./configs")
 	viper.AddConfigPath("/etc/bff-core")
+	_ = viper.ReadInConfig()
 
-	// Lê o arquivo de configuração
-	if err := viper.ReadInConfig(); err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
-			return nil, err
-		}
-	}
+	// Carrega e mescla arquivo específico do ambiente (application-{env}.yml)
+	viper.SetConfigName("application-" + env)
+	_ = viper.MergeInConfig()
 
 	var config Config
 	if err := viper.Unmarshal(&config); err != nil {

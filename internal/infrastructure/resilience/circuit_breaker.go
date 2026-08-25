@@ -2,7 +2,11 @@ package resilience
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net"
+	"net/http"
+	"syscall"
 	"time"
 
 	dto "github.com/keepguard/bff-core/internal/application/dto"
@@ -39,20 +43,32 @@ func NewCircuitBreakerManager(metrics MetricsRecorder) *CircuitBreakerManager {
 	}
 }
 
-// DefaultIsSuccessful considera sucesso respostas normais, incluindo erros 4xx (erros de negócio/validação/credenciais)
+// DefaultIsSuccessful considera sucesso respostas normais e todos os erros 4xx (negócio/validação/credenciais)
+// Apenas falhas reais de infraestrutura (5xx, connection refused, timeouts) contam como falha para o Circuit Breaker.
 func DefaultIsSuccessful(err error) bool {
 	if err == nil {
 		return true
 	}
 
-	// Verifica se é um HTTPError com status 4xx
-	if httpErr, ok := err.(*dto.HTTPError); ok {
+	// 1. Verifica se é um HTTPError com status code 4xx
+	var httpErr *dto.HTTPError
+	if errors.As(err, &httpErr) {
 		return httpErr.Code >= 400 && httpErr.Code < 500
 	}
 
-	// Verifica se é um AppError com status 4xx
-	if appErr, ok := err.(*pkg.AppError); ok {
+	// 2. Verifica se é um AppError com status code 4xx
+	var appErr *pkg.AppError
+	if errors.As(err, &appErr) {
 		return appErr.StatusCode >= 400 && appErr.StatusCode < 500
+	}
+
+	// 3. Verifica erros de conexão de rede ou timeout (estes são falhas de infraestrutura)
+	var opErr *net.OpError
+	if errors.As(err, &opErr) {
+		return false
+	}
+	if errors.Is(err, syscall.ECONNREFUSED) || errors.Is(err, context.DeadlineExceeded) || errors.Is(err, http.ErrHandlerTimeout) {
+		return false
 	}
 
 	return false

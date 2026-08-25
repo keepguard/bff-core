@@ -138,7 +138,7 @@ func TestInMemorySagaExecutor_Execute_WithCompensation(t *testing.T) {
 
 	// Assert
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "step failed")
+	assert.Contains(t, err.Error(), "step2 failed")
 	assert.True(t, step1Executed)
 	assert.True(t, step2Executed)
 	assert.True(t, step1Compensated)
@@ -262,7 +262,7 @@ func TestInMemorySagaExecutor_Execute_RetryExhausted(t *testing.T) {
 
 	// Assert
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "step failed")
+	assert.Contains(t, err.Error(), "persistent failure")
 	assert.Equal(t, 2, attemptCount)
 }
 
@@ -302,7 +302,7 @@ func TestInMemorySagaExecutor_Execute_ContextCancellation(t *testing.T) {
 
 	// Assert
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "step failed")
+	assert.Contains(t, err.Error(), "context canceled")
 }
 
 func TestInMemorySagaExecutor_Execute_Timeout(t *testing.T) {
@@ -340,7 +340,7 @@ func TestInMemorySagaExecutor_Execute_Timeout(t *testing.T) {
 
 	// Assert
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "step failed")
+	assert.Contains(t, err.Error(), "context deadline exceeded")
 }
 
 func TestInMemorySagaExecutor_Execute_NoSteps(t *testing.T) {
@@ -471,7 +471,7 @@ func TestInMemorySagaExecutor_Execute_CompensationOrder(t *testing.T) {
 
 	// Assert
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "step failed")
+	assert.Contains(t, err.Error(), "step3 failed")
 	// Compensação deve ser em ordem reversa
 	assert.Equal(t, []string{"Step2", "Step1"}, compensationOrder)
 }

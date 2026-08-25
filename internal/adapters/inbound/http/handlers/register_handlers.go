@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/keepguard/bff-core/internal/adapters/inbound/http/dto"
 	middlewarePkg "github.com/keepguard/bff-core/internal/adapters/inbound/http/middleware"
@@ -432,6 +433,14 @@ func (h *RegisterHandlers) GetLatestByTypeHandler(c echo.Context) error {
 
 // handleError trata erros de forma padronizada
 func handleError(c echo.Context, err error, correlationID string) error {
+	if err != nil && (strings.Contains(err.Error(), "circuit breaker is open") || strings.Contains(err.Error(), "circuit breaker is half-open")) {
+		return c.JSON(http.StatusServiceUnavailable, pkg.ErrorResponse{
+			Error:   "SERVICE_TEMPORARILY_UNAVAILABLE",
+			Message: "O serviço está temporariamente indisponível. Por favor, tente novamente em instantes.",
+			TraceID: correlationID,
+		})
+	}
+
 	// Trata erros da aplicação (AppError)
 	if appErr, ok := err.(*pkg.AppError); ok {
 		return c.JSON(appErr.StatusCode, appErr.WithTraceID(correlationID).ToResponse())

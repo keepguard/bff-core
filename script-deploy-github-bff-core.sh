@@ -247,8 +247,13 @@ build_image() {
     local version=$1
     log_step "Fazendo build da imagem $SERVICE_NAME:$version..."
     
-    # Build a partir do diretório raiz do projeto usando o Dockerfile em deploy/
-    docker build -f "$DOCKERFILE" -t "$SERVICE_NAME:$version" .
+    # 1. Compilar binários nativamente no host (sem conflito de QEMU do Go 1.24)
+    mkdir -p .bin
+    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o .bin/bff-core cmd/bff-core/main.go
+    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o .bin/healthcheck deploy/healthcheck/main.go
+    
+    # 2. Build da imagem com os binários já prontos
+    docker build --platform linux/amd64 -f deploy/Dockerfile.local -t "$SERVICE_NAME:$version" .
     
     if [ $? -eq 0 ]; then
         log_success "Build da imagem $SERVICE_NAME:$version concluído"
