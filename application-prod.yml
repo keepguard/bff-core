@@ -75,7 +75,7 @@ rate_limit:
 metrics:
   enabled: true
   scrape_path: "/metrics"
-  port: "9090"
+  port: "9092"
 
 log:
   level: "warn"
