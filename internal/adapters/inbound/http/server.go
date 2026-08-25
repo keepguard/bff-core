@@ -16,10 +16,11 @@ import (
 
 // serverImpl representa o servidor HTTP
 type serverImpl struct {
-	echo    *echo.Echo
-	config  *config.Config
-	logger  logger.Logger
-	metrics *metrics.Metrics
+	echo        *echo.Echo
+	config      *config.Config
+	logger      logger.Logger
+	metrics     *metrics.Metrics
+	rateLimiter *middlewarePkg.RateLimiterMiddleware
 }
 
 // NewServer cria um novo servidor HTTP
@@ -27,6 +28,7 @@ func NewServer(
 	config *config.Config,
 	logger logger.Logger,
 	metrics *metrics.Metrics,
+	rateLimiter *middlewarePkg.RateLimiterMiddleware,
 ) Server {
 	e := echo.New()
 	e.HideBanner = true
@@ -49,10 +51,11 @@ func NewServer(
 	e.Use(middlewareInstance.TimeoutMiddleware(config.Server.RequestTimeout))
 
 	return &serverImpl{
-		echo:    e,
-		config:  config,
-		logger:  logger,
-		metrics: metrics,
+		echo:        e,
+		config:      config,
+		logger:      logger,
+		metrics:     metrics,
+		rateLimiter: rateLimiter,
 	}
 }
 
@@ -66,7 +69,7 @@ func (s *serverImpl) Stop(ctx context.Context) error {
 	return s.echo.Shutdown(ctx)
 }
 
-// SetupRoutes configura as rotas da API
+// SetupRoutes configura as rotas da API com proteção de Rate Limit
 func (s *serverImpl) SetupRoutes(handlers Handler) {
 	// Health check
 	s.echo.GET("/health", s.HealthHandler)
@@ -77,27 +80,22 @@ func (s *serverImpl) SetupRoutes(handlers Handler) {
 	// Cria o middleware de endpoint público
 	publicEndpoint := middlewarePkg.NewPublicEndpoint()
 
+	rl := s.rateLimiter
+	rules := s.config.RateLimit.Rules
+
 	// Register routes
 	userGroup := s.echo.Group("/api/v1")
 
 	// ========================================================================
-	// ROTAS PÚBLICAS - Registro de usuários e Documentos Legais
-	// Similar a @PublicEndpoint no Java
+	// ROTAS PÚBLICAS - Registro de usuários e Documentos Legais com Rate Limit
 	// ========================================================================
-	userGroup.POST("/register/init", handlers.InitRegisterHandler, publicEndpoint.Middleware())
-	userGroup.POST("/register/confirm", handlers.ConfirmRegisterHandler, publicEndpoint.Middleware())
-	userGroup.POST("/register/resend", handlers.ResendRegisterTokenHandler, publicEndpoint.Middleware())
-	userGroup.GET("/consents/published", handlers.GetPublishedConsentsHandler, publicEndpoint.Middleware())
-	userGroup.GET("/consents/type/:type/latest", handlers.GetLatestByTypeHandler, publicEndpoint.Middleware())
+	userGroup.POST("/register/init", handlers.InitRegisterHandler, publicEndpoint.Middleware(), rl.Limit("register_init", rules.RegisterInit))
+	userGroup.POST("/register/confirm", handlers.ConfirmRegisterHandler, publicEndpoint.Middleware(), rl.Limit("register_confirm", rules.RegisterConfirm))
+	userGroup.POST("/register/resend", handlers.ResendRegisterTokenHandler, publicEndpoint.Middleware(), rl.Limit("register_resend", rules.RegisterResend))
+	userGroup.GET("/consents/published", handlers.GetPublishedConsentsHandler, publicEndpoint.Middleware(), rl.Limit("consents", rules.Consents))
+	userGroup.GET("/consents/type/:type/latest", handlers.GetLatestByTypeHandler, publicEndpoint.Middleware(), rl.Limit("consents", rules.Consents))
 
-	// ========================================================================
-	// ROTAS PROTEGIDAS (Futuro - usar JWTMiddleware com cfg.JWT.Secret)
-	// jwtMw := middlewarePkg.NewJWTMiddleware(s.config.JWT.Secret, logger)
-	// protectedGroup := s.echo.Group("/api/v1/protected")
-	// protectedGroup.Use(jwtMw.Middleware())
-	// ========================================================================
-
-	s.logger.Info("Rotas configuradas com sucesso",
+	s.logger.Info("Rotas configuradas com sucesso com proteção de Rate Limit",
 		zap.String("port", s.config.Server.Port),
 	)
 }

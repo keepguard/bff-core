@@ -47,6 +47,31 @@ jwt:
   issuer: "keepguard"
   audience: "keepguard-api"
 
+redis:
+  host: ${REDIS_HOST:redis}
+  port: 6379
+  password: ${REDIS_PASSWORD:}
+  db: 0
+
+rate_limit:
+  enabled: true
+  rules:
+    register_init:
+      limit: 5
+      window: 600s
+    register_resend:
+      limit: 3
+      window: 300s
+    register_confirm:
+      limit: 5
+      window: 300s
+    consents:
+      limit: 120
+      window: 60s
+    default:
+      limit: 120
+      window: 60s
+
 metrics:
   enabled: true
   scrape_path: "/metrics"
@@ -55,7 +80,6 @@ metrics:
 log:
   level: "warn"
   format: "json"
-
 
 env: "prod"
 

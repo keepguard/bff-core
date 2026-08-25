@@ -29,6 +29,8 @@ spec:
           value: {{ .Values.env.bffCoreEnv | quote }}
         - name: BFF_CORE_RABBITMQ_HOST
           value: {{ .Values.env.rabbitmqHost | quote }}
+        - name: BFF_CORE_REDIS_HOST
+          value: "redis"
         - name: BFF_CORE_SERVICES_COMPANY_BASE_URL
           value: {{ .Values.env.companyServiceUrl | quote }}
         - name: BFF_CORE_SERVICES_USER_BASE_URL

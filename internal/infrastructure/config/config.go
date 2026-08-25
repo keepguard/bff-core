@@ -9,13 +9,44 @@ import (
 
 // Config representa a configuração da aplicação
 type Config struct {
-	Server   ServerConfig   `mapstructure:"server"`
-	Services ServicesConfig `mapstructure:"services"`
-	RabbitMQ RabbitMQConfig `mapstructure:"rabbitmq"`
-	JWT      JWTConfig      `mapstructure:"jwt"`
-	Metrics  MetricsConfig  `mapstructure:"metrics"`
-	Log      LogConfig      `mapstructure:"log"`
-	Env      string         `mapstructure:"env"`
+	Server    ServerConfig    `mapstructure:"server"`
+	Services  ServicesConfig  `mapstructure:"services"`
+	RabbitMQ  RabbitMQConfig  `mapstructure:"rabbitmq"`
+	JWT       JWTConfig       `mapstructure:"jwt"`
+	Metrics   MetricsConfig   `mapstructure:"metrics"`
+	Log       LogConfig       `mapstructure:"log"`
+	Redis     RedisConfig     `mapstructure:"redis"`
+	RateLimit RateLimitConfig `mapstructure:"rate_limit"`
+	Env       string          `mapstructure:"env"`
+}
+
+// RedisConfig configurações de conexão com Redis
+type RedisConfig struct {
+	Host     string `mapstructure:"host"`
+	Port     int    `mapstructure:"port"`
+	Password string `mapstructure:"password"`
+	DB       int    `mapstructure:"db"`
+}
+
+// RateLimitConfig configurações gerais de Rate Limit
+type RateLimitConfig struct {
+	Enabled bool                  `mapstructure:"enabled"`
+	Rules   RateLimitRulesConfig  `mapstructure:"rules"`
+}
+
+// RateLimitRulesConfig mapeamento das regras específicas
+type RateLimitRulesConfig struct {
+	RegisterInit    RateLimitRule `mapstructure:"register_init"`
+	RegisterResend  RateLimitRule `mapstructure:"register_resend"`
+	RegisterConfirm RateLimitRule `mapstructure:"register_confirm"`
+	Consents        RateLimitRule `mapstructure:"consents"`
+	Default         RateLimitRule `mapstructure:"default"`
+}
+
+// RateLimitRule define o limite e a janela de tempo
+type RateLimitRule struct {
+	Limit  int           `mapstructure:"limit"`
+	Window time.Duration `mapstructure:"window"`
 }
 
 // ServerConfig configurações do servidor HTTP
