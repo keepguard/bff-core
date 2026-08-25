@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/keepguard/bff-core/internal/infrastructure/logger"
+	"github.com/keepguard/bff-core/internal/infrastructure/metrics"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"go.uber.org/zap"
