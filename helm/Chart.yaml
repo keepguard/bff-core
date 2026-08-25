@@ -1,0 +1,6 @@
+apiVersion: v2
+name: bff-core
+description: Helm Chart para o BFF-Core do KeepGuard
+type: application
+version: 1.0.20
+appVersion: "1.0.20"

@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bff-core
+  labels:
+    app: bff-core
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bff-core
+  template:
+    metadata:
+      labels:
+        app: bff-core
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+      - name: bff-core
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        env:
+        - name: SPRING_CLOUD_COMPATIBILITY_VERIFIER_ENABLED
+          value: "false"
+        - name: BFF_CORE_ENV
+          value: {{ .Values.env.bffCoreEnv | quote }}
+        - name: BFF_CORE_RABBITMQ_HOST
+          value: {{ .Values.env.rabbitmqHost | quote }}
+        - name: BFF_CORE_SERVICES_COMPANY_BASE_URL
+          value: {{ .Values.env.companyServiceUrl | quote }}
+        - name: BFF_CORE_SERVICES_USER_BASE_URL
+          value: {{ .Values.env.userServiceUrl | quote }}
+        - name: BFF_CORE_SERVICES_AUTH_BASE_URL
+          value: {{ .Values.env.authServiceUrl | quote }}
+        - name: BFF_CORE_SERVICES_COMMUNICATION_BASE_URL
+          value: {{ .Values.env.communicationServiceUrl | quote }}
+        - name: BFF_CORE_SERVICES_USER_CONSENTS_BASE_URL
+          value: {{ .Values.env.userConsentsServiceUrl | quote }}
+        - name: BFF_CORE_SERVICES_USER_PROFILE_BASE_URL
+          value: {{ .Values.env.userProfileServiceUrl | quote }}
+        - name: KEEPGUARD_VALIDATION_MODERATION_ENABLED
+          value: "false"
+        ports:
+        - containerPort: {{ .Values.service.port }}
+        resources:
+          {{- toYaml .Values.resources | nindent 10 }}
