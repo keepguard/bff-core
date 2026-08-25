@@ -43,3 +43,6 @@ docs/swagger.json
 docs/swagger.yaml
 docs/docs.go
 
+
+# Deploy script backups
+.deploy-backup/
