@@ -14,13 +14,22 @@ import (
 
 // middlewareImpl representa os middlewares HTTP
 type middlewareImpl struct {
-	logger *zap.Logger
+	logger  *zap.Logger
+	metrics *metrics.Metrics
 }
 
 // NewMiddleware cria um novo middleware
 func NewMiddleware(logger *zap.Logger) Middleware {
 	return &middlewareImpl{
 		logger: logger,
+	}
+}
+
+// NewMiddlewareWithMetrics cria um novo middleware com suporte a métricas
+func NewMiddlewareWithMetrics(logger *zap.Logger, metrics *metrics.Metrics) Middleware {
+	return &middlewareImpl{
+		logger:  logger,
+		metrics: metrics,
 	}
 }
 
@@ -195,6 +204,14 @@ func (m *middlewareImpl) MetricsMiddleware() echo.MiddlewareFunc {
 
 			duration := time.Since(start)
 			status := c.Response().Status
+
+			if m.metrics != nil {
+				path := c.Path()
+				if path == "" {
+					path = c.Request().URL.Path
+				}
+				m.metrics.RecordHTTPRequest(c.Request().Method, path, status, duration)
+			}
 
 			m.logger.Debug("HTTP request metrics",
 				zap.String("method", c.Request().Method),
