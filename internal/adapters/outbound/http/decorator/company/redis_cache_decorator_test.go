@@ -37,7 +37,6 @@ func TestRedisCacheDecorator_MissFallsBackToHTTP(t *testing.T) {
 	inner := new(MockCompanyClient)
 	cache := new(mockStringCache)
 	cache.On("Get", mock.Anything, "company_cache:tenantId:tenant-1").Return("", nil)
-	cache.On("Get", mock.Anything, "company_cache:xapp:tenant-1").Return("", nil)
 	inner.On("GetByTenantId", mock.Anything, "tenant-1", "corr-1").
 		Return(companyDto.MSCompanyResponseDTO{ID: "company-http"}, nil)
 
