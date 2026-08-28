@@ -183,7 +183,7 @@ func (d *retryDecorator) GetUserByCodeUser(ctx context.Context, codeUser, token,
 }
 
 // GetByEmail implementa GetByEmail com retry
-func (d *retryDecorator) GetByEmail(ctx context.Context, email, tenantId, correlationID string) (authDto.UserByEmailResponseDTO, error) {
+func (d *retryDecorator) GetByEmail(ctx context.Context, email, tenantId, companyId, correlationID string) (authDto.UserByEmailResponseDTO, error) {
 	var lastErr error
 	var lastResult authDto.UserByEmailResponseDTO
 
@@ -194,7 +194,7 @@ func (d *retryDecorator) GetByEmail(ctx context.Context, email, tenantId, correl
 		default:
 		}
 
-		result, err := d.inner.GetByEmail(ctx, email, tenantId, correlationID)
+		result, err := d.inner.GetByEmail(ctx, email, tenantId, companyId, correlationID)
 
 		if err == nil {
 			return result, nil

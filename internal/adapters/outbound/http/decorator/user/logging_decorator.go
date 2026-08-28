@@ -115,7 +115,7 @@ func (d *userLoggingDecorator) GetUserByCodeUser(ctx context.Context, codeUser, 
 }
 
 // GetByEmail implementa GetByEmail com logging
-func (d *userLoggingDecorator) GetByEmail(ctx context.Context, email, tenantId, correlationID string) (authDto.UserByEmailResponseDTO, error) {
+func (d *userLoggingDecorator) GetByEmail(ctx context.Context, email, tenantId, companyId, correlationID string) (authDto.UserByEmailResponseDTO, error) {
 	start := time.Now()
 
 	d.logger.Info("Iniciando requisição",
@@ -126,7 +126,7 @@ func (d *userLoggingDecorator) GetByEmail(ctx context.Context, email, tenantId, 
 		zap.String("email", email),
 	)
 
-	response, err := d.inner.GetByEmail(ctx, email, tenantId, correlationID)
+	response, err := d.inner.GetByEmail(ctx, email, tenantId, companyId, correlationID)
 	duration := time.Since(start)
 
 	if err != nil {

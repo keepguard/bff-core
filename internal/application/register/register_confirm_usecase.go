@@ -265,6 +265,7 @@ func (uc *registerConfirmUseCaseImpl) buildRegisterConfirmSaga() saga.InMemorySa
 						Username:     user.Email,
 						PasswordHash: confirmResponse.PasswordHash,
 						TenantId: command.TenantId,
+						CompanyID:    user.CompanyID,
 					}
 					loginResponse, err := uc.authClient.RegisterLogin(ctx, registerLoginRequest, command.TenantId, command.CorrelationID, command.ClientId)
 					if err != nil {

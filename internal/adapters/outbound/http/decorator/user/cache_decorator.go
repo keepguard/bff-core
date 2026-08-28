@@ -105,8 +105,8 @@ func (d *cacheDecorator) CreateUser(ctx context.Context, req userDto.MSUserCreat
 }
 
 // GetByEmail implementa GetByEmail (sem cache)
-func (d *cacheDecorator) GetByEmail(ctx context.Context, email, tenantId, correlationID string) (authDto.UserByEmailResponseDTO, error) {
-	return d.inner.GetByEmail(ctx, email, tenantId, correlationID)
+func (d *cacheDecorator) GetByEmail(ctx context.Context, email, tenantId, companyId, correlationID string) (authDto.UserByEmailResponseDTO, error) {
+	return d.inner.GetByEmail(ctx, email, tenantId, companyId, correlationID)
 }
 
 // CreateUserNotify implementa CreateUserNotify (sem cache)

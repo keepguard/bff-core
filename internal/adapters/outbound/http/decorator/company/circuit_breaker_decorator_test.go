@@ -6,7 +6,6 @@ import (
 	"time"
 
 	companyDto "github.com/keepguard/bff-core/internal/adapters/outbound/http/dto/company"
-	portsclient "github.com/keepguard/bff-core/internal/domain/ports/client"
 	"github.com/keepguard/bff-core/internal/infrastructure/resilience"
 	"github.com/sony/gobreaker"
 	"github.com/stretchr/testify/assert"
@@ -35,7 +34,7 @@ func TestCircuitBreakerDecorator_GetByTenantId_Success(t *testing.T) {
 
 	expectedResponse := companyDto.MSCompanyResponseDTO{
 		ID:   "123",
-		Code: "TEST123",
+		CodeCompany: "TEST123",
 		Name: "Test Company",
 	}
 

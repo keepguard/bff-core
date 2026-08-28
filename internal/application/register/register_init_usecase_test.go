@@ -314,7 +314,8 @@ func TestRegisterInitUseCase_Execute_VerifyRequestData(t *testing.T) {
 	var capturedRequest userDto.MSUserRegisterInitRequestDTO
 	mockUserClient.On("InitRegister", mock.Anything, mock.MatchedBy(func(req userDto.MSUserRegisterInitRequestDTO) bool {
 		capturedRequest = req
-		return req.Email == "test@example.com" &&
+		return req.CompanyID == company.ID &&
+			req.Email == "test@example.com" &&
 			req.NameFull == "Test User" &&
 			req.Password == "password123" &&
 			req.Phone == "+5511999999999" &&
@@ -367,6 +368,7 @@ func TestRegisterInitUseCase_Execute_VerifyRequestData(t *testing.T) {
 	assert.Equal(t, 1800, result.ExpiresIn)
 
 	// Verify captured data
+	assert.Equal(t, "company-123", capturedRequest.CompanyID)
 	assert.Equal(t, "test@example.com", capturedRequest.Email)
 	assert.Equal(t, "Test User", capturedRequest.NameFull)
 	assert.Equal(t, "password123", capturedRequest.Password)

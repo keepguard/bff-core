@@ -52,6 +52,7 @@ func (uc *registerInitUseCaseImpl) Execute(command appdto.RegisterInitCommand) (
 
 	// Passo 2: Criar requisição de registro
 	registerRequest := userDto.MSUserRegisterInitRequestDTO{
+		CompanyID:                  company.ID,
 		Email:                      command.Email,
 		NameFull:                   command.NameFull,
 		Password:                   command.Password,

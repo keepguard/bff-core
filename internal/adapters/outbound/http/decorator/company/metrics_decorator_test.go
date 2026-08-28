@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	appdto "github.com/keepguard/bff-core/internal/application/dto"
-	portsclient "github.com/keepguard/bff-core/internal/domain/ports/client"
+	companyDto "github.com/keepguard/bff-core/internal/adapters/outbound/http/dto/company"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -21,7 +21,7 @@ func TestCompanyMetricsDecorator_GetByTenantId_Success(t *testing.T) {
 
 	expectedResponse := companyDto.MSCompanyResponseDTO{
 		ID:   "123",
-		Code: "TEST123",
+		CodeCompany: "TEST123",
 		Name: "Test Company",
 	}
 
@@ -121,7 +121,7 @@ func TestCompanyMetricsDecorator_RecordsMetrics(t *testing.T) {
 
 	expectedResponse := companyDto.MSCompanyResponseDTO{
 		ID:   "123",
-		Code: "TEST123",
+		CodeCompany: "TEST123",
 		Name: "Test Company",
 	}
 

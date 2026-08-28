@@ -45,7 +45,7 @@ func TestUserLoggingDecorator_CreateUser_Success(t *testing.T) {
 		Type:      "PERSON",
 	}
 
-	mockInner.On("CreateUser", mock.Anything, req, "token", "app", "corr-123").Return(expectedResponse, nil).Once()
+	mockInner.On("CreateUser", mock.Anything, req, "app", "corr-123").Return(expectedResponse, nil).Once()
 
 	decorator := NewUserLoggingDecorator(mockInner, logger, serviceName)
 
@@ -84,7 +84,7 @@ func TestUserLoggingDecorator_CreateUser_Error(t *testing.T) {
 	}
 	expectedError := errors.New("user already exists")
 
-	mockInner.On("CreateUser", mock.Anything, req, "token", "app", "corr-123").Return(userDto.MSUserResponseDTO{}, expectedError).Once()
+	mockInner.On("CreateUser", mock.Anything, req, "app", "corr-123").Return(userDto.MSUserResponseDTO{}, expectedError).Once()
 
 	decorator := NewUserLoggingDecorator(mockInner, logger, serviceName)
 

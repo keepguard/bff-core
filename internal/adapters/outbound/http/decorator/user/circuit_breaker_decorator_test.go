@@ -146,10 +146,10 @@ func TestCircuitBreakerDecorator_GetByEmail_Success(t *testing.T) {
 		Email: "test@example.com",
 	}
 
-	mockInner.On("GetByEmail", ctx, email, tenantId, correlationID).Return(expectedResponse, nil)
+	mockInner.On("GetByEmail", ctx, email, tenantId, "company-123", correlationID).Return(expectedResponse, nil)
 
 	// Act
-	result, err := decorator.GetByEmail(ctx, email, tenantId, correlationID)
+	result, err := decorator.GetByEmail(ctx, email, tenantId, "company-123", correlationID)
 
 	// Assert
 	assert.NoError(t, err)

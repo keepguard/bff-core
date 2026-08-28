@@ -27,7 +27,7 @@ func TestRetryDecorator_GetByTenantId_Success(t *testing.T) {
 
 	expectedResponse := companyDto.MSCompanyResponseDTO{
 		ID:   "123",
-		Code: "TEST123",
+		CodeCompany: "TEST123",
 		Name: "Test Company",
 	}
 
@@ -57,7 +57,7 @@ func TestRetryDecorator_GetByTenantId_RetryableError_Success(t *testing.T) {
 
 	expectedResponse := companyDto.MSCompanyResponseDTO{
 		ID:   "123",
-		Code: "TEST123",
+		CodeCompany: "TEST123",
 		Name: "Test Company",
 	}
 

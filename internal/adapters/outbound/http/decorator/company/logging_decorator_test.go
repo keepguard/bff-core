@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	portsclient "github.com/keepguard/bff-core/internal/domain/ports/client"
+	companyDto "github.com/keepguard/bff-core/internal/adapters/outbound/http/dto/company"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest/observer"
@@ -40,9 +40,8 @@ func TestCompanyLoggingDecorator_GetByTenantId_Success(t *testing.T) {
 
 	expectedResponse := companyDto.MSCompanyResponseDTO{
 		ID:          "company-123",
-		Code:        "TEST123",
+		CodeCompany: "TEST123",
 		Name:        "Test Company",
-		Description: "Test Company Description",
 		Status:      "ACTIVE",
 	}
 

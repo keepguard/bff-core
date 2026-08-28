@@ -212,6 +212,14 @@ func GetClaimsFromContext(c echo.Context) *pkg.JWTClaims {
 	return nil
 }
 
+// GetCompanyIDFromContext extrai o companyId das claims JWT.
+func GetCompanyIDFromContext(c echo.Context) string {
+	if claims := GetClaimsFromContext(c); claims != nil {
+		return claims.CompanyID
+	}
+	return ""
+}
+
 // GetUserIDFromContext extrai o ID do usuário do contexto
 func GetUserIDFromContext(c echo.Context) string {
 	if claims := GetClaimsFromContext(c); claims != nil {

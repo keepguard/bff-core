@@ -16,7 +16,7 @@ type UserClient interface {
 	GetUserByCodeUser(ctx context.Context, codeUser, token, tenantId, correlationID string) (userDto.MSUserResponseDTO, error)
 
 	// GetByEmail busca um usuário por email no ms-auth
-	GetByEmail(ctx context.Context, email, tenantId, correlationID string) (authDto.UserByEmailResponseDTO, error)
+	GetByEmail(ctx context.Context, email, tenantId, companyId, correlationID string) (authDto.UserByEmailResponseDTO, error)
 
 	// CreateUserNotify cria preferências de notificação para um usuário
 	CreateUserNotify(ctx context.Context, req userDto.MSUserNotifyCreateRequestDTO, tenantId, correlationID string) (userDto.MSUserNotifyResponseDTO, error)

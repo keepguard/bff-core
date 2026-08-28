@@ -23,8 +23,8 @@ func (m *MockUserClient) GetUserByCodeUser(ctx context.Context, codeUser, token,
 	return args.Get(0).(userDto.MSUserResponseDTO), args.Error(1)
 }
 
-func (m *MockUserClient) GetByEmail(ctx context.Context, email, tenantId, correlationID string) (authDto.UserByEmailResponseDTO, error) {
-	args := m.Called(ctx, email, tenantId, correlationID)
+func (m *MockUserClient) GetByEmail(ctx context.Context, email, tenantId, companyId, correlationID string) (authDto.UserByEmailResponseDTO, error) {
+	args := m.Called(ctx, email, tenantId, companyId, correlationID)
 	return args.Get(0).(authDto.UserByEmailResponseDTO), args.Error(1)
 }
 

@@ -11,7 +11,7 @@ import (
 	authDto "github.com/keepguard/bff-core/internal/adapters/outbound/http/dto/auth"
 	userDto "github.com/keepguard/bff-core/internal/adapters/outbound/http/dto/user"
 	appdto "github.com/keepguard/bff-core/internal/application/dto"
-	"github.com/keepguard/bff-core/internal/domain/ports/client"
+	domainclient "github.com/keepguard/bff-core/internal/domain/ports/client"
 	"github.com/keepguard/bff-core/internal/infrastructure/config"
 	"go.uber.org/zap"
 )
@@ -24,7 +24,7 @@ type userClient struct {
 }
 
 // NewUserClient cria uma nova instância do UserClient
-func NewUserClient(config *config.Config, logger *zap.Logger) client.UserClient {
+func NewUserClient(config *config.Config, logger *zap.Logger) domainclient.UserClient {
 	httpClient := resty.New()
 	httpClient.SetTimeout(30 * time.Second)
 	httpClient.SetRetryCount(2)
@@ -38,7 +38,7 @@ func NewUserClient(config *config.Config, logger *zap.Logger) client.UserClient 
 }
 
 // NewUserClientWithoutRetry cria uma nova instância do UserClient SEM retry automático
-func NewUserClientWithoutRetry(config *config.Config, logger *zap.Logger) client.UserClient {
+func NewUserClientWithoutRetry(config *config.Config, logger *zap.Logger) domainclient.UserClient {
 	httpClient := resty.New()
 	httpClient.SetTimeout(30 * time.Second)
 	// SEM SetRetryCount - sem retry no Resty
@@ -82,13 +82,16 @@ func (c *userClient) CreateUser(ctx context.Context, req userDto.MSUserCreateReq
 func (c *userClient) GetUserByCodeUser(ctx context.Context, codeUser, token, tenantId, correlationID string) (userDto.MSUserResponseDTO, error) {
 	url := fmt.Sprintf("%s/api/v1/users/code/%s", c.config.Services.User.BaseURL, codeUser)
 
-	resp, err := c.httpClient.R().
+	req := c.httpClient.R().
 		SetContext(ctx).
 		SetHeader("Authorization", "Bearer "+token).
 		SetHeader("X-Correlation-ID", correlationID).
 		SetHeader("X-Tenant-Id", tenantId).
-		SetHeader("Content-Type", "application/json").
-		Get(url)
+		SetHeader("Content-Type", "application/json")
+	if companyID := domainclient.CompanyIDFromContext(ctx); companyID != "" {
+		req.SetHeader("X-Company-Id", companyID)
+	}
+	resp, err := req.Get(url)
 
 	if err != nil {
 		return userDto.MSUserResponseDTO{}, fmt.Errorf("erro ao comunicar com user service: %w", err)
@@ -107,13 +110,14 @@ func (c *userClient) GetUserByCodeUser(ctx context.Context, codeUser, token, ten
 }
 
 // GetByEmail busca um usuário por email no ms-user
-func (c *userClient) GetByEmail(ctx context.Context, email, tenantId, correlationID string) (authDto.UserByEmailResponseDTO, error) {
+func (c *userClient) GetByEmail(ctx context.Context, email, tenantId, companyId, correlationID string) (authDto.UserByEmailResponseDTO, error) {
 	url := fmt.Sprintf("%s/api/v1/users/email/%s", c.config.Services.User.BaseURL, email)
 
 	resp, err := c.httpClient.R().
 		SetContext(ctx).
 		SetHeader("X-Correlation-ID", correlationID).
 		SetHeader("X-Tenant-Id", tenantId).
+		SetHeader("X-Company-Id", companyId).
 		SetHeader("Content-Type", "application/json").
 		Get(url)
 

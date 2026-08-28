@@ -56,9 +56,9 @@ func (d *circuitBreakerDecorator) GetUserByCodeUser(ctx context.Context, codeUse
 }
 
 // GetByEmail implementa GetByEmail com circuit breaker
-func (d *circuitBreakerDecorator) GetByEmail(ctx context.Context, email, tenantId, correlationID string) (authDto.UserByEmailResponseDTO, error) {
+func (d *circuitBreakerDecorator) GetByEmail(ctx context.Context, email, tenantId, companyId, correlationID string) (authDto.UserByEmailResponseDTO, error) {
 	result, err := d.circuitBreaker.Execute(ctx, d.serviceName, func() (interface{}, error) {
-		return d.inner.GetByEmail(ctx, email, tenantId, correlationID)
+		return d.inner.GetByEmail(ctx, email, tenantId, companyId, correlationID)
 	})
 
 	if err != nil {

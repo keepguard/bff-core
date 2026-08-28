@@ -43,7 +43,8 @@ func (h *UserHandlers) GetMeHandler(c echo.Context) error {
 		})
 	}
 
-	user, err := h.userClient.GetUserByCodeUser(c.Request().Context(), codeUser, token, tenantId, correlationID)
+	ctx := client.WithCompanyID(c.Request().Context(), middlewarePkg.GetCompanyIDFromContext(c))
+	user, err := h.userClient.GetUserByCodeUser(ctx, codeUser, token, tenantId, correlationID)
 	if err != nil {
 		h.logger.Error("Erro ao buscar perfil do usuário",
 			zap.String("correlationId", correlationID),

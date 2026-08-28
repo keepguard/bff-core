@@ -92,10 +92,10 @@ func (d *userMetricsDecorator) GetUserByCodeUser(ctx context.Context, codeUser, 
 }
 
 // GetByEmail implementa GetByEmail com métricas
-func (d *userMetricsDecorator) GetByEmail(ctx context.Context, email, tenantId, correlationID string) (authDto.UserByEmailResponseDTO, error) {
+func (d *userMetricsDecorator) GetByEmail(ctx context.Context, email, tenantId, companyId, correlationID string) (authDto.UserByEmailResponseDTO, error) {
 	start := time.Now()
 
-	response, err := d.inner.GetByEmail(ctx, email, tenantId, correlationID)
+	response, err := d.inner.GetByEmail(ctx, email, tenantId, companyId, correlationID)
 
 	duration := time.Since(start)
 	statusCode := d.getStatusCodeFromError(err)

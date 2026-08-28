@@ -6,7 +6,6 @@ import (
 	"time"
 
 	companyDto "github.com/keepguard/bff-core/internal/adapters/outbound/http/dto/company"
-	portsclient "github.com/keepguard/bff-core/internal/domain/ports/client"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -25,7 +24,7 @@ func TestCacheDecorator_GetByTenantId_CacheHit(t *testing.T) {
 
 	expectedResponse := companyDto.MSCompanyResponseDTO{
 		ID:   "123",
-		Code: "TEST123",
+		CodeCompany: "TEST123",
 		Name: "Test Company",
 	}
 
@@ -61,7 +60,7 @@ func TestCacheDecorator_GetByTenantId_CacheExpired(t *testing.T) {
 
 	expectedResponse := companyDto.MSCompanyResponseDTO{
 		ID:   "123",
-		Code: "TEST123",
+		CodeCompany: "TEST123",
 		Name: "Test Company",
 	}
 
