@@ -158,6 +158,7 @@ func (c *authClient) CreateUser(ctx context.Context, req authDto.AuthUserCreateR
 		SetBody(authReq).
 		SetHeader("X-Correlation-ID", correlationID).
 		SetHeader("X-Company-Id", companyHeader(ctx)).
+		SetHeader("X-Tenant-Id", tenantId).
 		SetHeader("Content-Type", "application/json").
 		Post(url)
 

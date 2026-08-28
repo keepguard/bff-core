@@ -59,6 +59,7 @@ func (c *userClient) CreateUser(ctx context.Context, req userDto.MSUserCreateReq
 		SetBody(req).
 		SetHeader("X-Correlation-ID", correlationID).
 		SetHeader("X-Company-Id", companyHeader(ctx)).
+		SetHeader("X-Tenant-Id", tenantId).
 		SetHeader("Content-Type", "application/json").
 		Post(url)
 
