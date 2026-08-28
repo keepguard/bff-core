@@ -92,7 +92,6 @@ func (c *userClient) GetUserByCodeUser(ctx context.Context, codeUser, token, ten
 	req := c.httpClient.R().
 		SetContext(ctx).
 		SetHeader("X-Correlation-ID", correlationID).
-		SetHeader("X-Tenant-Id", tenantId).
 		SetHeader("X-Company-Id", companyID).
 		SetHeader("Content-Type", "application/json")
 	resp, err := req.Get(url)
@@ -120,7 +119,6 @@ func (c *userClient) GetByEmail(ctx context.Context, email, tenantId, companyId,
 	resp, err := c.httpClient.R().
 		SetContext(ctx).
 		SetHeader("X-Correlation-ID", correlationID).
-		SetHeader("X-Tenant-Id", tenantId).
 		SetHeader("X-Company-Id", companyId).
 		SetHeader("Content-Type", "application/json").
 		Get(url)
