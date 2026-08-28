@@ -15,15 +15,17 @@ import (
 
 // UserHandlers handlers autenticados do perfil do usuário logado.
 type UserHandlers struct {
-	userClient client.UserClient
-	logger     *zap.Logger
+	userClient    client.UserClient
+	companyClient client.CompanyClient
+	logger        *zap.Logger
 }
 
 // NewUserHandlers cria UserHandlers.
-func NewUserHandlers(userClient client.UserClient, logger *zap.Logger) *UserHandlers {
+func NewUserHandlers(userClient client.UserClient, companyClient client.CompanyClient, logger *zap.Logger) *UserHandlers {
 	return &UserHandlers{
-		userClient: userClient,
-		logger:     logger,
+		userClient:    userClient,
+		companyClient: companyClient,
+		logger:        logger,
 	}
 }
 
@@ -43,7 +45,24 @@ func (h *UserHandlers) GetMeHandler(c echo.Context) error {
 		})
 	}
 
-	ctx := client.WithCompanyID(c.Request().Context(), middlewarePkg.GetCompanyIDFromContext(c))
+	company, err := h.companyClient.GetByTenantId(c.Request().Context(), tenantId, correlationID)
+	if err != nil {
+		h.logger.Error("Erro ao resolver company pelo tenant",
+			zap.String("correlationId", correlationID),
+			zap.String("tenantId", tenantId),
+			zap.Error(err),
+		)
+		return handleError(c, err, correlationID)
+	}
+	if company.ID == "" {
+		return c.JSON(http.StatusNotFound, pkg.ErrorResponse{
+			Error:   "COMPANY_NOT_FOUND",
+			Message: "Empresa não encontrada para o tenant informado",
+			TraceID: correlationID,
+		})
+	}
+
+	ctx := client.WithCompanyID(c.Request().Context(), company.ID)
 	user, err := h.userClient.GetUserByCodeUser(ctx, codeUser, token, tenantId, correlationID)
 	if err != nil {
 		h.logger.Error("Erro ao buscar perfil do usuário",

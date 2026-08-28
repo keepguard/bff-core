@@ -8,7 +8,9 @@ import (
 	"testing"
 
 	inboundDto "github.com/keepguard/bff-core/internal/adapters/inbound/http/dto"
+	companydecorator "github.com/keepguard/bff-core/internal/adapters/outbound/http/decorator/company"
 	userdecorator "github.com/keepguard/bff-core/internal/adapters/outbound/http/decorator/user"
+	companyDto "github.com/keepguard/bff-core/internal/adapters/outbound/http/dto/company"
 	userDto "github.com/keepguard/bff-core/internal/adapters/outbound/http/dto/user"
 	appdto "github.com/keepguard/bff-core/internal/application/dto"
 	"github.com/keepguard/bff-core/internal/pkg"
@@ -17,6 +19,13 @@ import (
 	"github.com/stretchr/testify/mock"
 	"go.uber.org/zap"
 )
+
+func stubCompanyClient() *companydecorator.MockCompanyClient {
+	mockCompany := new(companydecorator.MockCompanyClient)
+	mockCompany.On("GetByTenantId", mock.Anything, "tenant-1", "corr-1").
+		Return(companyDto.MSCompanyResponseDTO{ID: "company-1"}, nil)
+	return mockCompany
+}
 
 func TestGetMeHandler_UsesSubAndReturnsProfile(t *testing.T) {
 	e := echo.New()
@@ -39,7 +48,7 @@ func TestGetMeHandler_UsesSubAndReturnsProfile(t *testing.T) {
 			PersonProfile: &userDto.PersonProfileDTO{FullName: "Rafael Soares"},
 		}, nil)
 
-	h := NewUserHandlers(mockUser, zap.NewNop())
+	h := NewUserHandlers(mockUser, stubCompanyClient(), zap.NewNop())
 	err := h.GetMeHandler(c)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, rec.Code)
@@ -63,11 +72,13 @@ func TestGetMeHandler_UnauthorizedWhenMissingSub(t *testing.T) {
 	c.Set("claims", &pkg.JWTClaims{})
 
 	mockUser := new(userdecorator.MockUserClient)
-	h := NewUserHandlers(mockUser, zap.NewNop())
+	mockCompany := new(companydecorator.MockCompanyClient)
+	h := NewUserHandlers(mockUser, mockCompany, zap.NewNop())
 	err := h.GetMeHandler(c)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusUnauthorized, rec.Code)
 	mockUser.AssertNotCalled(t, "GetUserByCodeUser")
+	mockCompany.AssertNotCalled(t, "GetByTenantId")
 }
 
 func TestGetMeHandler_Propagates403(t *testing.T) {
@@ -84,11 +95,33 @@ func TestGetMeHandler_Propagates403(t *testing.T) {
 	mockUser.On("GetUserByCodeUser", mock.Anything, "user-sub-1", "jwt-token", "tenant-1", "corr-1").
 		Return(userDto.MSUserResponseDTO{}, &appdto.HTTPError{Code: http.StatusForbidden, Message: "Sem permissão"})
 
-	h := NewUserHandlers(mockUser, zap.NewNop())
+	h := NewUserHandlers(mockUser, stubCompanyClient(), zap.NewNop())
 	err := h.GetMeHandler(c)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusForbidden, rec.Code)
 	mockUser.AssertExpectations(t)
+}
+
+func TestGetMeHandler_Returns404WhenCompanyMissing(t *testing.T) {
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/users/me", nil)
+	req.Header.Set("X-Correlation-ID", "corr-1")
+	req.Header.Set("X-Tenant-Id", "tenant-1")
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.Set("token", "jwt-token")
+	c.Set("claims", &pkg.JWTClaims{Sub: "user-sub-1"})
+
+	mockUser := new(userdecorator.MockUserClient)
+	mockCompany := new(companydecorator.MockCompanyClient)
+	mockCompany.On("GetByTenantId", mock.Anything, "tenant-1", "corr-1").
+		Return(companyDto.MSCompanyResponseDTO{}, nil)
+
+	h := NewUserHandlers(mockUser, mockCompany, zap.NewNop())
+	err := h.GetMeHandler(c)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+	mockUser.AssertNotCalled(t, "GetUserByCodeUser")
 }
 
 func TestToMeProfile_DropsDocumentFields(t *testing.T) {

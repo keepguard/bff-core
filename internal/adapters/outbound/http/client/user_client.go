@@ -84,14 +84,17 @@ func (c *userClient) CreateUser(ctx context.Context, req userDto.MSUserCreateReq
 func (c *userClient) GetUserByCodeUser(ctx context.Context, codeUser, token, tenantId, correlationID string) (userDto.MSUserResponseDTO, error) {
 	url := fmt.Sprintf("%s/internal/v1/users/code/%s", c.config.Services.User.BaseURL, codeUser)
 
+	companyID := domainclient.CompanyIDFromContext(ctx)
+	if companyID == "" {
+		return userDto.MSUserResponseDTO{}, fmt.Errorf("companyId é obrigatório para buscar usuário")
+	}
+
 	req := c.httpClient.R().
 		SetContext(ctx).
 		SetHeader("X-Correlation-ID", correlationID).
 		SetHeader("X-Tenant-Id", tenantId).
+		SetHeader("X-Company-Id", companyID).
 		SetHeader("Content-Type", "application/json")
-	if companyID := domainclient.CompanyIDFromContext(ctx); companyID != "" {
-		req.SetHeader("X-Company-Id", companyID)
-	}
 	resp, err := req.Get(url)
 
 	if err != nil {
