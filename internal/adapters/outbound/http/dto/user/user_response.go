@@ -17,7 +17,7 @@ type MSUserResponseDTO struct {
 	PreferredLocale string                `json:"preferredLocale,omitempty"`
 	Timezone        string                `json:"timezone,omitempty"`
 	AvatarURL       string                `json:"avatarUrl,omitempty"`
-	DisplayHandle   string                `json:"display_handle,omitempty"`
+	DisplayHandle   string                `json:"displayHandle,omitempty"`
 	PersonProfile   *PersonProfileDTO     `json:"personProfile,omitempty"`
 	CreatedAt       companyDto.CustomTime `json:"createdAt"`
 	UpdatedAt       companyDto.CustomTime `json:"updatedAt"`

@@ -16,6 +16,8 @@ func (ct *CustomTime) UnmarshalJSON(b []byte) error {
 
 	// Tenta fazer parse com diferentes formatos
 	formats := []string{
+		time.RFC3339Nano,
+		time.RFC3339,
 		"2006-01-02T15:04:05.999999",
 		"2006-01-02T15:04:05.99999",
 		"2006-01-02T15:04:05.9999",
@@ -23,7 +25,6 @@ func (ct *CustomTime) UnmarshalJSON(b []byte) error {
 		"2006-01-02T15:04:05.99",
 		"2006-01-02T15:04:05.9",
 		"2006-01-02T15:04:05",
-		time.RFC3339,
 	}
 
 	var err error

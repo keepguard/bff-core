@@ -4,7 +4,8 @@
 *.dll
 *.so
 *.dylib
-bff-core
+/bff-core
+.bin/
 
 # Test binary, built with `go test -c`
 *.test
