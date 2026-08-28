@@ -32,9 +32,18 @@ func NewUserHandlers(userClient client.UserClient, companyClient client.CompanyC
 // GetMeHandler retorna o perfil do usuário autenticado (sub do JWT).
 func (h *UserHandlers) GetMeHandler(c echo.Context) error {
 	correlationID := middlewarePkg.GetCorrelationID(c)
-	tenantId := middlewarePkg.GetTenantId(c)
+	tenantId := middlewarePkg.ResolveTenantId(c, middlewarePkg.GetClaimsFromContext(c))
 	token := middlewarePkg.GetTokenFromContext(c)
 	codeUser := middlewarePkg.GetUserIDFromContext(c)
+
+	if tenantId == "" {
+		h.logger.Warn("JWT sem tenant_id", zap.String("correlationId", correlationID))
+		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
+			Error:   "MISSING_TENANT",
+			Message: "tenant_id do token JWT é obrigatório",
+			TraceID: correlationID,
+		})
+	}
 
 	if codeUser == "" {
 		h.logger.Warn("JWT sem sub/codeUser", zap.String("correlationId", correlationID))

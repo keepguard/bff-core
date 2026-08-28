@@ -31,9 +31,8 @@ func (j *JWTMiddleware) Middleware() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			correlationID := GetCorrelationID(c)
-			tenantId := GetTenantId(c)
+			tenantIdHeader := GetTenantId(c)
 
-			// Valida headers obrigatórios
 			if correlationID == "" {
 				j.logger.Warn("X-Correlation-ID ausente")
 				return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
@@ -43,22 +42,10 @@ func (j *JWTMiddleware) Middleware() echo.MiddlewareFunc {
 				})
 			}
 
-			if tenantId == "" {
-				j.logger.Warn("X-Tenant-Id ausente",
-					zap.String("correlationId", correlationID))
-				return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
-					Error:   "MISSING_HEADER",
-					Message: "Header X-Tenant-Id é obrigatório",
-					TraceID: correlationID,
-				})
-			}
-
-			// Extrai token do header
 			token, err := extractToken(c)
 			if err != nil {
 				j.logger.Error("Erro ao extrair token JWT",
 					zap.String("correlationId", correlationID),
-					zap.String("tenantId", tenantId),
 					zap.Error(err),
 				)
 				return c.JSON(http.StatusUnauthorized, pkg.ErrorResponse{
@@ -68,15 +55,12 @@ func (j *JWTMiddleware) Middleware() echo.MiddlewareFunc {
 				})
 			}
 
-			// Adiciona token ao contexto
 			c.Set("token", token)
 
-			// VALIDA TOKEN LOCALMENTE (sem chamar MS-Auth ou BFF-Auth)
-			claims, err := j.validateTokenLocal(token, tenantId)
+			claims, err := j.validateTokenLocal(token, tenantIdHeader)
 			if err != nil {
 				j.logger.Error("Token JWT inválido (validação local)",
 					zap.String("correlationId", correlationID),
-					zap.String("tenantId", tenantId),
 					zap.Error(err),
 				)
 				return c.JSON(http.StatusUnauthorized, pkg.ErrorResponse{
@@ -86,10 +70,18 @@ func (j *JWTMiddleware) Middleware() echo.MiddlewareFunc {
 				})
 			}
 
-			// Adiciona claims ao contexto
+			if ResolveTenantId(c, claims) == "" {
+				j.logger.Warn("tenant_id ausente no JWT e no header",
+					zap.String("correlationId", correlationID))
+				return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
+					Error:   "MISSING_TENANT",
+					Message: "tenant_id do token JWT é obrigatório",
+					TraceID: correlationID,
+				})
+			}
+
 			c.Set("claims", claims)
 
-			// Extrai informações do usuário dos claims
 			if claims.CodeUser != "" {
 				SetUserID(c, claims.CodeUser)
 			} else if claims.Sub != "" {
@@ -111,7 +103,6 @@ func (j *JWTMiddleware) Middleware() echo.MiddlewareFunc {
 // validateTokenLocal valida JWT localmente usando secret compartilhado
 func (j *JWTMiddleware) validateTokenLocal(tokenString, tenantIdHeader string) (*pkg.JWTClaims, error) {
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-		// Verificar método de assinatura
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("método de assinatura inválido: %v", token.Header["alg"])
 		}
@@ -126,20 +117,17 @@ func (j *JWTMiddleware) validateTokenLocal(tokenString, tenantIdHeader string) (
 		return nil, fmt.Errorf("token inválido")
 	}
 
-	// Extrair claims como MapClaims
 	mapClaims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
 		return nil, fmt.Errorf("claims inválidos")
 	}
 
-	// Validar expiração
 	if exp, ok := mapClaims["exp"].(float64); ok {
 		if time.Unix(int64(exp), 0).Before(time.Now()) {
 			return nil, fmt.Errorf("token expirado")
 		}
 	}
 
-	// Converter MapClaims para JWTClaims
 	claims := &pkg.JWTClaims{}
 	if codeUser, ok := mapClaims["codeUser"].(string); ok {
 		claims.CodeUser = codeUser
@@ -155,9 +143,6 @@ func (j *JWTMiddleware) validateTokenLocal(tokenString, tenantIdHeader string) (
 	} else if xApp, ok := mapClaims["tenantId"].(string); ok {
 		claims.TenantId = xApp
 	}
-	if companyID, ok := mapClaims["companyId"].(string); ok {
-		claims.CompanyID = companyID
-	}
 	if userID, ok := mapClaims["userId"].(string); ok {
 		claims.UserID = userID
 	}
@@ -166,8 +151,7 @@ func (j *JWTMiddleware) validateTokenLocal(tokenString, tenantIdHeader string) (
 	}
 	claims.Roles = stringSliceFromClaim(mapClaims["roles"])
 
-	// Validar X-Tenant-Id do token com header
-	if claims.TenantId != "" && claims.TenantId != tenantIdHeader {
+	if claims.TenantId != "" && tenantIdHeader != "" && claims.TenantId != tenantIdHeader {
 		return nil, fmt.Errorf("tenantId mismatch: token=%s, header=%s", claims.TenantId, tenantIdHeader)
 	}
 
@@ -236,12 +220,17 @@ func GetClaimsFromContext(c echo.Context) *pkg.JWTClaims {
 	return nil
 }
 
-// GetCompanyIDFromContext extrai o companyId das claims JWT.
-func GetCompanyIDFromContext(c echo.Context) string {
-	if claims := GetClaimsFromContext(c); claims != nil {
-		return claims.CompanyID
+// ResolveTenantId retorna o tenant do JWT; se ausente, usa o header X-Tenant-Id.
+func ResolveTenantId(c echo.Context, claims *pkg.JWTClaims) string {
+	if claims != nil && claims.TenantId != "" {
+		return claims.TenantId
 	}
-	return ""
+	if claims == nil {
+		if fromCtx := GetClaimsFromContext(c); fromCtx != nil && fromCtx.TenantId != "" {
+			return fromCtx.TenantId
+		}
+	}
+	return GetTenantId(c)
 }
 
 // GetUserIDFromContext extrai o ID do usuário do contexto

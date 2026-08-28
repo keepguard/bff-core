@@ -35,7 +35,7 @@ func TestGetMeHandler_UsesSubAndReturnsProfile(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	c.Set("token", "jwt-token")
-	c.Set("claims", &pkg.JWTClaims{Sub: "user-sub-1"})
+	c.Set("claims", &pkg.JWTClaims{Sub: "user-sub-1", TenantId: "tenant-1"})
 
 	mockUser := new(userdecorator.MockUserClient)
 	mockUser.On("GetUserByCodeUser", mock.Anything, "user-sub-1", "jwt-token", "tenant-1", "corr-1").
@@ -89,7 +89,7 @@ func TestGetMeHandler_Propagates403(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	c.Set("token", "jwt-token")
-	c.Set("claims", &pkg.JWTClaims{Sub: "user-sub-1"})
+	c.Set("claims", &pkg.JWTClaims{Sub: "user-sub-1", TenantId: "tenant-1"})
 
 	mockUser := new(userdecorator.MockUserClient)
 	mockUser.On("GetUserByCodeUser", mock.Anything, "user-sub-1", "jwt-token", "tenant-1", "corr-1").
@@ -110,7 +110,7 @@ func TestGetMeHandler_Returns404WhenCompanyMissing(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	c.Set("token", "jwt-token")
-	c.Set("claims", &pkg.JWTClaims{Sub: "user-sub-1"})
+	c.Set("claims", &pkg.JWTClaims{Sub: "user-sub-1", TenantId: "tenant-1"})
 
 	mockUser := new(userdecorator.MockUserClient)
 	mockCompany := new(companydecorator.MockCompanyClient)
@@ -122,6 +122,31 @@ func TestGetMeHandler_Returns404WhenCompanyMissing(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusNotFound, rec.Code)
 	mockUser.AssertNotCalled(t, "GetUserByCodeUser")
+}
+
+func TestGetMeHandler_UsesTenantFromJWTWithoutHeader(t *testing.T) {
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/users/me", nil)
+	req.Header.Set("X-Correlation-ID", "corr-1")
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.Set("token", "jwt-token")
+	c.Set("claims", &pkg.JWTClaims{Sub: "user-sub-1", TenantId: "tenant-1"})
+
+	mockUser := new(userdecorator.MockUserClient)
+	mockUser.On("GetUserByCodeUser", mock.Anything, "user-sub-1", "jwt-token", "tenant-1", "corr-1").
+		Return(userDto.MSUserResponseDTO{
+			Email:         "rafael@exemplo.com",
+			DisplayHandle: "rafael.soares",
+			Type:          "PERSON",
+			Status:        "ACTIVE",
+		}, nil)
+
+	h := NewUserHandlers(mockUser, stubCompanyClient(), zap.NewNop())
+	err := h.GetMeHandler(c)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	mockUser.AssertExpectations(t)
 }
 
 func TestToMeProfile_DropsDocumentFields(t *testing.T) {

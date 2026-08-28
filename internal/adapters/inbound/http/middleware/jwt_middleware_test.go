@@ -134,15 +134,54 @@ func TestJWTMiddleware_MissingCorrelationID(t *testing.T) {
 	}
 }
 
-func TestJWTMiddleware_MissingTenantId(t *testing.T) {
+func TestJWTMiddleware_TenantFromJWTWithoutHeader(t *testing.T) {
+	secret := "test-secret"
 	e := echo.New()
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	req.Header.Set("Authorization", "Bearer token123")
+	token := signTestJWT(t, secret, jwt.MapClaims{
+		"sub":       "code-user-1",
+		"tenant_id": "app-123",
+		"exp":       4102444800,
+	})
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/users/me", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("X-Correlation-ID", "corr-123")
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 
-	middleware := NewJWTMiddleware("test-secret", zap.NewNop())
+	middleware := NewJWTMiddleware(secret, zap.NewNop())
+	handler := middleware.Middleware()(func(c echo.Context) error {
+		claims := GetClaimsFromContext(c)
+		if claims == nil || claims.TenantId != "app-123" {
+			t.Fatalf("expected tenant_id app-123, got %+v", claims)
+		}
+		if ResolveTenantId(c, claims) != "app-123" {
+			t.Fatalf("expected resolved tenant app-123")
+		}
+		return c.String(http.StatusOK, "ok")
+	})
+
+	if err := handler(c); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestJWTMiddleware_MissingTenantId(t *testing.T) {
+	secret := "test-secret"
+	e := echo.New()
+	token := signTestJWT(t, secret, jwt.MapClaims{
+		"sub": "code-user-1",
+		"exp": 4102444800,
+	})
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("X-Correlation-ID", "corr-123")
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	middleware := NewJWTMiddleware(secret, zap.NewNop())
 	handler := middleware.Middleware()(func(c echo.Context) error {
 		return c.String(http.StatusOK, "ok")
 	})
@@ -152,7 +191,38 @@ func TestJWTMiddleware_MissingTenantId(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("expected 400, got %d", rec.Code)
+		t.Fatalf("expected 400, got %d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestJWTMiddleware_IgnoresCompanyIdClaim(t *testing.T) {
+	secret := "test-secret"
+	e := echo.New()
+	token := signTestJWT(t, secret, jwt.MapClaims{
+		"sub":       "code-user-1",
+		"tenant_id": "app-123",
+		"companyId": "should-be-ignored",
+		"exp":       4102444800,
+	})
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("X-Correlation-ID", "corr-123")
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	middleware := NewJWTMiddleware(secret, zap.NewNop())
+	handler := middleware.Middleware()(func(c echo.Context) error {
+		claims := GetClaimsFromContext(c)
+		if claims == nil || claims.TenantId != "app-123" {
+			t.Fatalf("expected tenant from JWT, got %+v", claims)
+		}
+		return c.String(http.StatusOK, "ok")
+	})
+	if err := handler(c); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rec.Code)
 	}
 }
 
