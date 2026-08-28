@@ -102,6 +102,7 @@ func (s *serverImpl) SetupRoutes(handlers Handler) {
 	// ROTAS AUTENTICADAS - Perfil do usuário logado
 	// ========================================================================
 	userGroup.GET("/users/me", handlers.GetMeHandler, s.jwt.Middleware(), rl.Limit("users_me", rules.UsersMe))
+	userGroup.POST("/user-consents/accept-batch", handlers.AcceptBatchHandler, s.jwt.Middleware(), rl.Limit("consents", rules.Consents))
 
 	s.logger.Info("Rotas configuradas com sucesso com proteção de Rate Limit",
 		zap.String("port", s.config.Server.Port),

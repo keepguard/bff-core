@@ -29,6 +29,9 @@ type UserConsentClient interface {
 	// AcceptAll registra o aceite de todos os documentos de consentimento publicados
 	AcceptAll(ctx context.Context, req userConsentDto.UserConsentAcceptAllRequestDTO, tenantId, correlationID string) (userConsentDto.UserConsentAcceptAllResponseDTO, error)
 
+	// AcceptBatch registra o aceite seletivo em lote (modal LGPD).
+	AcceptBatch(ctx context.Context, req userConsentDto.UserConsentAcceptBatchRequestDTO, token, tenantId, correlationID string) (userConsentDto.UserConsentAcceptAllResponseDTO, error)
+
 	// DeleteAllByUserId deleta todos os consentimentos de um usuário (para compensação de SAGA)
 	DeleteAllByUserId(ctx context.Context, userID, tenantId, correlationID string) error
 }

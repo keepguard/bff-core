@@ -1,15 +1,17 @@
 package handlers
 
-// CombinedHandlers une handlers públicos de registro e o perfil autenticado.
+// CombinedHandlers une handlers públicos de registro, perfil autenticado e consentimentos.
 type CombinedHandlers struct {
 	*RegisterHandlers
 	*UserHandlers
+	*ConsentHandlers
 }
 
 // NewCombinedHandlers cria CombinedHandlers.
-func NewCombinedHandlers(registerHandlers *RegisterHandlers, userHandlers *UserHandlers) *CombinedHandlers {
+func NewCombinedHandlers(registerHandlers *RegisterHandlers, userHandlers *UserHandlers, consentHandlers *ConsentHandlers) *CombinedHandlers {
 	return &CombinedHandlers{
 		RegisterHandlers: registerHandlers,
 		UserHandlers:     userHandlers,
+		ConsentHandlers:  consentHandlers,
 	}
 }

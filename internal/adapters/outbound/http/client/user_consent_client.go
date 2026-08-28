@@ -274,6 +274,44 @@ func (c *userConsentClient) AcceptAll(ctx context.Context, req userConsentDto.Us
 	return acceptAllResponse, nil
 }
 
+// AcceptBatch registra o aceite seletivo em lote no ms-user-consents.
+func (c *userConsentClient) AcceptBatch(ctx context.Context, req userConsentDto.UserConsentAcceptBatchRequestDTO, token, tenantId, correlationID string) (userConsentDto.UserConsentAcceptAllResponseDTO, error) {
+	url := fmt.Sprintf("%s/api/v1/user-consents/accept-batch", c.config.Services.UserConsents.BaseURL)
+
+	r := c.httpClient.R().
+		SetContext(ctx).
+		SetBody(req).
+		SetHeader("X-Correlation-ID", correlationID).
+		SetHeader("X-Tenant-Id", tenantId).
+		SetHeader("Content-Type", "application/json")
+	if token != "" {
+		r.SetHeader("Authorization", "Bearer "+token)
+	}
+	if req.ClientIP != "" {
+		r.SetHeader("X-Forwarded-For", req.ClientIP)
+		r.SetHeader("X-Public-IP", req.ClientIP)
+	}
+	if req.UserAgent != "" {
+		r.SetHeader("User-Agent", req.UserAgent)
+	}
+
+	resp, err := r.Post(url)
+	if err != nil {
+		return userConsentDto.UserConsentAcceptAllResponseDTO{}, fmt.Errorf("erro ao comunicar com user consents service: %w", err)
+	}
+
+	if resp.StatusCode() != http.StatusCreated && resp.StatusCode() != http.StatusOK {
+		return userConsentDto.UserConsentAcceptAllResponseDTO{}, MapHTTPError(resp.StatusCode(), resp.Body(), "user consents service")
+	}
+
+	var acceptBatchResponse userConsentDto.UserConsentAcceptAllResponseDTO
+	if err := json.Unmarshal(resp.Body(), &acceptBatchResponse); err != nil {
+		return userConsentDto.UserConsentAcceptAllResponseDTO{}, fmt.Errorf("erro ao fazer parse da resposta: %w", err)
+	}
+
+	return acceptBatchResponse, nil
+}
+
 // DeleteAllByUserId deleta todos os consentimentos de um usuário (para compensação de SAGA)
 func (c *userConsentClient) DeleteAllByUserId(ctx context.Context, userID, tenantId, correlationID string) error {
 	url := fmt.Sprintf("%s/api/v1/user-consents/user/%s", c.config.Services.UserConsents.BaseURL, userID)

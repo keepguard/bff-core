@@ -164,6 +164,8 @@ func (m *middlewareImpl) CORSMiddleware() echo.MiddlewareFunc {
 			"X-Device-Id",
 			"X-Device-Name",
 			"X-Device-Type",
+			"X-Public-IP",
+			"X-Public-Location",
 			"Idempotency-Key",
 		},
 		ExposeHeaders: []string{
@@ -288,4 +290,3 @@ func getEnvOrDefault(key, defaultValue string) string {
 	}
 	return defaultValue
 }
-

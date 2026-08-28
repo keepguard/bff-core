@@ -10,3 +10,17 @@ spec:
   ports:
   - port: {{ .Values.service.port }}
     targetPort: {{ .Values.service.port }}
+---
+# Alias Docker Compose (hostname bff-core) para probes e clients internos.
+apiVersion: v1
+kind: Service
+metadata:
+  name: bff-core
+  labels:
+    app: bff-core
+spec:
+  selector:
+    app: bff-core
+  ports:
+  - port: {{ .Values.service.port }}
+    targetPort: {{ .Values.service.port }}

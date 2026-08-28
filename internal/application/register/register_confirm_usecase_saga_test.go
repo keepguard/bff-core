@@ -131,6 +131,11 @@ func (m *MockUserConsentClient) AcceptAll(ctx context.Context, req userConsentDt
 	return args.Get(0).(userConsentDto.UserConsentAcceptAllResponseDTO), args.Error(1)
 }
 
+func (m *MockUserConsentClient) AcceptBatch(ctx context.Context, req userConsentDto.UserConsentAcceptBatchRequestDTO, token, tenantId, correlationID string) (userConsentDto.UserConsentAcceptAllResponseDTO, error) {
+	args := m.Called(ctx, req, token, tenantId, correlationID)
+	return args.Get(0).(userConsentDto.UserConsentAcceptAllResponseDTO), args.Error(1)
+}
+
 func (m *MockUserConsentClient) DeleteAllByUserId(ctx context.Context, userID, tenantId, correlationID string) error {
 	args := m.Called(ctx, userID, tenantId, correlationID)
 	return args.Error(0)
@@ -253,7 +258,7 @@ func TestRegisterConfirmUseCase_SAGASuccess(t *testing.T) {
 		Email:                 "test@example.com",
 		RegistrationSessionId: "session-123",
 		Token:                 "token-123",
-		TenantId:          "test-app",
+		TenantId:              "test-app",
 		CorrelationID:         "corr-123",
 	}
 
@@ -353,7 +358,7 @@ func TestRegisterConfirmUseCase_SAGAFailureWithCompensation(t *testing.T) {
 		Email:                 "test@example.com",
 		RegistrationSessionId: "session-123",
 		Token:                 "token-123",
-		TenantId:          "test-app",
+		TenantId:              "test-app",
 		CorrelationID:         "corr-123",
 	}
 
@@ -441,7 +446,7 @@ func TestRegisterConfirmUseCase_SAGATimeout(t *testing.T) {
 		Email:                 "test@example.com",
 		RegistrationSessionId: "session-123",
 		Token:                 "token-123",
-		TenantId:          "test-app",
+		TenantId:              "test-app",
 		CorrelationID:         "corr-123",
 	}
 
