@@ -44,7 +44,7 @@ func (c *consentDocumentClient) FindLatestPublishedByType(ctx context.Context, c
 		SetContext(ctx).
 		SetHeader("Authorization", "Bearer "+token).
 		SetHeader("X-Correlation-ID", correlationID).
-		SetHeader("X-Tenant-Id", tenantId).
+		SetHeader("X-Company-Id", companyHeader(ctx)).
 		SetHeader("Content-Type", "application/json").
 		Get(url)
 
@@ -75,7 +75,7 @@ func (c *consentDocumentClient) FindAllPublished(ctx context.Context, token, ten
 	req := c.httpClient.R().
 		SetContext(ctx).
 		SetHeader("X-Correlation-ID", correlationID).
-		SetHeader("X-Tenant-Id", tenantId).
+		SetHeader("X-Company-Id", companyHeader(ctx)).
 		SetHeader("Content-Type", "application/json")
 
 	if token != "" {

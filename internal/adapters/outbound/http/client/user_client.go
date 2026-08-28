@@ -58,7 +58,7 @@ func (c *userClient) CreateUser(ctx context.Context, req userDto.MSUserCreateReq
 		SetContext(ctx).
 		SetBody(req).
 		SetHeader("X-Correlation-ID", correlationID).
-		SetHeader("X-Tenant-Id", tenantId).
+		SetHeader("X-Company-Id", companyHeader(ctx)).
 		SetHeader("Content-Type", "application/json").
 		Post(url)
 
@@ -147,7 +147,7 @@ func (c *userClient) CreateUserNotify(ctx context.Context, req userDto.MSUserNot
 		SetContext(ctx).
 		SetBody(req).
 		SetHeader("X-Correlation-ID", correlationID).
-		SetHeader("X-Tenant-Id", tenantId).
+		SetHeader("X-Company-Id", companyHeader(ctx)).
 		SetHeader("Content-Type", "application/json").
 		Post(url)
 
@@ -175,7 +175,7 @@ func (c *userClient) InitRegister(ctx context.Context, req userDto.MSUserRegiste
 		SetContext(ctx).
 		SetBody(req).
 		SetHeader("X-Correlation-ID", correlationID).
-		SetHeader("X-Tenant-Id", tenantId).
+		SetHeader("X-Company-Id", companyHeader(ctx)).
 		SetHeader("Content-Type", "application/json").
 		Post(url)
 
@@ -208,7 +208,7 @@ func (c *userClient) ConfirmRegister(ctx context.Context, req userDto.MSUserRegi
 		SetContext(ctx).
 		SetBody(req).
 		SetHeader("X-Correlation-ID", correlationID).
-		SetHeader("X-Tenant-Id", tenantId).
+		SetHeader("X-Company-Id", companyHeader(ctx)).
 		SetHeader("Content-Type", "application/json").
 		Post(url)
 
@@ -260,7 +260,7 @@ func (c *userClient) DeleteUser(ctx context.Context, userID, tenantId, correlati
 	resp, err := c.httpClient.R().
 		SetContext(ctx).
 		SetHeader("X-Correlation-ID", correlationID).
-		SetHeader("X-Tenant-Id", tenantId).
+		SetHeader("X-Company-Id", companyHeader(ctx)).
 		SetHeader("Content-Type", "application/json").
 		Delete(url)
 
@@ -286,7 +286,7 @@ func (c *userClient) ResendRegisterToken(ctx context.Context,
 		SetContext(ctx).
 		SetBody(req).
 		SetHeader("X-Correlation-ID", correlationID).
-		SetHeader("X-Tenant-Id", tenantId).
+		SetHeader("X-Company-Id", companyHeader(ctx)).
 		SetHeader("Content-Type", "application/json").
 		Post(url)
 

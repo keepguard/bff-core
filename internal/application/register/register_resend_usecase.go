@@ -57,7 +57,7 @@ func (uc *registerResendUseCaseImpl) Execute(command appdto.RegisterResendComman
 		RegistrationSessionID: command.RegistrationSessionID,
 	}
 
-	resp, err := uc.userClient.ResendRegisterToken(command.Context, req, command.TenantId, command.CorrelationID)
+	resp, err := uc.userClient.ResendRegisterToken(client.WithCompanyID(command.Context, company.ID), req, command.TenantId, command.CorrelationID)
 	if err != nil {
 		return dto.RegisterResendResponseDTO{}, err
 	}

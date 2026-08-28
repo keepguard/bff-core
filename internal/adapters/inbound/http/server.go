@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	middlewarePkg "github.com/keepguard/bff-core/internal/adapters/inbound/http/middleware"
+	"github.com/keepguard/bff-core/internal/domain/ports/client"
 	"github.com/keepguard/bff-core/internal/infrastructure/config"
 	"github.com/keepguard/bff-core/internal/infrastructure/logger"
 	"github.com/keepguard/bff-core/internal/infrastructure/metrics"
@@ -30,6 +31,7 @@ func NewServer(
 	logger logger.Logger,
 	metrics *metrics.Metrics,
 	rateLimiter *middlewarePkg.RateLimiterMiddleware,
+	companyClient client.CompanyClient,
 ) Server {
 	e := echo.New()
 	e.HideBanner = true
@@ -51,6 +53,9 @@ func NewServer(
 	e.Use(middlewareInstance.SecurityMiddleware())
 	e.Use(middlewareInstance.MetricsMiddleware())
 	e.Use(middlewareInstance.TimeoutMiddleware(config.Server.RequestTimeout))
+	if companyClient != nil {
+		e.Use(middlewarePkg.CompanyResolveMiddleware(companyClient))
+	}
 
 	return &serverImpl{
 		echo:        e,

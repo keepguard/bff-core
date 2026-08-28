@@ -66,7 +66,7 @@ func (uc *registerInitUseCaseImpl) Execute(command appdto.RegisterInitCommand) (
 	}
 
 	// Passo 3: Inicializar registro no User Service
-	registerResponse, err := uc.userClient.InitRegister(command.Context, registerRequest, command.TenantId, command.CorrelationID)
+	registerResponse, err := uc.userClient.InitRegister(client.WithCompanyID(command.Context, company.ID), registerRequest, command.TenantId, command.CorrelationID)
 	if err != nil {
 		return dto.RegisterInitResponseDTO{}, err
 	}

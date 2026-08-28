@@ -58,7 +58,7 @@ func (c *userConsentClient) Accept(ctx context.Context, req userConsentDto.UserC
 		SetBody(req).
 		SetHeader("Authorization", "Bearer "+token).
 		SetHeader("X-Correlation-ID", correlationID).
-		SetHeader("X-Tenant-Id", tenantId).
+		SetHeader("X-Company-Id", companyHeader(ctx)).
 		SetHeader("Content-Type", "application/json").
 		Post(url)
 
@@ -90,7 +90,7 @@ func (c *userConsentClient) FindByID(ctx context.Context, id, token, tenantId, c
 		SetContext(ctx).
 		SetHeader("Authorization", "Bearer "+token).
 		SetHeader("X-Correlation-ID", correlationID).
-		SetHeader("X-Tenant-Id", tenantId).
+		SetHeader("X-Company-Id", companyHeader(ctx)).
 		SetHeader("Content-Type", "application/json").
 		Get(url)
 
@@ -122,7 +122,7 @@ func (c *userConsentClient) FindByUserID(ctx context.Context, userID, token, ten
 		SetContext(ctx).
 		SetHeader("Authorization", "Bearer "+token).
 		SetHeader("X-Correlation-ID", correlationID).
-		SetHeader("X-Tenant-Id", tenantId).
+		SetHeader("X-Company-Id", companyHeader(ctx)).
 		SetHeader("Content-Type", "application/json").
 		Get(url)
 
@@ -154,7 +154,7 @@ func (c *userConsentClient) FindByUserIDAndConsentDocumentID(ctx context.Context
 		SetContext(ctx).
 		SetHeader("Authorization", "Bearer "+token).
 		SetHeader("X-Correlation-ID", correlationID).
-		SetHeader("X-Tenant-Id", tenantId).
+		SetHeader("X-Company-Id", companyHeader(ctx)).
 		SetHeader("Content-Type", "application/json").
 		Get(url)
 
@@ -186,7 +186,7 @@ func (c *userConsentClient) FindLatestByUserIDAndConsentDocumentID(ctx context.C
 		SetContext(ctx).
 		SetHeader("Authorization", "Bearer "+token).
 		SetHeader("X-Correlation-ID", correlationID).
-		SetHeader("X-Tenant-Id", tenantId).
+		SetHeader("X-Company-Id", companyHeader(ctx)).
 		SetHeader("Content-Type", "application/json").
 		Get(url)
 
@@ -218,7 +218,7 @@ func (c *userConsentClient) HasAccepted(ctx context.Context, userID, consentDocu
 		SetContext(ctx).
 		SetHeader("Authorization", "Bearer "+token).
 		SetHeader("X-Correlation-ID", correlationID).
-		SetHeader("X-Tenant-Id", tenantId).
+		SetHeader("X-Company-Id", companyHeader(ctx)).
 		SetHeader("Content-Type", "application/json").
 		Get(url)
 
@@ -250,7 +250,7 @@ func (c *userConsentClient) AcceptAll(ctx context.Context, req userConsentDto.Us
 		SetContext(ctx).
 		SetBody(req).
 		SetHeader("X-Correlation-ID", correlationID).
-		SetHeader("X-Tenant-Id", tenantId).
+		SetHeader("X-Company-Id", companyHeader(ctx)).
 		SetHeader("Content-Type", "application/json").
 		Post(url)
 
@@ -282,7 +282,7 @@ func (c *userConsentClient) AcceptBatch(ctx context.Context, req userConsentDto.
 		SetContext(ctx).
 		SetBody(req).
 		SetHeader("X-Correlation-ID", correlationID).
-		SetHeader("X-Tenant-Id", tenantId).
+		SetHeader("X-Company-Id", companyHeader(ctx)).
 		SetHeader("Content-Type", "application/json")
 	if token != "" {
 		r.SetHeader("Authorization", "Bearer "+token)
@@ -319,7 +319,7 @@ func (c *userConsentClient) DeleteAllByUserId(ctx context.Context, userID, tenan
 	resp, err := c.httpClient.R().
 		SetContext(ctx).
 		SetHeader("X-Correlation-ID", correlationID).
-		SetHeader("X-Tenant-Id", tenantId).
+		SetHeader("X-Company-Id", companyHeader(ctx)).
 		SetHeader("Content-Type", "application/json").
 		Delete(url)
 
