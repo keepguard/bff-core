@@ -103,6 +103,11 @@ func (s *serverImpl) SetupRoutes(handlers Handler) {
 	// ========================================================================
 	userGroup.GET("/users/me", handlers.GetMeHandler, s.jwt.Middleware(), rl.Limit("users_me", rules.UsersMe))
 	userGroup.POST("/user-consents/accept-batch", handlers.AcceptBatchHandler, s.jwt.Middleware(), rl.Limit("consents", rules.Consents))
+	userGroup.GET("/core/connections/health", handlers.GetConnectionsHealthHandler,
+		s.jwt.Middleware(),
+		middlewarePkg.RequireAnyRole("ADMIN", "SYSTEM"),
+		rl.Limit("connections_health", rules.ConnectionsHealth),
+	)
 
 	s.logger.Info("Rotas configuradas com sucesso com proteção de Rate Limit",
 		zap.String("port", s.config.Server.Port),

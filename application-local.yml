@@ -72,6 +72,9 @@ rate_limit:
     users_me:
       limit: 120
       window: 60s
+    connections_health:
+      limit: 120
+      window: 60s
     default:
       limit: 500
       window: 60s
@@ -87,3 +90,25 @@ log:
 
 
 env: "local"
+
+connections_health:
+  snapshot_ttl: 60s
+  lock_ttl: 5s
+  probe_timeout: 500ms
+  urls:
+    front-keepguard-core: "http://localhost:5173/healthz"
+    bff-auth: "http://localhost:8381/health"
+    bff-core: "http://127.0.0.1:8282/health"
+    ms-auth: "http://localhost:8081/actuator/health/liveness"
+    ms-communication: "http://localhost:8082/actuator/health/liveness"
+    ms-company: "http://localhost:8083/actuator/health/liveness"
+    ms-user: "http://localhost:8085/actuator/health/liveness"
+    ms-user-consents: "http://localhost:8086/actuator/health/liveness"
+    srv-email-sender: "http://localhost:8601/health"
+    srv-token-manager: "http://localhost:8700/health"
+    srv-sms-sender: "http://localhost:8610/health"
+    mock-sms-gateway: "http://localhost:8089/health"
+    minio: "http://localhost:9000/minio/health/live"
+    rabbitmq: "http://localhost:15672/api/health/checks/alarms"
+    prometheus: "http://localhost:9095/-/healthy"
+    grafana: "http://localhost:3001/api/health"

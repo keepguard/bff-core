@@ -53,7 +53,10 @@ func (r *RateLimiterMiddleware) Limit(action string, rule config.RateLimitRule) 
 
 			keyIdentifier := clientIP
 			identifierType := "ip"
-			if userID := GetUserID(c); userID != "" {
+			if userID := GetUserIDFromContext(c); userID != "" {
+				keyIdentifier = userID
+				identifierType = "user"
+			} else if userID := GetUserID(c); userID != "" {
 				keyIdentifier = userID
 				identifierType = "user"
 			}

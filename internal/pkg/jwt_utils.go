@@ -9,13 +9,14 @@ import (
 
 // JWTClaims representa as claims do JWT
 type JWTClaims struct {
-	CodeUser      string `json:"codeUser"`
-	Sub           string `json:"sub"`
-	Username      string `json:"username"`
-	TenantId  string `json:"tenant_id"`
-	CompanyID     string `json:"companyId"`
-	UserID        string `json:"userId"`
-	Email         string `json:"email"`
+	CodeUser  string   `json:"codeUser"`
+	Sub       string   `json:"sub"`
+	Username  string   `json:"username"`
+	TenantId  string   `json:"tenant_id"`
+	CompanyID string   `json:"companyId"`
+	UserID    string   `json:"userId"`
+	Email     string   `json:"email"`
+	Roles     []string `json:"roles"`
 }
 
 // ExtractCodeUserFromToken extrai o codeUser do token JWT sem validar a assinatura
@@ -34,7 +35,7 @@ func ExtractCodeUserFromToken(token string) (string, error) {
 
 	// Decodifica o payload (segunda parte)
 	payload := parts[1]
-	
+
 	// Adiciona padding se necessário para Base64
 	switch len(payload) % 4 {
 	case 2:
@@ -83,7 +84,7 @@ func ExtractAllClaims(token string) (*JWTClaims, error) {
 
 	// Decodifica o payload (segunda parte)
 	payload := parts[1]
-	
+
 	// Adiciona padding se necessário para Base64
 	switch len(payload) % 4 {
 	case 2:
@@ -106,4 +107,3 @@ func ExtractAllClaims(token string) (*JWTClaims, error) {
 
 	return &claims, nil
 }
-

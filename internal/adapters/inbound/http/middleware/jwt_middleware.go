@@ -164,6 +164,7 @@ func (j *JWTMiddleware) validateTokenLocal(tokenString, tenantIdHeader string) (
 	if email, ok := mapClaims["email"].(string); ok {
 		claims.Email = email
 	}
+	claims.Roles = stringSliceFromClaim(mapClaims["roles"])
 
 	// Validar X-Tenant-Id do token com header
 	if claims.TenantId != "" && claims.TenantId != tenantIdHeader {
@@ -190,6 +191,29 @@ func extractToken(c echo.Context) (string, error) {
 	}
 
 	return token, nil
+}
+
+func stringSliceFromClaim(raw interface{}) []string {
+	switch values := raw.(type) {
+	case []string:
+		out := make([]string, 0, len(values))
+		for _, value := range values {
+			if value != "" {
+				out = append(out, value)
+			}
+		}
+		return out
+	case []interface{}:
+		out := make([]string, 0, len(values))
+		for _, value := range values {
+			if text, ok := value.(string); ok && text != "" {
+				out = append(out, text)
+			}
+		}
+		return out
+	default:
+		return nil
+	}
 }
 
 // GetTokenFromContext extrai o token do contexto

@@ -17,6 +17,7 @@ type Handler interface {
 	GetLatestByTypeHandler(c echo.Context) error
 	GetMeHandler(c echo.Context) error
 	AcceptBatchHandler(c echo.Context) error
+	GetConnectionsHealthHandler(c echo.Context) error
 }
 
 // Middleware define a interface para middlewares HTTP

@@ -10,15 +10,16 @@ import (
 
 // Config representa a configuração da aplicação
 type Config struct {
-	Server    ServerConfig    `mapstructure:"server"`
-	Services  ServicesConfig  `mapstructure:"services"`
-	RabbitMQ  RabbitMQConfig  `mapstructure:"rabbitmq"`
-	JWT       JWTConfig       `mapstructure:"jwt"`
-	Metrics   MetricsConfig   `mapstructure:"metrics"`
-	Log       LogConfig       `mapstructure:"log"`
-	Redis     RedisConfig     `mapstructure:"redis"`
-	RateLimit RateLimitConfig `mapstructure:"rate_limit"`
-	Env       string          `mapstructure:"env"`
+	Server            ServerConfig            `mapstructure:"server"`
+	Services          ServicesConfig          `mapstructure:"services"`
+	RabbitMQ          RabbitMQConfig          `mapstructure:"rabbitmq"`
+	JWT               JWTConfig               `mapstructure:"jwt"`
+	Metrics           MetricsConfig           `mapstructure:"metrics"`
+	Log               LogConfig               `mapstructure:"log"`
+	Redis             RedisConfig             `mapstructure:"redis"`
+	RateLimit         RateLimitConfig         `mapstructure:"rate_limit"`
+	ConnectionsHealth ConnectionsHealthConfig `mapstructure:"connections_health"`
+	Env               string                  `mapstructure:"env"`
 }
 
 // RedisConfig configurações de conexão com Redis
@@ -31,18 +32,27 @@ type RedisConfig struct {
 
 // RateLimitConfig configurações gerais de Rate Limit
 type RateLimitConfig struct {
-	Enabled bool                  `mapstructure:"enabled"`
-	Rules   RateLimitRulesConfig  `mapstructure:"rules"`
+	Enabled bool                 `mapstructure:"enabled"`
+	Rules   RateLimitRulesConfig `mapstructure:"rules"`
 }
 
 // RateLimitRulesConfig mapeamento das regras específicas
 type RateLimitRulesConfig struct {
-	RegisterInit    RateLimitRule `mapstructure:"register_init"`
-	RegisterResend  RateLimitRule `mapstructure:"register_resend"`
-	RegisterConfirm RateLimitRule `mapstructure:"register_confirm"`
-	Consents        RateLimitRule `mapstructure:"consents"`
-	UsersMe         RateLimitRule `mapstructure:"users_me"`
-	Default         RateLimitRule `mapstructure:"default"`
+	RegisterInit      RateLimitRule `mapstructure:"register_init"`
+	RegisterResend    RateLimitRule `mapstructure:"register_resend"`
+	RegisterConfirm   RateLimitRule `mapstructure:"register_confirm"`
+	Consents          RateLimitRule `mapstructure:"consents"`
+	UsersMe           RateLimitRule `mapstructure:"users_me"`
+	ConnectionsHealth RateLimitRule `mapstructure:"connections_health"`
+	Default           RateLimitRule `mapstructure:"default"`
+}
+
+// ConnectionsHealthConfig snapshot autenticado da tela Conexões.
+type ConnectionsHealthConfig struct {
+	SnapshotTTL  time.Duration     `mapstructure:"snapshot_ttl"`
+	LockTTL      time.Duration     `mapstructure:"lock_ttl"`
+	ProbeTimeout time.Duration     `mapstructure:"probe_timeout"`
+	URLs         map[string]string `mapstructure:"urls"`
 }
 
 // RateLimitRule define o limite e a janela de tempo
@@ -205,6 +215,11 @@ func setDefaults() {
 	viper.SetDefault("jwt.audience", "keepguard-api")
 	viper.SetDefault("rate_limit.rules.users_me.limit", 60)
 	viper.SetDefault("rate_limit.rules.users_me.window", "60s")
+	viper.SetDefault("rate_limit.rules.connections_health.limit", 20)
+	viper.SetDefault("rate_limit.rules.connections_health.window", "60s")
+	viper.SetDefault("connections_health.snapshot_ttl", "60s")
+	viper.SetDefault("connections_health.lock_ttl", "5s")
+	viper.SetDefault("connections_health.probe_timeout", "500ms")
 
 	// Metrics
 	viper.SetDefault("metrics.enabled", true)
