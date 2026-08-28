@@ -78,13 +78,14 @@ func (c *userClient) CreateUser(ctx context.Context, req userDto.MSUserCreateReq
 	return user, nil
 }
 
-// GetUserByCodeUser busca um usuário pelo codeUser
+// GetUserByCodeUser busca um usuário pelo codeUser via API interna do ms-user.
+// Não encaminha o JWT do browser: o filtro JWT do ms-user rejeita o token do usuário
+// (e o endpoint público exige X-Company-Id, que o JWT de login não carrega).
 func (c *userClient) GetUserByCodeUser(ctx context.Context, codeUser, token, tenantId, correlationID string) (userDto.MSUserResponseDTO, error) {
-	url := fmt.Sprintf("%s/api/v1/users/code/%s", c.config.Services.User.BaseURL, codeUser)
+	url := fmt.Sprintf("%s/internal/v1/users/code/%s", c.config.Services.User.BaseURL, codeUser)
 
 	req := c.httpClient.R().
 		SetContext(ctx).
-		SetHeader("Authorization", "Bearer "+token).
 		SetHeader("X-Correlation-ID", correlationID).
 		SetHeader("X-Tenant-Id", tenantId).
 		SetHeader("Content-Type", "application/json")
