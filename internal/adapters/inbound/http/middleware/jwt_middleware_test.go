@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/keepguard/bff-core/internal/pkg"
 	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
@@ -40,6 +41,75 @@ func TestJWTMiddleware_Success(t *testing.T) {
 	err := handler(c)
 	if err == nil {
 		// token123 não é JWT válido com test-secret, esperado retornar 401
+	}
+}
+
+func signTestJWT(t *testing.T, secret string, claims jwt.MapClaims) string {
+	t.Helper()
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	signed, err := token.SignedString([]byte(secret))
+	if err != nil {
+		t.Fatalf("failed to sign jwt: %v", err)
+	}
+	return signed
+}
+
+func TestJWTMiddleware_ValidTokenWithTenantIDClaim(t *testing.T) {
+	secret := "test-secret"
+	e := echo.New()
+	token := signTestJWT(t, secret, jwt.MapClaims{
+		"sub":       "code-user-1",
+		"tenant_id": "app-123",
+		"exp":       4102444800,
+	})
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/users/me", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("X-Correlation-ID", "corr-123")
+	req.Header.Set("X-Tenant-Id", "app-123")
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	middleware := NewJWTMiddleware(secret, zap.NewNop())
+	handler := middleware.Middleware()(func(c echo.Context) error {
+		if GetUserIDFromContext(c) != "code-user-1" {
+			t.Fatalf("expected sub code-user-1, got %s", GetUserIDFromContext(c))
+		}
+		return c.String(http.StatusOK, "ok")
+	})
+
+	if err := handler(c); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestJWTMiddleware_TenantMismatch(t *testing.T) {
+	secret := "test-secret"
+	e := echo.New()
+	token := signTestJWT(t, secret, jwt.MapClaims{
+		"sub":       "code-user-1",
+		"tenant_id": "other-tenant",
+		"exp":       4102444800,
+	})
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/users/me", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("X-Correlation-ID", "corr-123")
+	req.Header.Set("X-Tenant-Id", "app-123")
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	middleware := NewJWTMiddleware(secret, zap.NewNop())
+	handler := middleware.Middleware()(func(c echo.Context) error {
+		return c.String(http.StatusOK, "ok")
+	})
+
+	if err := handler(c); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401, got %d", rec.Code)
 	}
 }
 
@@ -158,5 +228,20 @@ func TestGetUserIDFromContext(t *testing.T) {
 	userID := GetUserIDFromContext(c)
 	if userID != "c1" {
 		t.Fatalf("expected c1, got %s", userID)
+	}
+}
+
+func TestGetUserIDFromContext_UsesSubWhenCodeUserEmpty(t *testing.T) {
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	claims := &pkg.JWTClaims{Sub: "sub-1"}
+	c.Set("claims", claims)
+
+	userID := GetUserIDFromContext(c)
+	if userID != "sub-1" {
+		t.Fatalf("expected sub-1, got %s", userID)
 	}
 }

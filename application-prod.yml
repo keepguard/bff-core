@@ -68,6 +68,9 @@ rate_limit:
     consents:
       limit: 120
       window: 60s
+    users_me:
+      limit: 30
+      window: 60s
     default:
       limit: 120
       window: 60s

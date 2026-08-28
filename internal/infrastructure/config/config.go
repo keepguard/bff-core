@@ -41,6 +41,7 @@ type RateLimitRulesConfig struct {
 	RegisterResend  RateLimitRule `mapstructure:"register_resend"`
 	RegisterConfirm RateLimitRule `mapstructure:"register_confirm"`
 	Consents        RateLimitRule `mapstructure:"consents"`
+	UsersMe         RateLimitRule `mapstructure:"users_me"`
 	Default         RateLimitRule `mapstructure:"default"`
 }
 
@@ -202,6 +203,8 @@ func setDefaults() {
 	// JWT
 	viper.SetDefault("jwt.issuer", "keepguard")
 	viper.SetDefault("jwt.audience", "keepguard-api")
+	viper.SetDefault("rate_limit.rules.users_me.limit", 60)
+	viper.SetDefault("rate_limit.rules.users_me.window", "60s")
 
 	// Metrics
 	viper.SetDefault("metrics.enabled", true)

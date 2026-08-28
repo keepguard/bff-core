@@ -21,6 +21,7 @@ type serverImpl struct {
 	logger      logger.Logger
 	metrics     *metrics.Metrics
 	rateLimiter *middlewarePkg.RateLimiterMiddleware
+	jwt         *middlewarePkg.JWTMiddleware
 }
 
 // NewServer cria um novo servidor HTTP
@@ -57,6 +58,7 @@ func NewServer(
 		logger:      logger,
 		metrics:     metrics,
 		rateLimiter: rateLimiter,
+		jwt:         middlewarePkg.NewJWTMiddleware(config.JWT.Secret, zapLogger),
 	}
 }
 
@@ -95,6 +97,11 @@ func (s *serverImpl) SetupRoutes(handlers Handler) {
 	userGroup.POST("/register/resend", handlers.ResendRegisterTokenHandler, publicEndpoint.Middleware(), rl.Limit("register_resend", rules.RegisterResend))
 	userGroup.GET("/consents/published", handlers.GetPublishedConsentsHandler, publicEndpoint.Middleware(), rl.Limit("consents", rules.Consents))
 	userGroup.GET("/consents/type/:type/latest", handlers.GetLatestByTypeHandler, publicEndpoint.Middleware(), rl.Limit("consents", rules.Consents))
+
+	// ========================================================================
+	// ROTAS AUTENTICADAS - Perfil do usuário logado
+	// ========================================================================
+	userGroup.GET("/users/me", handlers.GetMeHandler, s.jwt.Middleware(), rl.Limit("users_me", rules.UsersMe))
 
 	s.logger.Info("Rotas configuradas com sucesso com proteção de Rate Limit",
 		zap.String("port", s.config.Server.Port),

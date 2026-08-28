@@ -9,7 +9,7 @@ type MSUserResponseDTO struct {
 	ID              string                `json:"id"`
 	CodeUser        string                `json:"codeUser"`
 	CompanyID       string                `json:"companyId"`
-	TenantId    string                `json:"tenantId"`
+	TenantId        string                `json:"tenantId"`
 	Type            string                `json:"type"`
 	Status          string                `json:"status"`
 	Email           string                `json:"email"`
@@ -17,6 +17,8 @@ type MSUserResponseDTO struct {
 	PreferredLocale string                `json:"preferredLocale,omitempty"`
 	Timezone        string                `json:"timezone,omitempty"`
 	AvatarURL       string                `json:"avatarUrl,omitempty"`
+	DisplayHandle   string                `json:"display_handle,omitempty"`
+	PersonProfile   *PersonProfileDTO     `json:"personProfile,omitempty"`
 	CreatedAt       companyDto.CustomTime `json:"createdAt"`
 	UpdatedAt       companyDto.CustomTime `json:"updatedAt"`
 }

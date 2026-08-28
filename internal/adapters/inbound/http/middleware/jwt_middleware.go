@@ -150,7 +150,9 @@ func (j *JWTMiddleware) validateTokenLocal(tokenString, tenantIdHeader string) (
 	if username, ok := mapClaims["username"].(string); ok {
 		claims.Username = username
 	}
-	if xApp, ok := mapClaims["tenantId"].(string); ok {
+	if xApp, ok := mapClaims["tenant_id"].(string); ok {
+		claims.TenantId = xApp
+	} else if xApp, ok := mapClaims["tenantId"].(string); ok {
 		claims.TenantId = xApp
 	}
 	if companyID, ok := mapClaims["companyId"].(string); ok {
