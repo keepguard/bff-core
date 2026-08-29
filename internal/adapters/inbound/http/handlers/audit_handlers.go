@@ -39,7 +39,7 @@ func (h *AuditHandlers) ListAuditsHandler(c echo.Context) error {
 	query := map[string]string{}
 	for _, key := range []string{
 		"page", "size", "from", "to", "actorCodeUser", "action", "outcome",
-		"resourceType", "resourceId", "correlationId", "sourceService",
+		"resourceType", "resourceId", "correlationId", "sourceService", "sort", "dir",
 	} {
 		if value := c.QueryParam(key); value != "" {
 			query[key] = value
