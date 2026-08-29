@@ -79,7 +79,7 @@ func TestRegisterInitUseCase_Execute_Success(t *testing.T) {
 		UserAgent:                  "Mozilla/5.0",
 		Geolocation:                "São Paulo, SP",
 		Type:                       "PERSON",
-		TenantId:               "test-app",
+		TenantId:                   "test-app",
 		CorrelationID:              "corr-123",
 	}
 
@@ -131,7 +131,7 @@ func TestRegisterInitUseCase_Execute_CompanyNotFound(t *testing.T) {
 		UserAgent:                  "Mozilla/5.0",
 		Geolocation:                "São Paulo, SP",
 		Type:                       "PERSON",
-		TenantId:               "test-app",
+		TenantId:                   "test-app",
 		CorrelationID:              "corr-123",
 	}
 
@@ -190,7 +190,7 @@ func TestRegisterInitUseCase_Execute_InitRegisterFailed(t *testing.T) {
 		UserAgent:                  "Mozilla/5.0",
 		Geolocation:                "São Paulo, SP",
 		Type:                       "PERSON",
-		TenantId:               "test-app",
+		TenantId:                   "test-app",
 		CorrelationID:              "corr-123",
 	}
 
@@ -257,7 +257,7 @@ func TestRegisterInitUseCase_Execute_CommunicationFailed_StillSuccess(t *testing
 		UserAgent:                  "Mozilla/5.0",
 		Geolocation:                "São Paulo, SP",
 		Type:                       "PERSON",
-		TenantId:               "test-app",
+		TenantId:                   "test-app",
 		CorrelationID:              "corr-123",
 	}
 
@@ -354,7 +354,7 @@ func TestRegisterInitUseCase_Execute_VerifyRequestData(t *testing.T) {
 		UserAgent:                  "Mozilla/5.0",
 		Geolocation:                "São Paulo, SP",
 		Type:                       "PERSON",
-		TenantId:               "test-app",
+		TenantId:                   "test-app",
 		CorrelationID:              "corr-123",
 	}
 

@@ -25,9 +25,9 @@ func (h *ConnectionsHandlers) GetConnectionsHealthHandler(c echo.Context) error 
 	correlationID := middlewarePkg.GetCorrelationID(c)
 	if h.service == nil {
 		return c.JSON(http.StatusServiceUnavailable, pkg.ErrorResponse{
-			Error:   "SERVICE_UNAVAILABLE",
-			Message: "Verificação de conexões indisponível",
-			TraceID: correlationID,
+			Error:         "SERVICE_UNAVAILABLE",
+			Message:       "Verificação de conexões indisponível",
+			CorrelationID: correlationID,
 		})
 	}
 	snap, err := h.service.GetSnapshot(c.Request().Context())
@@ -37,9 +37,9 @@ func (h *ConnectionsHandlers) GetConnectionsHealthHandler(c echo.Context) error 
 			zap.Error(err),
 		)
 		return c.JSON(http.StatusInternalServerError, pkg.ErrorResponse{
-			Error:   "INTERNAL_ERROR",
-			Message: "Não foi possível verificar as conexões",
-			TraceID: correlationID,
+			Error:         "INTERNAL_ERROR",
+			Message:       "Não foi possível verificar as conexões",
+			CorrelationID: correlationID,
 		})
 	}
 	return c.JSON(http.StatusOK, snap)

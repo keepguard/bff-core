@@ -15,8 +15,8 @@ func TestAppError_Error(t *testing.T) {
 func TestAppError_WithTraceID(t *testing.T) {
 	err := NewAppError("CODE", "message", http.StatusBadRequest)
 	err = err.WithTraceID("trace123")
-	if err.TraceID != "trace123" {
-		t.Fatalf("expected trace123, got %s", err.TraceID)
+	if err.CorrelationID != "trace123" {
+		t.Fatalf("expected trace123, got %s", err.CorrelationID)
 	}
 }
 
@@ -24,7 +24,7 @@ func TestAppError_ToResponse(t *testing.T) {
 	err := NewAppError("CODE", "message", http.StatusBadRequest, ErrorDetail{Field: "field1", Message: "detail"})
 	err = err.WithTraceID("trace123")
 	resp := err.ToResponse()
-	if resp.Error != "CODE" || resp.Message != "message" || resp.TraceID != "trace123" {
+	if resp.Error != "CODE" || resp.Message != "message" || resp.CorrelationID != "trace123" {
 		t.Fatalf("unexpected response: %+v", resp)
 	}
 	if len(resp.Details) != 1 || resp.Details[0].Field != "field1" {

@@ -37,34 +37,34 @@ func (h *ConsentHandlers) AcceptBatchHandler(c echo.Context) error {
 
 	if codeUser == "" {
 		return c.JSON(http.StatusUnauthorized, pkg.ErrorResponse{
-			Error:   "UNAUTHORIZED",
-			Message: "Token JWT sem identificador de usuário",
-			TraceID: correlationID,
+			Error:         "UNAUTHORIZED",
+			Message:       "Token JWT sem identificador de usuário",
+			CorrelationID: correlationID,
 		})
 	}
 
 	var req userConsentDto.UserConsentAcceptBatchRequestDTO
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
-			Error:   "INVALID_REQUEST",
-			Message: "Requisição inválida",
-			TraceID: correlationID,
+			Error:         "INVALID_REQUEST",
+			Message:       "Requisição inválida",
+			CorrelationID: correlationID,
 		})
 	}
 
 	req.UserID = codeUser
 	if strings.TrimSpace(req.Email) == "" {
 		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
-			Error:   "INVALID_REQUEST",
-			Message: "E-mail é obrigatório",
-			TraceID: correlationID,
+			Error:         "INVALID_REQUEST",
+			Message:       "E-mail é obrigatório",
+			CorrelationID: correlationID,
 		})
 	}
 	if len(req.Consents) == 0 {
 		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
-			Error:   "INVALID_REQUEST",
-			Message: "Informe ao menos um consentimento",
-			TraceID: correlationID,
+			Error:         "INVALID_REQUEST",
+			Message:       "Informe ao menos um consentimento",
+			CorrelationID: correlationID,
 		})
 	}
 	if req.AcceptedAt.IsZero() {

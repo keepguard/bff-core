@@ -46,7 +46,7 @@ func NewRegisterHandlers(
 // @Tags register
 // @Accept json
 // @Produce json
-// @Param X-Correlation-ID header string true "ID de correlação para rastreamento da requisição"
+// @Param X-Correlation-ID header string false "ID de correlação para rastreamento da requisição"
 // @Param X-Tenant-Id header string true "ID da aplicação cliente (UUID)"
 // @Param request body dto.RegisterInitRequestDTO true "Dados para inicialização do registro"
 // @Success 201 {object} dto.RegisterInitResponseDTO "Registro inicializado com sucesso"
@@ -61,23 +61,15 @@ func (h *RegisterHandlers) InitRegisterHandler(c echo.Context) error {
 	// EXTRAÇÃO DE HEADERS OBRIGATÓRIOS
 	// ========================================================================
 	correlationID := middlewarePkg.GetCorrelationID(c)
-	if correlationID == "" {
-		h.logger.Warn("X-Correlation-ID ausente")
-		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
-			Error:   "MISSING_HEADER",
-			Message: "Header X-Correlation-ID é obrigatório",
-			TraceID: middlewarePkg.GetTraceID(c),
-		})
-	}
 
 	tenantId := middlewarePkg.GetTenantId(c)
 	if tenantId == "" {
 		h.logger.Warn("X-Tenant-Id ausente",
 			zap.String("correlationId", correlationID))
 		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
-			Error:   "MISSING_HEADER",
-			Message: "Header X-Tenant-Id é obrigatório",
-			TraceID: correlationID,
+			Error:         "MISSING_HEADER",
+			Message:       "Header X-Tenant-Id é obrigatório",
+			CorrelationID: correlationID,
 		})
 	}
 
@@ -92,9 +84,9 @@ func (h *RegisterHandlers) InitRegisterHandler(c echo.Context) error {
 			zap.Error(err),
 		)
 		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
-			Error:   "INVALID_REQUEST",
-			Message: "Requisição inválida",
-			TraceID: correlationID,
+			Error:         "INVALID_REQUEST",
+			Message:       "Requisição inválida",
+			CorrelationID: correlationID,
 		})
 	}
 
@@ -132,9 +124,9 @@ func (h *RegisterHandlers) InitRegisterHandler(c echo.Context) error {
 			zap.Error(err),
 		)
 		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
-			Error:   "VALIDATION_ERROR",
-			Message: err.Error(),
-			TraceID: correlationID,
+			Error:         "VALIDATION_ERROR",
+			Message:       err.Error(),
+			CorrelationID: correlationID,
 		})
 	}
 
@@ -155,7 +147,7 @@ func (h *RegisterHandlers) InitRegisterHandler(c echo.Context) error {
 // @Tags register
 // @Accept json
 // @Produce json
-// @Param X-Correlation-ID header string true "ID de correlação para rastreamento da requisição"
+// @Param X-Correlation-ID header string false "ID de correlação para rastreamento da requisição"
 // @Param X-Tenant-Id header string true "ID da aplicação cliente (UUID)"
 // @Param request body dto.RegisterConfirmRequestDTO true "Dados para confirmação do registro"
 // @Success 200 {object} dto.RegisterConfirmResponseDTO "Registro confirmado com sucesso"
@@ -168,23 +160,15 @@ func (h *RegisterHandlers) ConfirmRegisterHandler(c echo.Context) error {
 	// EXTRAÇÃO DE HEADERS OBRIGATÓRIOS
 	// ========================================================================
 	correlationID := middlewarePkg.GetCorrelationID(c)
-	if correlationID == "" {
-		h.logger.Warn("X-Correlation-ID ausente")
-		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
-			Error:   "MISSING_HEADER",
-			Message: "Header X-Correlation-ID é obrigatório",
-			TraceID: middlewarePkg.GetTraceID(c),
-		})
-	}
 
 	tenantId := middlewarePkg.GetTenantId(c)
 	if tenantId == "" {
 		h.logger.Warn("X-Tenant-Id ausente",
 			zap.String("correlationId", correlationID))
 		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
-			Error:   "MISSING_HEADER",
-			Message: "Header X-Tenant-Id é obrigatório",
-			TraceID: correlationID,
+			Error:         "MISSING_HEADER",
+			Message:       "Header X-Tenant-Id é obrigatório",
+			CorrelationID: correlationID,
 		})
 	}
 
@@ -204,9 +188,9 @@ func (h *RegisterHandlers) ConfirmRegisterHandler(c echo.Context) error {
 			zap.Error(err),
 		)
 		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
-			Error:   "INVALID_REQUEST",
-			Message: "Requisição inválida",
-			TraceID: correlationID,
+			Error:         "INVALID_REQUEST",
+			Message:       "Requisição inválida",
+			CorrelationID: correlationID,
 		})
 	}
 
@@ -234,9 +218,9 @@ func (h *RegisterHandlers) ConfirmRegisterHandler(c echo.Context) error {
 			zap.Error(err),
 		)
 		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
-			Error:   "VALIDATION_ERROR",
-			Message: err.Error(),
-			TraceID: correlationID,
+			Error:         "VALIDATION_ERROR",
+			Message:       err.Error(),
+			CorrelationID: correlationID,
 		})
 	}
 
@@ -257,7 +241,7 @@ func (h *RegisterHandlers) ConfirmRegisterHandler(c echo.Context) error {
 // @Tags register
 // @Accept json
 // @Produce json
-// @Param X-Correlation-ID header string true "ID de correlação"
+// @Param X-Correlation-ID header string false "ID de correlação"
 // @Param X-Tenant-Id header string true "ID da aplicação (UUID)"
 // @Param request body dto.RegisterResendRequestDTO true "Dados para reenvio"
 // @Success 200 {object} dto.RegisterResendResponseDTO "Token reenviado com sucesso"
@@ -267,20 +251,13 @@ func (h *RegisterHandlers) ConfirmRegisterHandler(c echo.Context) error {
 func (h *RegisterHandlers) ResendRegisterTokenHandler(c echo.Context) error {
 	// Extração de headers
 	correlationID := middlewarePkg.GetCorrelationID(c)
-	if correlationID == "" {
-		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
-			Error:   "MISSING_HEADER",
-			Message: "Header X-Correlation-ID é obrigatório",
-			TraceID: middlewarePkg.GetTraceID(c),
-		})
-	}
 
 	tenantId := middlewarePkg.GetTenantId(c)
 	if tenantId == "" {
 		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
-			Error:   "MISSING_HEADER",
-			Message: "Header X-Tenant-Id é obrigatório",
-			TraceID: correlationID,
+			Error:         "MISSING_HEADER",
+			Message:       "Header X-Tenant-Id é obrigatório",
+			CorrelationID: correlationID,
 		})
 	}
 
@@ -291,9 +268,9 @@ func (h *RegisterHandlers) ResendRegisterTokenHandler(c echo.Context) error {
 			zap.String("correlationId", correlationID),
 			zap.Error(err))
 		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
-			Error:   "INVALID_REQUEST",
-			Message: "Requisição inválida",
-			TraceID: correlationID,
+			Error:         "INVALID_REQUEST",
+			Message:       "Requisição inválida",
+			CorrelationID: correlationID,
 		})
 	}
 
@@ -309,9 +286,9 @@ func (h *RegisterHandlers) ResendRegisterTokenHandler(c echo.Context) error {
 	// Validar comando
 	if err := command.Validate(); err != nil {
 		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
-			Error:   "VALIDATION_ERROR",
-			Message: err.Error(),
-			TraceID: correlationID,
+			Error:         "VALIDATION_ERROR",
+			Message:       err.Error(),
+			CorrelationID: correlationID,
 		})
 	}
 
@@ -329,7 +306,7 @@ func (h *RegisterHandlers) ResendRegisterTokenHandler(c echo.Context) error {
 // @Description Retorna todos os termos e políticas publicados disponíveis para aceite (endpoint público)
 // @Tags consents
 // @Produce json
-// @Param X-Correlation-ID header string true "ID de correlação para rastreamento da requisição"
+// @Param X-Correlation-ID header string false "ID de correlação para rastreamento da requisição"
 // @Param X-Tenant-Id header string true "ID da aplicação cliente (UUID)"
 // @Success 200 {array} dto.ConsentDocumentResponseDTO "Lista de documentos de consentimento publicados"
 // @Failure 400 {object} pkg.ErrorResponse "Headers obrigatórios ausentes"
@@ -337,22 +314,14 @@ func (h *RegisterHandlers) ResendRegisterTokenHandler(c echo.Context) error {
 // @Router /api/v1/consents/published [get]
 func (h *RegisterHandlers) GetPublishedConsentsHandler(c echo.Context) error {
 	correlationID := middlewarePkg.GetCorrelationID(c)
-	if correlationID == "" {
-		h.logger.Warn("X-Correlation-ID ausente")
-		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
-			Error:   "MISSING_HEADER",
-			Message: "Header X-Correlation-ID é obrigatório",
-			TraceID: middlewarePkg.GetTraceID(c),
-		})
-	}
 
 	tenantId := middlewarePkg.GetTenantId(c)
 	if tenantId == "" {
 		h.logger.Warn("X-Tenant-Id ausente", zap.String("correlationId", correlationID))
 		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
-			Error:   "MISSING_HEADER",
-			Message: "Header X-Tenant-Id é obrigatório",
-			TraceID: correlationID,
+			Error:         "MISSING_HEADER",
+			Message:       "Header X-Tenant-Id é obrigatório",
+			CorrelationID: correlationID,
 		})
 	}
 
@@ -364,9 +333,9 @@ func (h *RegisterHandlers) GetPublishedConsentsHandler(c echo.Context) error {
 			zap.Error(err),
 		)
 		return c.JSON(http.StatusInternalServerError, pkg.ErrorResponse{
-			Error:   "INTERNAL_SERVER_ERROR",
-			Message: "Erro ao buscar documentos de consentimento",
-			TraceID: correlationID,
+			Error:         "INTERNAL_SERVER_ERROR",
+			Message:       "Erro ao buscar documentos de consentimento",
+			CorrelationID: correlationID,
 		})
 	}
 
@@ -379,7 +348,7 @@ func (h *RegisterHandlers) GetPublishedConsentsHandler(c echo.Context) error {
 // @Tags consents
 // @Produce json
 // @Param type path string true "Tipo de consentimento (TERMS_OF_USE, PRIVACY_POLICY, LGPD_COMPLIANCE)"
-// @Param X-Correlation-ID header string true "ID de correlação para rastreamento da requisição"
+// @Param X-Correlation-ID header string false "ID de correlação para rastreamento da requisição"
 // @Param X-Tenant-Id header string true "ID da aplicação cliente (UUID)"
 // @Success 200 {object} dto.ConsentDocumentResponseDTO "Documento de consentimento publicado"
 // @Failure 400 {object} pkg.ErrorResponse "Headers obrigatórios ausentes"
@@ -387,31 +356,23 @@ func (h *RegisterHandlers) GetPublishedConsentsHandler(c echo.Context) error {
 // @Router /api/v1/consents/type/{type}/latest [get]
 func (h *RegisterHandlers) GetLatestByTypeHandler(c echo.Context) error {
 	correlationID := middlewarePkg.GetCorrelationID(c)
-	if correlationID == "" {
-		h.logger.Warn("X-Correlation-ID ausente")
-		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
-			Error:   "MISSING_HEADER",
-			Message: "Header X-Correlation-ID é obrigatório",
-			TraceID: middlewarePkg.GetTraceID(c),
-		})
-	}
 
 	tenantId := middlewarePkg.GetTenantId(c)
 	if tenantId == "" {
 		h.logger.Warn("X-Tenant-Id ausente", zap.String("correlationId", correlationID))
 		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
-			Error:   "MISSING_HEADER",
-			Message: "Header X-Tenant-Id é obrigatório",
-			TraceID: correlationID,
+			Error:         "MISSING_HEADER",
+			Message:       "Header X-Tenant-Id é obrigatório",
+			CorrelationID: correlationID,
 		})
 	}
 
 	consentType := c.Param("type")
 	if consentType == "" {
 		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
-			Error:   "INVALID_PARAM",
-			Message: "Parâmetro type é obrigatório",
-			TraceID: correlationID,
+			Error:         "INVALID_PARAM",
+			Message:       "Parâmetro type é obrigatório",
+			CorrelationID: correlationID,
 		})
 	}
 
@@ -424,9 +385,9 @@ func (h *RegisterHandlers) GetLatestByTypeHandler(c echo.Context) error {
 			zap.Error(err),
 		)
 		return c.JSON(http.StatusInternalServerError, pkg.ErrorResponse{
-			Error:   "INTERNAL_SERVER_ERROR",
-			Message: "Erro ao buscar documento de consentimento",
-			TraceID: correlationID,
+			Error:         "INTERNAL_SERVER_ERROR",
+			Message:       "Erro ao buscar documento de consentimento",
+			CorrelationID: correlationID,
 		})
 	}
 
@@ -437,9 +398,9 @@ func (h *RegisterHandlers) GetLatestByTypeHandler(c echo.Context) error {
 func handleError(c echo.Context, err error, correlationID string) error {
 	if err != nil && (strings.Contains(err.Error(), "circuit breaker is open") || strings.Contains(err.Error(), "circuit breaker is half-open")) {
 		return c.JSON(http.StatusServiceUnavailable, pkg.ErrorResponse{
-			Error:   "SERVICE_TEMPORARILY_UNAVAILABLE",
-			Message: "O serviço está temporariamente indisponível. Por favor, tente novamente em instantes.",
-			TraceID: correlationID,
+			Error:         "SERVICE_TEMPORARILY_UNAVAILABLE",
+			Message:       "O serviço está temporariamente indisponível. Por favor, tente novamente em instantes.",
+			CorrelationID: correlationID,
 		})
 	}
 
@@ -456,8 +417,8 @@ func handleError(c echo.Context, err error, correlationID string) error {
 
 	// Erro genérico
 	return c.JSON(http.StatusInternalServerError, pkg.ErrorResponse{
-		Error:   "INTERNAL_ERROR",
-		Message: "Erro interno do servidor",
-		TraceID: correlationID,
+		Error:         "INTERNAL_ERROR",
+		Message:       "Erro interno do servidor",
+		CorrelationID: correlationID,
 	})
 }

@@ -230,7 +230,7 @@ func (uc *registerConfirmUseCaseImpl) buildRegisterConfirmSaga() saga.InMemorySa
 						CodeUser:       user.CodeUser,
 						CompanyID:      user.CompanyID,
 						CompanyCode:    company.CodeCompany,
-						TenantId:   command.TenantId,
+						TenantId:       command.TenantId,
 					}
 					_, err := uc.authClient.CreateUser(ctx, authUserRequest, command.TenantId, command.CorrelationID)
 					return err
@@ -285,7 +285,7 @@ func (uc *registerConfirmUseCaseImpl) buildRegisterConfirmSaga() saga.InMemorySa
 					registerLoginRequest := authDto.AuthRegisterLoginRequestDTO{
 						Username:     user.Email,
 						PasswordHash: confirmResponse.PasswordHash,
-						TenantId: command.TenantId,
+						TenantId:     command.TenantId,
 						CompanyID:    user.CompanyID,
 					}
 					loginResponse, err := uc.authClient.RegisterLogin(ctx, registerLoginRequest, command.TenantId, command.CorrelationID, command.ClientId)
@@ -319,7 +319,8 @@ func (uc *registerConfirmUseCaseImpl) sendWelcomeEmail(ctx context.Context, saga
 	}
 
 	messageReq := messaging.MessageDTO{
-		TenantId:      tenantId,
+		TenantId:          tenantId,
+		CorrelationID:     correlationID,
 		XCorrelationID:    correlationID,
 		MessageType:       enums.MessageTypeEmail.String(),
 		CommunicationType: enums.CommunicationTypeEmail.String(),

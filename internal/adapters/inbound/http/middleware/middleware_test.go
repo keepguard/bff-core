@@ -136,9 +136,9 @@ func TestMiddleware_Timeout(t *testing.T) {
 func TestGetTraceID(t *testing.T) {
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("X-Correlation-ID", "trace-123")
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
-	c.Response().Header().Set(echo.HeaderXRequestID, "trace-123")
 
 	traceID := GetTraceID(c)
 	if traceID != "trace-123" {
@@ -186,16 +186,18 @@ func TestGetCorrelationID(t *testing.T) {
 	}
 }
 
-func TestGetCorrelationID_Fallback(t *testing.T) {
+func TestGetCorrelationID_GeneratesWhenMissing(t *testing.T) {
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
-	c.Response().Header().Set(echo.HeaderXRequestID, "req-123")
 
 	correlationID := GetCorrelationID(c)
-	if correlationID != "req-123" {
-		t.Fatalf("expected req-123, got %s", correlationID)
+	if correlationID == "" {
+		t.Fatal("expected generated correlation ID")
+	}
+	if rec.Header().Get("X-Correlation-ID") != correlationID {
+		t.Fatalf("expected response header to echo correlation ID")
 	}
 }
 

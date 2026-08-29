@@ -10,11 +10,12 @@ import (
 
 // MSErrorResponse representa a resposta de erro padrão dos microserviços
 type MSErrorResponse struct {
-	Error   string                 `json:"error"`
-	Message string                 `json:"message"`
-	Details string                 `json:"details,omitempty"`
-	TraceID string                 `json:"traceId,omitempty"`
-	Errors  map[string]interface{} `json:"errors,omitempty"` // Erros de validação
+	Error         string                 `json:"error"`
+	Message       string                 `json:"message"`
+	Details       string                 `json:"details,omitempty"`
+	CorrelationID string                 `json:"correlationId,omitempty"`
+	TraceID       string                 `json:"traceId,omitempty"`
+	Errors        map[string]interface{} `json:"errors,omitempty"` // Erros de validação
 }
 
 // MapHTTPError converte resposta HTTP do MS em HTTPError tipado

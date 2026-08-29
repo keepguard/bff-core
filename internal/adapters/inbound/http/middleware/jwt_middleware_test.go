@@ -113,7 +113,7 @@ func TestJWTMiddleware_TenantMismatch(t *testing.T) {
 	}
 }
 
-func TestJWTMiddleware_MissingCorrelationID(t *testing.T) {
+func TestJWTMiddleware_MissingCorrelationID_GeneratesUUID(t *testing.T) {
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.Header.Set("Authorization", "Bearer token123")
@@ -129,8 +129,11 @@ func TestJWTMiddleware_MissingCorrelationID(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("expected 400, got %d", rec.Code)
+	if rec.Header().Get("X-Correlation-ID") == "" {
+		t.Fatal("expected generated X-Correlation-ID")
+	}
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401 for invalid token, got %d", rec.Code)
 	}
 }
 

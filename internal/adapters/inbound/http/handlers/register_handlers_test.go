@@ -128,14 +128,19 @@ func TestRegisterHandlers_InitRegisterHandler_MissingCorrelationID(t *testing.T)
 	mockConfirmUseCase := &MockRegisterConfirmUseCase{}
 	mockResendUseCase := &MockRegisterResendUseCase{}
 	logger, _ := zap.NewDevelopment()
-
 	handlers := NewRegisterHandlers(mockInitUseCase, mockConfirmUseCase, mockResendUseCase, nil, logger)
 
-	// Create request without X-Correlation-ID
+	mockInitUseCase.On("Execute", mock.Anything).Return(dto.RegisterInitResponseDTO{
+		RegistrationSessionID: "session-123",
+		Email:                 "test@example.com",
+		ExpiresIn:             1800,
+	}, nil)
+
 	requestBody := dto.RegisterInitRequestDTO{
 		NameFull:                   "Test User",
 		Email:                      "test@example.com",
 		Password:                   "password123",
+		ConfirmPassword:            "password123",
 		Phone:                      "+5511999999999",
 		HasAcceptedTermsAndPrivacy: true,
 		AcceptedMarketing:          &[]bool{false}[0],
@@ -153,20 +158,12 @@ func TestRegisterHandlers_InitRegisterHandler_MissingCorrelationID(t *testing.T)
 	rec := httptest.NewRecorder()
 	c := echo.New().NewContext(req, rec)
 
-	// Act
 	err := handlers.InitRegisterHandler(c)
 
-	// Assert
 	assert.NoError(t, err)
-	assert.Equal(t, http.StatusBadRequest, rec.Code)
-
-	var response pkg.ErrorResponse
-	err = json.Unmarshal(rec.Body.Bytes(), &response)
-	assert.NoError(t, err)
-	assert.Equal(t, "MISSING_HEADER", response.Error)
-	assert.Equal(t, "Header X-Correlation-ID é obrigatório", response.Message)
-
-	mockInitUseCase.AssertNotCalled(t, "Execute")
+	assert.Equal(t, http.StatusCreated, rec.Code)
+	assert.NotEmpty(t, rec.Header().Get("X-Correlation-ID"))
+	mockInitUseCase.AssertCalled(t, "Execute", mock.Anything)
 }
 
 func TestRegisterHandlers_InitRegisterHandler_MissingTenantId(t *testing.T) {
@@ -358,10 +355,13 @@ func TestRegisterHandlers_ConfirmRegisterHandler_MissingCorrelationID(t *testing
 	mockConfirmUseCase := &MockRegisterConfirmUseCase{}
 	mockResendUseCase := &MockRegisterResendUseCase{}
 	logger, _ := zap.NewDevelopment()
-
 	handlers := NewRegisterHandlers(mockInitUseCase, mockConfirmUseCase, mockResendUseCase, nil, logger)
 
-	// Create request without X-Correlation-ID
+	mockConfirmUseCase.On("Execute", mock.Anything).Return(dto.RegisterConfirmResponseDTO{
+		Token:          "jwt-token-123",
+		TokenExpiresIn: 3600,
+	}, nil)
+
 	requestBody := dto.RegisterConfirmRequestDTO{
 		Email:                 "test@example.com",
 		RegistrationSessionID: "session-123",
@@ -376,20 +376,12 @@ func TestRegisterHandlers_ConfirmRegisterHandler_MissingCorrelationID(t *testing
 	rec := httptest.NewRecorder()
 	c := echo.New().NewContext(req, rec)
 
-	// Act
 	err := handlers.ConfirmRegisterHandler(c)
 
-	// Assert
 	assert.NoError(t, err)
-	assert.Equal(t, http.StatusBadRequest, rec.Code)
-
-	var response pkg.ErrorResponse
-	err = json.Unmarshal(rec.Body.Bytes(), &response)
-	assert.NoError(t, err)
-	assert.Equal(t, "MISSING_HEADER", response.Error)
-	assert.Equal(t, "Header X-Correlation-ID é obrigatório", response.Message)
-
-	mockConfirmUseCase.AssertNotCalled(t, "Execute")
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.NotEmpty(t, rec.Header().Get("X-Correlation-ID"))
+	mockConfirmUseCase.AssertCalled(t, "Execute", mock.Anything)
 }
 
 func TestRegisterHandlers_ConfirmRegisterHandler_UseCaseError(t *testing.T) {

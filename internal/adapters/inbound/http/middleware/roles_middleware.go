@@ -15,9 +15,9 @@ func RequireAnyRole(roles ...string) echo.MiddlewareFunc {
 			claims := GetClaimsFromContext(c)
 			if claims == nil || !pkg.HasAnyRole(claims.Roles, roles...) {
 				return c.JSON(http.StatusForbidden, pkg.ErrorResponse{
-					Error:   "FORBIDDEN",
-					Message: "Acesso restrito a administradores",
-					TraceID: correlationID,
+					Error:         "FORBIDDEN",
+					Message:       "Acesso restrito a administradores",
+					CorrelationID: correlationID,
 				})
 			}
 			return next(c)

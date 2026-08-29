@@ -1,9 +1,12 @@
 package http
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/keepguard/bff-core/internal/infrastructure/logger"
@@ -42,13 +45,23 @@ func NewMiddlewareWithLogger(log logger.Logger) Middleware {
 	}
 }
 
-// RequestIDMiddleware adiciona ID de requisição
+// RequestIDMiddleware adiciona ID de requisição (hop local, não é o ID de auditoria)
 func (m *middlewareImpl) RequestIDMiddleware() echo.MiddlewareFunc {
 	return middleware.RequestIDWithConfig(middleware.RequestIDConfig{
 		Generator: func() string {
 			return generateRequestID()
 		},
 	})
+}
+
+// CorrelationIDMiddleware garante X-Correlation-ID (UUID). Se o cliente não enviar, gera.
+func (m *middlewareImpl) CorrelationIDMiddleware() echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			EnsureCorrelationID(c)
+			return next(c)
+		}
+	}
 }
 
 // LoggingMiddleware registra logs das requisições
@@ -90,8 +103,6 @@ func (m *middlewareImpl) LoggingMiddleware() echo.MiddlewareFunc {
 
 			// Log estruturado
 			logFunc("HTTP request completed",
-				zap.String("traceId", requestID),
-				zap.String("spanId", requestID),
 				zap.String("requestId", requestID),
 				zap.String("correlationId", correlationID),
 				zap.String("tenantId", tenantId),
@@ -124,9 +135,8 @@ func (m *middlewareImpl) RecoveryMiddleware() echo.MiddlewareFunc {
 			userID := c.Request().Header.Get("X-User-ID")
 
 			m.logger.Error("Panic recovered",
-				zap.String("traceId", requestID),
-				zap.String("spanId", requestID),
 				zap.String("requestId", requestID),
+				zap.String("correlationId", c.Request().Header.Get("X-Correlation-ID")),
 				zap.String("method", c.Request().Method),
 				zap.String("path", c.Path()),
 				zap.String("uri", c.Request().RequestURI),
@@ -221,7 +231,8 @@ func (m *middlewareImpl) MetricsMiddleware() echo.MiddlewareFunc {
 				zap.String("path", c.Path()),
 				zap.Int("status", status),
 				zap.Duration("duration", duration),
-				zap.String("traceId", c.Response().Header().Get(echo.HeaderXRequestID)),
+				zap.String("requestId", c.Response().Header().Get(echo.HeaderXRequestID)),
+				zap.String("correlationId", c.Request().Header.Get("X-Correlation-ID")),
 			)
 
 			return err
@@ -236,14 +247,25 @@ func (m *middlewareImpl) TimeoutMiddleware(timeout time.Duration) echo.Middlewar
 	})
 }
 
-// generateRequestID gera um ID único para a requisição
+// generateRequestID gera um ID único para a requisição (hop HTTP)
 func generateRequestID() string {
 	return strconv.FormatInt(time.Now().UnixNano(), 36) + "-" + strconv.FormatInt(time.Now().Unix(), 36)
 }
 
-// GetTraceID extrai o trace ID do contexto
+func generateUUID() string {
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		return generateRequestID()
+	}
+	b[6] = (b[6] & 0x0f) | 0x40
+	b[8] = (b[8] & 0x3f) | 0x80
+	hexStr := hex.EncodeToString(b)
+	return hexStr[0:8] + "-" + hexStr[8:12] + "-" + hexStr[12:16] + "-" + hexStr[16:20] + "-" + hexStr[20:32]
+}
+
+// GetTraceID retorna o request ID do hop (não usar para auditoria).
 func GetTraceID(c echo.Context) string {
-	return c.Response().Header().Get(echo.HeaderXRequestID)
+	return GetCorrelationID(c)
 }
 
 // GetUserID extrai o user ID do contexto (se disponível)
@@ -257,12 +279,21 @@ func SetUserID(c echo.Context, userID string) {
 	c.Response().Header().Set("X-User-ID", userID)
 }
 
-// GetCorrelationID extrai o correlation ID do contexto
+// GetCorrelationID extrai o correlation ID (UUID) do request/response.
 func GetCorrelationID(c echo.Context) string {
-	correlationID := c.Request().Header.Get("X-Correlation-ID")
+	return EnsureCorrelationID(c)
+}
+
+// EnsureCorrelationID lê ou gera UUID e ecoa no header.
+func EnsureCorrelationID(c echo.Context) string {
+	correlationID := strings.TrimSpace(c.Request().Header.Get("X-Correlation-ID"))
 	if correlationID == "" {
-		correlationID = c.Response().Header().Get(echo.HeaderXRequestID)
+		correlationID = strings.TrimSpace(c.Response().Header().Get("X-Correlation-ID"))
 	}
+	if correlationID == "" {
+		correlationID = generateUUID()
+	}
+	SetCorrelationID(c, correlationID)
 	return correlationID
 }
 

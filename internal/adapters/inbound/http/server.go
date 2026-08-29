@@ -46,6 +46,7 @@ func NewServer(
 	e.Validator = middlewarePkg.NewCustomValidator()
 
 	e.Use(middlewareInstance.RequestIDMiddleware())
+	e.Use(middlewareInstance.CorrelationIDMiddleware())
 	e.Use(middlewareInstance.RecoveryMiddleware())
 	e.Use(middlewareInstance.LoggingMiddleware())
 	e.Use(middlewarePkg.ValidationMiddleware(validator))

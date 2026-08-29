@@ -114,6 +114,7 @@ func (uc *registerInitUseCaseImpl) Execute(command appdto.RegisterInitCommand) (
 
 					emailReq := messaging.MessageDTO{
 						TenantId:          command.TenantId,
+						CorrelationID:     command.CorrelationID,
 						XCorrelationID:    command.CorrelationID,
 						MessageType:       enums.MessageTypeEmail.String(),
 						CommunicationType: enums.CommunicationTypeEmail.String(),
@@ -139,6 +140,7 @@ func (uc *registerInitUseCaseImpl) Execute(command appdto.RegisterInitCommand) (
 
 					smsReq := messaging.MessageDTO{
 						TenantId:          command.TenantId,
+						CorrelationID:     command.CorrelationID,
 						XCorrelationID:    command.CorrelationID,
 						MessageType:       enums.MessageTypeSMS.String(),
 						CommunicationType: enums.CommunicationTypeSMS.String(),
@@ -164,6 +166,7 @@ func (uc *registerInitUseCaseImpl) Execute(command appdto.RegisterInitCommand) (
 
 					whatsReq := messaging.MessageDTO{
 						TenantId:          command.TenantId,
+						CorrelationID:     command.CorrelationID,
 						XCorrelationID:    command.CorrelationID,
 						MessageType:       enums.MessageTypeWhatsApp.String(),
 						CommunicationType: enums.CommunicationTypeWhatsApp.String(),
@@ -181,6 +184,7 @@ func (uc *registerInitUseCaseImpl) Execute(command appdto.RegisterInitCommand) (
 		requiredChannels = append(requiredChannels, "EMAIL")
 		messageReq := messaging.MessageDTO{
 			TenantId:          command.TenantId,
+			CorrelationID:     command.CorrelationID,
 			XCorrelationID:    command.CorrelationID,
 			MessageType:       enums.MessageTypeEmail.String(),
 			CommunicationType: enums.CommunicationTypeEmail.String(),

@@ -33,15 +33,6 @@ func (j *JWTMiddleware) Middleware() echo.MiddlewareFunc {
 			correlationID := GetCorrelationID(c)
 			tenantIdHeader := GetTenantId(c)
 
-			if correlationID == "" {
-				j.logger.Warn("X-Correlation-ID ausente")
-				return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
-					Error:   "MISSING_HEADER",
-					Message: "Header X-Correlation-ID é obrigatório",
-					TraceID: GetTraceID(c),
-				})
-			}
-
 			token, err := extractToken(c)
 			if err != nil {
 				j.logger.Error("Erro ao extrair token JWT",
@@ -49,9 +40,9 @@ func (j *JWTMiddleware) Middleware() echo.MiddlewareFunc {
 					zap.Error(err),
 				)
 				return c.JSON(http.StatusUnauthorized, pkg.ErrorResponse{
-					Error:   "UNAUTHORIZED",
-					Message: "Token de autorização não fornecido ou inválido",
-					TraceID: correlationID,
+					Error:         "UNAUTHORIZED",
+					Message:       "Token de autorização não fornecido ou inválido",
+					CorrelationID: correlationID,
 				})
 			}
 
@@ -64,9 +55,9 @@ func (j *JWTMiddleware) Middleware() echo.MiddlewareFunc {
 					zap.Error(err),
 				)
 				return c.JSON(http.StatusUnauthorized, pkg.ErrorResponse{
-					Error:   "UNAUTHORIZED",
-					Message: "Token inválido ou expirado",
-					TraceID: correlationID,
+					Error:         "UNAUTHORIZED",
+					Message:       "Token inválido ou expirado",
+					CorrelationID: correlationID,
 				})
 			}
 
@@ -74,9 +65,9 @@ func (j *JWTMiddleware) Middleware() echo.MiddlewareFunc {
 				j.logger.Warn("tenant_id ausente no JWT e no header",
 					zap.String("correlationId", correlationID))
 				return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
-					Error:   "MISSING_TENANT",
-					Message: "tenant_id do token JWT é obrigatório",
-					TraceID: correlationID,
+					Error:         "MISSING_TENANT",
+					Message:       "tenant_id do token JWT é obrigatório",
+					CorrelationID: correlationID,
 				})
 			}
 

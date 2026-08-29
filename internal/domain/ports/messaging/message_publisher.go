@@ -12,7 +12,8 @@ type MessagePublisher interface {
 
 // MessageDTO representa uma mensagem a ser enviada
 type MessageDTO struct {
-	TenantId      string                 `json:"tenantId"`
+	TenantId          string                 `json:"tenantId"`
+	CorrelationID     string                 `json:"correlationId,omitempty"`
 	XCorrelationID    string                 `json:"xCorrelationId"`
 	MessageType       string                 `json:"messageType"`
 	CommunicationType string                 `json:"communicationType"`

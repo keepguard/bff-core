@@ -78,7 +78,8 @@ func (uc *registerResendUseCaseImpl) Execute(command appdto.RegisterResendComman
 
 	// Passo 4: Enviar email com token usando novo template RESEND
 	messageReq := messaging.MessageDTO{
-		TenantId:      command.TenantId,
+		TenantId:          command.TenantId,
+		CorrelationID:     command.CorrelationID,
 		XCorrelationID:    command.CorrelationID,
 		MessageType:       enums.MessageTypeEmail.String(),
 		CommunicationType: enums.CommunicationTypeEmail.String(),

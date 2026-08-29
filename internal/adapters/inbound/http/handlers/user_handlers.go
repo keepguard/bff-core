@@ -39,18 +39,18 @@ func (h *UserHandlers) GetMeHandler(c echo.Context) error {
 	if tenantId == "" {
 		h.logger.Warn("JWT sem tenant_id", zap.String("correlationId", correlationID))
 		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
-			Error:   "MISSING_TENANT",
-			Message: "tenant_id do token JWT é obrigatório",
-			TraceID: correlationID,
+			Error:         "MISSING_TENANT",
+			Message:       "tenant_id do token JWT é obrigatório",
+			CorrelationID: correlationID,
 		})
 	}
 
 	if codeUser == "" {
 		h.logger.Warn("JWT sem sub/codeUser", zap.String("correlationId", correlationID))
 		return c.JSON(http.StatusUnauthorized, pkg.ErrorResponse{
-			Error:   "UNAUTHORIZED",
-			Message: "Token JWT sem identificador de usuário",
-			TraceID: correlationID,
+			Error:         "UNAUTHORIZED",
+			Message:       "Token JWT sem identificador de usuário",
+			CorrelationID: correlationID,
 		})
 	}
 
@@ -65,9 +65,9 @@ func (h *UserHandlers) GetMeHandler(c echo.Context) error {
 	}
 	if company.ID == "" {
 		return c.JSON(http.StatusNotFound, pkg.ErrorResponse{
-			Error:   "COMPANY_NOT_FOUND",
-			Message: "Empresa não encontrada para o tenant informado",
-			TraceID: correlationID,
+			Error:         "COMPANY_NOT_FOUND",
+			Message:       "Empresa não encontrada para o tenant informado",
+			CorrelationID: correlationID,
 		})
 	}
 

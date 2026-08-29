@@ -115,9 +115,9 @@ func (r *RateLimiterMiddleware) Limit(action string, rule config.RateLimitRule) 
 				)
 
 				return c.JSON(http.StatusTooManyRequests, pkg.ErrorResponse{
-					Error:   "RATE_LIMIT_EXCEEDED",
-					Message: "Muitas tentativas. Por favor, aguarde antes de tentar novamente.",
-					TraceID: GetTraceID(c),
+					Error:         "RATE_LIMIT_EXCEEDED",
+					Message:       "Muitas tentativas. Por favor, aguarde antes de tentar novamente.",
+					CorrelationID: GetTraceID(c),
 				})
 			}
 

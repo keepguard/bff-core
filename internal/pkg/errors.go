@@ -7,10 +7,10 @@ import (
 
 // ErrorResponse representa a resposta de erro padronizada
 type ErrorResponse struct {
-	Error   string        `json:"error"`
-	Message string        `json:"message"`
-	TraceID string        `json:"traceId,omitempty"`
-	Details []ErrorDetail `json:"details,omitempty"`
+	Error         string        `json:"error"`
+	Message       string        `json:"message"`
+	CorrelationID string        `json:"correlationId,omitempty"`
+	Details       []ErrorDetail `json:"details,omitempty"`
 }
 
 // ErrorDetail representa detalhes específicos do erro
@@ -22,11 +22,11 @@ type ErrorDetail struct {
 
 // AppError representa um erro da aplicação
 type AppError struct {
-	Code       string
-	Message    string
-	StatusCode int
-	Details    []ErrorDetail
-	TraceID    string
+	Code          string
+	Message       string
+	StatusCode    int
+	Details       []ErrorDetail
+	CorrelationID string
 }
 
 func (e *AppError) Error() string {
@@ -43,24 +43,29 @@ func NewAppError(code, message string, statusCode int, details ...ErrorDetail) *
 	}
 }
 
-// WithTraceID adiciona um trace ID ao erro
-func (e *AppError) WithTraceID(traceID string) *AppError {
-	e.TraceID = traceID
+// WithCorrelationID adiciona o correlation ID ao erro
+func (e *AppError) WithCorrelationID(correlationID string) *AppError {
+	e.CorrelationID = correlationID
 	return e
+}
+
+// WithTraceID mantém compatibilidade; use WithCorrelationID.
+func (e *AppError) WithTraceID(traceID string) *AppError {
+	return e.WithCorrelationID(traceID)
 }
 
 // ToResponse converte o erro para ErrorResponse
 func (e *AppError) ToResponse() ErrorResponse {
 	return ErrorResponse{
-		Error:   e.Code,
-		Message: e.Message,
-		TraceID: e.TraceID,
-		Details: e.Details,
+		Error:         e.Code,
+		Message:       e.Message,
+		CorrelationID: e.CorrelationID,
+		Details:       e.Details,
 	}
 }
 
 // WriteError escreve um erro HTTP padronizado
-func WriteError(w http.ResponseWriter, err error, traceID string) {
+func WriteError(w http.ResponseWriter, err error, correlationID string) {
 	var appErr *AppError
 
 	switch e := err.(type) {
@@ -70,8 +75,8 @@ func WriteError(w http.ResponseWriter, err error, traceID string) {
 		appErr = NewAppError("INTERNAL_ERROR", "Erro interno do servidor", http.StatusInternalServerError)
 	}
 
-	if appErr.TraceID == "" {
-		appErr.TraceID = traceID
+	if appErr.CorrelationID == "" {
+		appErr.CorrelationID = correlationID
 	}
 
 	response := appErr.ToResponse()
@@ -92,4 +97,3 @@ var (
 	ErrInternalServer     = NewAppError("INTERNAL_ERROR", "Erro interno do servidor", http.StatusInternalServerError)
 	ErrServiceUnavailable = NewAppError("SERVICE_UNAVAILABLE", "Serviço indisponível", http.StatusServiceUnavailable)
 )
-
