@@ -27,7 +27,7 @@ func TestMapAuditActionRegister(t *testing.T) {
 	require.Equal(t, "ACCEPT_CONSENTS", mapAuditAction(http.MethodPost, "/api/v1/user-consents/accept-batch"))
 }
 
-func TestAuditMiddlewareEmitsRegisterWithCorrelationID(t *testing.T) {
+func TestAuditMiddlewareSkipsRegisterSuccess(t *testing.T) {
 	rec := &recPub{}
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/register/init", nil)
@@ -41,9 +41,25 @@ func TestAuditMiddlewareEmitsRegisterWithCorrelationID(t *testing.T) {
 		return c.NoContent(http.StatusOK)
 	})(c)
 	require.NoError(t, err)
+	require.Empty(t, rec.events)
+}
+
+func TestAuditMiddlewareEmitsRegisterFailure(t *testing.T) {
+	rec := &recPub{}
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/register/init", nil)
+	req.Header.Set("X-Correlation-ID", "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")
+	rr := httptest.NewRecorder()
+	c := e.NewContext(req, rr)
+	c.SetPath("/api/v1/register/init")
+
+	mw := AuditMiddleware(rec, "bff-core")
+	err := mw(func(c echo.Context) error {
+		return c.NoContent(http.StatusBadRequest)
+	})(c)
+	require.NoError(t, err)
 	require.Len(t, rec.events, 1)
 	require.Equal(t, "REGISTER_INIT", rec.events[0].Action)
-	require.Equal(t, "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", rec.events[0].CorrelationID)
-	require.Equal(t, "SUCCESS", rec.events[0].Outcome)
+	require.Equal(t, "FAILURE", rec.events[0].Outcome)
 	require.Equal(t, "bff-core", rec.events[0].SourceService)
 }

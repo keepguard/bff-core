@@ -33,6 +33,9 @@ func AuditMiddleware(publisher auditport.EventPublisher, sourceService string) e
 			if status == http.StatusForbidden || status == http.StatusUnauthorized {
 				outcome = "DENIED"
 			}
+			if outcome == "SUCCESS" && domainCoveredByMS(path) {
+				return err
+			}
 			event := auditport.Event{
 				EventID:       newAuditUUID(),
 				OccurredAt:    time.Now().UTC().Format(time.RFC3339),
@@ -66,6 +69,21 @@ func shouldSkipAudit(method, path string) bool {
 		return true
 	}
 	return false
+}
+
+func domainCoveredByMS(path string) bool {
+	switch {
+	case strings.Contains(path, "/register/init"):
+		return true
+	case strings.Contains(path, "/register/confirm"):
+		return true
+	case strings.Contains(path, "/register/resend"):
+		return true
+	case strings.Contains(path, "/user-consents/accept"):
+		return true
+	default:
+		return false
+	}
 }
 
 func mapAuditAction(method, path string) string {
