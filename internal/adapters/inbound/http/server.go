@@ -117,16 +117,17 @@ func (s *serverImpl) SetupRoutes(handlers Handler) {
 		middlewarePkg.RequireAnyRole("ADMIN", "SYSTEM"),
 		rl.Limit("connections_health", rules.ConnectionsHealth),
 	)
-	userGroup.GET("/audits", handlers.ListAuditsHandler,
+	// /api/v1/core/audits usa o PathPrefix já publicado no Traefik.
+	// /api/v1/audits permanece para o IngressRoute atualizado.
+	auditRead := []echo.MiddlewareFunc{
 		s.jwt.Middleware(),
 		middlewarePkg.RequireAuditRead(),
 		rl.Limit("audits", rules.Audits),
-	)
-	userGroup.GET("/audits/:eventId", handlers.GetAuditHandler,
-		s.jwt.Middleware(),
-		middlewarePkg.RequireAuditRead(),
-		rl.Limit("audits", rules.Audits),
-	)
+	}
+	userGroup.GET("/core/audits", handlers.ListAuditsHandler, auditRead...)
+	userGroup.GET("/core/audits/:eventId", handlers.GetAuditHandler, auditRead...)
+	userGroup.GET("/audits", handlers.ListAuditsHandler, auditRead...)
+	userGroup.GET("/audits/:eventId", handlers.GetAuditHandler, auditRead...)
 
 	s.logger.Info("Rotas configuradas com sucesso com proteção de Rate Limit",
 		zap.String("port", s.config.Server.Port),

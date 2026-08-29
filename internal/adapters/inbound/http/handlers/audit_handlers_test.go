@@ -41,7 +41,7 @@ func TestListAuditsHandler_RequiresTenant(t *testing.T) {
 
 func TestListAuditsHandler_OK(t *testing.T) {
 	e := echo.New()
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/audits?page=0", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/core/audits?page=0", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	c.Set("claims", &pkg.JWTClaims{Roles: []string{"ADMIN"}, TenantId: "tenant-1"})
