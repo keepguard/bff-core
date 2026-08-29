@@ -18,6 +18,8 @@ type Handler interface {
 	GetMeHandler(c echo.Context) error
 	AcceptBatchHandler(c echo.Context) error
 	GetConnectionsHealthHandler(c echo.Context) error
+	ListAuditsHandler(c echo.Context) error
+	GetAuditHandler(c echo.Context) error
 }
 
 // Middleware define a interface para middlewares HTTP

@@ -21,6 +21,7 @@ env:
   communicationServiceUrl: "http://ms-communication:8082"
   userConsentsServiceUrl: "http://ms-user-consents:8086"
   userProfileServiceUrl: "http://ms-user-profile:8091"
+  auditServiceUrl: "http://srv-audit:8620"
 
 imagePullSecrets:
   - name: ghcr-secret

@@ -85,6 +85,37 @@ func TestJWTMiddleware_ValidTokenWithTenantIDClaim(t *testing.T) {
 	}
 }
 
+func TestJWTMiddleware_ParsesAuthorities(t *testing.T) {
+	secret := "test-secret"
+	e := echo.New()
+	token := signTestJWT(t, secret, jwt.MapClaims{
+		"sub":         "code-user-1",
+		"tenant_id":   "app-123",
+		"exp":         4102444800,
+		"authorities": []any{"audit:read", "user:block"},
+	})
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/audits", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("X-Tenant-Id", "app-123")
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	middleware := NewJWTMiddleware(secret, zap.NewNop())
+	handler := middleware.Middleware()(func(c echo.Context) error {
+		claims := GetClaimsFromContext(c)
+		if claims == nil || len(claims.Authorities) != 2 || claims.Authorities[0] != "audit:read" {
+			t.Fatalf("unexpected authorities: %+v", claims)
+		}
+		return c.String(http.StatusOK, "ok")
+	})
+	if err := handler(c); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rec.Code)
+	}
+}
+
 func TestJWTMiddleware_TenantMismatch(t *testing.T) {
 	secret := "test-secret"
 	e := echo.New()

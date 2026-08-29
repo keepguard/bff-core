@@ -1,4 +1,4 @@
-version: "1.0.44-SNAPSHOT"
+version: "1.0.45-SNAPSHOT"
 
 server:
   port: "8282"
@@ -28,6 +28,10 @@ services:
     base_url: "http://localhost:8086"
     timeout: "30s"
     retries: 3
+  audit:
+    base_url: "http://localhost:8620"
+    timeout: "10s"
+    retries: 2
 
 rabbitmq:
   host: "localhost"

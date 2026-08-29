@@ -141,6 +141,7 @@ func (j *JWTMiddleware) validateTokenLocal(tokenString, tenantIdHeader string) (
 		claims.Email = email
 	}
 	claims.Roles = stringSliceFromClaim(mapClaims["roles"])
+	claims.Authorities = stringSliceFromClaim(mapClaims["authorities"])
 
 	if claims.TenantId != "" && tenantIdHeader != "" && claims.TenantId != tenantIdHeader {
 		return nil, fmt.Errorf("tenantId mismatch: token=%s, header=%s", claims.TenantId, tenantIdHeader)

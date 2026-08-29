@@ -117,6 +117,16 @@ func (s *serverImpl) SetupRoutes(handlers Handler) {
 		middlewarePkg.RequireAnyRole("ADMIN", "SYSTEM"),
 		rl.Limit("connections_health", rules.ConnectionsHealth),
 	)
+	userGroup.GET("/audits", handlers.ListAuditsHandler,
+		s.jwt.Middleware(),
+		middlewarePkg.RequireAuditRead(),
+		rl.Limit("audits", rules.Audits),
+	)
+	userGroup.GET("/audits/:eventId", handlers.GetAuditHandler,
+		s.jwt.Middleware(),
+		middlewarePkg.RequireAuditRead(),
+		rl.Limit("audits", rules.Audits),
+	)
 
 	s.logger.Info("Rotas configuradas com sucesso com proteção de Rate Limit",
 		zap.String("port", s.config.Server.Port),

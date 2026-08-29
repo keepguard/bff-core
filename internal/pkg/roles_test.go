@@ -22,3 +22,12 @@ func TestHasAnyRole(t *testing.T) {
 		t.Fatal("expected SYSTEM to match")
 	}
 }
+
+func TestHasAuthority(t *testing.T) {
+	if !HasAuthority([]string{"user:block", "audit:read"}, "audit:read") {
+		t.Fatal("expected audit:read")
+	}
+	if HasAuthority([]string{"user:block"}, "audit:read") {
+		t.Fatal("must not match missing authority")
+	}
+}

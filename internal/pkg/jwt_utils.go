@@ -9,13 +9,14 @@ import (
 
 // JWTClaims representa as claims do JWT
 type JWTClaims struct {
-	CodeUser string   `json:"codeUser"`
-	Sub      string   `json:"sub"`
-	Username string   `json:"username"`
-	TenantId string   `json:"tenant_id"`
-	UserID   string   `json:"userId"`
-	Email    string   `json:"email"`
-	Roles    []string `json:"roles"`
+	CodeUser    string   `json:"codeUser"`
+	Sub         string   `json:"sub"`
+	Username    string   `json:"username"`
+	TenantId    string   `json:"tenant_id"`
+	UserID      string   `json:"userId"`
+	Email       string   `json:"email"`
+	Roles       []string `json:"roles"`
+	Authorities []string `json:"authorities"`
 }
 
 // ExtractCodeUserFromToken extrai o codeUser do token JWT sem validar a assinatura

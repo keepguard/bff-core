@@ -302,7 +302,9 @@ func main() {
 
 	connectionsService := connections.NewService(cfg.ConnectionsHealth, connections.NewStore(redisClient), zapLogger)
 	connectionsHandlers := handlersPkg.NewConnectionsHandlers(connectionsService, zapLogger)
-	httpHandlers := handlersPkg.NewCombinedHandlers(registerHandlers, userHandlers, consentHandlers, connectionsHandlers)
+	auditClient := httpclient.NewAuditClient(cfg, zapLogger)
+	auditHandlers := handlersPkg.NewAuditHandlers(auditClient, zapLogger)
+	httpHandlers := handlersPkg.NewCombinedHandlers(registerHandlers, userHandlers, consentHandlers, connectionsHandlers, auditHandlers)
 
 	rateLimiterMiddleware := middlewarePkg.NewRateLimiterMiddleware(redisClient, cfg.RateLimit, zapLogger, metricsInstance)
 

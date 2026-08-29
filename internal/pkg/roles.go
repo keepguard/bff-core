@@ -26,3 +26,16 @@ func HasAnyRole(have []string, want ...string) bool {
 	}
 	return false
 }
+
+func HasAuthority(have []string, want string) bool {
+	wanted := strings.TrimSpace(want)
+	if wanted == "" {
+		return false
+	}
+	for _, item := range have {
+		if strings.TrimSpace(item) == wanted {
+			return true
+		}
+	}
+	return false
+}

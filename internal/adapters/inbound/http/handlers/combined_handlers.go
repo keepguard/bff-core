@@ -6,14 +6,16 @@ type CombinedHandlers struct {
 	*UserHandlers
 	*ConsentHandlers
 	*ConnectionsHandlers
+	*AuditHandlers
 }
 
 // NewCombinedHandlers cria CombinedHandlers.
-func NewCombinedHandlers(registerHandlers *RegisterHandlers, userHandlers *UserHandlers, consentHandlers *ConsentHandlers, connectionsHandlers *ConnectionsHandlers) *CombinedHandlers {
+func NewCombinedHandlers(registerHandlers *RegisterHandlers, userHandlers *UserHandlers, consentHandlers *ConsentHandlers, connectionsHandlers *ConnectionsHandlers, auditHandlers *AuditHandlers) *CombinedHandlers {
 	return &CombinedHandlers{
 		RegisterHandlers:    registerHandlers,
 		UserHandlers:        userHandlers,
 		ConsentHandlers:     consentHandlers,
 		ConnectionsHandlers: connectionsHandlers,
+		AuditHandlers:       auditHandlers,
 	}
 }
