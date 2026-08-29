@@ -25,6 +25,9 @@ func AuditMiddleware(publisher auditport.EventPublisher, sourceService string) e
 			if shouldSkipAudit(c.Request().Method, path) {
 				return err
 			}
+			if domainCoveredByMS(path) {
+				return err
+			}
 			status := c.Response().Status
 			outcome := "SUCCESS"
 			if status >= 400 {
@@ -32,9 +35,6 @@ func AuditMiddleware(publisher auditport.EventPublisher, sourceService string) e
 			}
 			if status == http.StatusForbidden || status == http.StatusUnauthorized {
 				outcome = "DENIED"
-			}
-			if outcome == "SUCCESS" && domainCoveredByMS(path) {
-				return err
 			}
 			event := auditport.Event{
 				EventID:       newAuditUUID(),

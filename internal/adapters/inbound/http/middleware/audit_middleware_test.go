@@ -44,7 +44,7 @@ func TestAuditMiddlewareSkipsRegisterSuccess(t *testing.T) {
 	require.Empty(t, rec.events)
 }
 
-func TestAuditMiddlewareEmitsRegisterFailure(t *testing.T) {
+func TestAuditMiddlewareSkipsRegisterFailure(t *testing.T) {
 	rec := &recPub{}
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/register/init", nil)
@@ -58,8 +58,5 @@ func TestAuditMiddlewareEmitsRegisterFailure(t *testing.T) {
 		return c.NoContent(http.StatusBadRequest)
 	})(c)
 	require.NoError(t, err)
-	require.Len(t, rec.events, 1)
-	require.Equal(t, "REGISTER_INIT", rec.events[0].Action)
-	require.Equal(t, "FAILURE", rec.events[0].Outcome)
-	require.Equal(t, "bff-core", rec.events[0].SourceService)
+	require.Empty(t, rec.events)
 }
