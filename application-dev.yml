@@ -41,6 +41,11 @@ rabbitmq:
   routing_key: "communication.message.send"
   durable: true
   auto_delete: false
+  audit:
+    enabled: true
+    exchange: "srv-audit-exchange-dev"
+    routing_key: "audit.event"
+    durable: true
 
 jwt:
   secret: "Q2FjaG9ycm8gU2VndXJhbmNhIFByb2pldG8gS2VlcEd1YXJkIQ=="

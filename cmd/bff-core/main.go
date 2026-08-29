@@ -26,6 +26,7 @@ import (
 	userdecorator "github.com/keepguard/bff-core/internal/adapters/outbound/http/decorator/user"
 	messagingDecorator "github.com/keepguard/bff-core/internal/adapters/outbound/messaging/decorator"
 	rabbitmqPublisher "github.com/keepguard/bff-core/internal/adapters/outbound/messaging/rabbitmq"
+	auditPublisher "github.com/keepguard/bff-core/internal/adapters/outbound/messaging/audit"
 	"github.com/keepguard/bff-core/internal/application/connections"
 	"github.com/keepguard/bff-core/internal/application/register"
 	"github.com/keepguard/bff-core/internal/infrastructure/cache"
@@ -251,6 +252,15 @@ func main() {
 		zap.String("routingKey", cfg.RabbitMQ.RoutingKey),
 	)
 
+	auditEventPublisher, err := auditPublisher.NewPublisher(&cfg.RabbitMQ, zapLogger)
+	if err != nil {
+		appLogger.Warn("Auditoria RabbitMQ indisponível; eventos não serão publicados",
+			zap.Error(err),
+			zap.String("component", "bff-core"),
+		)
+		auditEventPublisher = nil
+	}
+
 	// Inicializa use cases de registro
 	registerInitUseCase := register.NewRegisterInitUseCase(
 		authClient,
@@ -297,7 +307,7 @@ func main() {
 	rateLimiterMiddleware := middlewarePkg.NewRateLimiterMiddleware(redisClient, cfg.RateLimit, zapLogger, metricsInstance)
 
 	// Inicializa servidor HTTP com Rate Limiting
-	server := httpserver.NewServer(cfg, appLogger, metricsInstance, rateLimiterMiddleware, companyClient)
+	server := httpserver.NewServer(cfg, appLogger, metricsInstance, rateLimiterMiddleware, companyClient, auditEventPublisher)
 	server.SetupRoutes(httpHandlers)
 
 	// =============================================================================
@@ -371,6 +381,12 @@ func main() {
 			zap.String("component", "bff-core"),
 			zap.String("service", "bff-core"),
 		)
+	}
+
+	if auditEventPublisher != nil {
+		if err := auditEventPublisher.Close(); err != nil {
+			appLogger.Error("Erro ao fechar Audit Publisher", zap.Error(err))
+		}
 	}
 
 	if err := server.Stop(ctx); err != nil {

@@ -6,6 +6,7 @@ import (
 
 	middlewarePkg "github.com/keepguard/bff-core/internal/adapters/inbound/http/middleware"
 	"github.com/keepguard/bff-core/internal/domain/ports/client"
+	auditport "github.com/keepguard/bff-core/internal/domain/ports/audit"
 	"github.com/keepguard/bff-core/internal/infrastructure/config"
 	"github.com/keepguard/bff-core/internal/infrastructure/logger"
 	"github.com/keepguard/bff-core/internal/infrastructure/metrics"
@@ -32,6 +33,7 @@ func NewServer(
 	metrics *metrics.Metrics,
 	rateLimiter *middlewarePkg.RateLimiterMiddleware,
 	companyClient client.CompanyClient,
+	auditPublisher auditport.EventPublisher,
 ) Server {
 	e := echo.New()
 	e.HideBanner = true
@@ -47,6 +49,7 @@ func NewServer(
 
 	e.Use(middlewareInstance.RequestIDMiddleware())
 	e.Use(middlewareInstance.CorrelationIDMiddleware())
+	e.Use(middlewarePkg.AuditMiddleware(auditPublisher, "bff-core"))
 	e.Use(middlewareInstance.RecoveryMiddleware())
 	e.Use(middlewareInstance.LoggingMiddleware())
 	e.Use(middlewarePkg.ValidationMiddleware(validator))

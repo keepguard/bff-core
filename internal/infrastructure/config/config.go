@@ -94,10 +94,18 @@ type RabbitMQConfig struct {
 	User       string `mapstructure:"user"`
 	Password   string `mapstructure:"password"`
 	VHost      string `mapstructure:"vhost"`
+	Exchange   string            `mapstructure:"exchange"`
+	RoutingKey string            `mapstructure:"routing_key"`
+	Durable    bool              `mapstructure:"durable"`
+	AutoDelete bool              `mapstructure:"auto_delete"`
+	Audit      AuditBrokerConfig `mapstructure:"audit"`
+}
+
+type AuditBrokerConfig struct {
+	Enabled    bool   `mapstructure:"enabled"`
 	Exchange   string `mapstructure:"exchange"`
 	RoutingKey string `mapstructure:"routing_key"`
 	Durable    bool   `mapstructure:"durable"`
-	AutoDelete bool   `mapstructure:"auto_delete"`
 }
 
 // JWTConfig configurações JWT
@@ -209,6 +217,10 @@ func setDefaults() {
 	viper.SetDefault("rabbitmq.routing_key", "communication.message.send")
 	viper.SetDefault("rabbitmq.durable", true)
 	viper.SetDefault("rabbitmq.auto_delete", false)
+	viper.SetDefault("rabbitmq.audit.enabled", true)
+	viper.SetDefault("rabbitmq.audit.exchange", "srv-audit-exchange-local")
+	viper.SetDefault("rabbitmq.audit.routing_key", "audit.event")
+	viper.SetDefault("rabbitmq.audit.durable", true)
 
 	// JWT
 	viper.SetDefault("jwt.issuer", "keepguard")
