@@ -129,6 +129,18 @@ func (s *serverImpl) SetupRoutes(handlers Handler) {
 	userGroup.GET("/audits", handlers.ListAuditsHandler, auditRead...)
 	userGroup.GET("/audits/:eventId", handlers.GetAuditHandler, auditRead...)
 
+	guardianAdmin := []echo.MiddlewareFunc{
+		s.jwt.Middleware(),
+		middlewarePkg.RequireAnyRole("ADMIN", "SYSTEM"),
+		rl.Limit("guardian", rules.Guardian),
+	}
+	userGroup.GET("/core/guardian/incidents", handlers.ListGuardianIncidentsHandler, guardianAdmin...)
+	userGroup.GET("/core/guardian/incidents/:id", handlers.GetGuardianIncidentHandler, guardianAdmin...)
+	userGroup.POST("/core/guardian/incidents/:id/actions", handlers.ExecuteGuardianActionHandler, guardianAdmin...)
+	userGroup.GET("/core/guardian/alert-recipients", handlers.ListGuardianRecipientsHandler, guardianAdmin...)
+	userGroup.PUT("/core/guardian/alert-recipients", handlers.UpsertGuardianRecipientHandler, guardianAdmin...)
+	userGroup.PATCH("/core/guardian/alert-recipients/:id", handlers.PatchGuardianRecipientHandler, guardianAdmin...)
+
 	s.logger.Info("Rotas configuradas com sucesso com proteção de Rate Limit",
 		zap.String("port", s.config.Server.Port),
 	)

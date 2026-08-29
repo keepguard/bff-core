@@ -20,6 +20,12 @@ type Handler interface {
 	GetConnectionsHealthHandler(c echo.Context) error
 	ListAuditsHandler(c echo.Context) error
 	GetAuditHandler(c echo.Context) error
+	ListGuardianIncidentsHandler(c echo.Context) error
+	GetGuardianIncidentHandler(c echo.Context) error
+	ExecuteGuardianActionHandler(c echo.Context) error
+	ListGuardianRecipientsHandler(c echo.Context) error
+	UpsertGuardianRecipientHandler(c echo.Context) error
+	PatchGuardianRecipientHandler(c echo.Context) error
 }
 
 // Middleware define a interface para middlewares HTTP

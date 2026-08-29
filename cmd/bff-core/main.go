@@ -304,7 +304,9 @@ func main() {
 	connectionsHandlers := handlersPkg.NewConnectionsHandlers(connectionsService, zapLogger)
 	auditClient := httpclient.NewAuditClient(cfg, zapLogger)
 	auditHandlers := handlersPkg.NewAuditHandlers(auditClient, zapLogger)
-	httpHandlers := handlersPkg.NewCombinedHandlers(registerHandlers, userHandlers, consentHandlers, connectionsHandlers, auditHandlers)
+	guardianClient := httpclient.NewGuardianClient(cfg, zapLogger)
+	guardianHandlers := handlersPkg.NewGuardianHandlers(guardianClient, zapLogger)
+	httpHandlers := handlersPkg.NewCombinedHandlers(registerHandlers, userHandlers, consentHandlers, connectionsHandlers, auditHandlers, guardianHandlers)
 
 	rateLimiterMiddleware := middlewarePkg.NewRateLimiterMiddleware(redisClient, cfg.RateLimit, zapLogger, metricsInstance)
 

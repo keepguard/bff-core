@@ -45,6 +45,8 @@ spec:
           value: {{ .Values.env.userProfileServiceUrl | quote }}
         - name: BFF_CORE_SERVICES_AUDIT_BASE_URL
           value: {{ .Values.env.auditServiceUrl | quote }}
+        - name: BFF_CORE_SERVICES_GUARDIAN_BASE_URL
+          value: {{ .Values.env.guardianServiceUrl | quote }}
         - name: KEEPGUARD_VALIDATION_MODERATION_ENABLED
           value: "false"
         ports:

@@ -34,6 +34,10 @@ services:
     base_url: "http://localhost:8620"
     timeout: "10s"
     retries: 2
+  guardian:
+    base_url: "http://localhost:8088"
+    timeout: "20s"
+    retries: 2
 
 rabbitmq:
   host: "localhost"
@@ -86,6 +90,9 @@ rate_limit:
       window: 60s
     audits:
       limit: 120
+      window: 60s
+    guardian:
+      limit: 60
       window: 60s
     default:
       limit: 500

@@ -34,6 +34,10 @@ services:
     base_url: "http://srv-audit:8620"
     timeout: "10s"
     retries: 2
+  guardian:
+    base_url: "http://ms-ai-guardian:8088"
+    timeout: "20s"
+    retries: 2
 
 rabbitmq:
   host: "rabbit-1"
@@ -84,6 +88,9 @@ rate_limit:
       limit: 20
       window: 60s
     audits:
+      limit: 40
+      window: 60s
+    guardian:
       limit: 40
       window: 60s
     default:

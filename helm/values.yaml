@@ -22,6 +22,7 @@ env:
   userConsentsServiceUrl: "http://ms-user-consents:8086"
   userProfileServiceUrl: "http://ms-user-profile:8091"
   auditServiceUrl: "http://srv-audit:8620"
+  guardianServiceUrl: "http://ms-ai-guardian:8088"
 
 imagePullSecrets:
   - name: ghcr-secret

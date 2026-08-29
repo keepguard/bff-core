@@ -45,6 +45,7 @@ type RateLimitRulesConfig struct {
 	UsersMe           RateLimitRule `mapstructure:"users_me"`
 	ConnectionsHealth RateLimitRule `mapstructure:"connections_health"`
 	Audits            RateLimitRule `mapstructure:"audits"`
+	Guardian          RateLimitRule `mapstructure:"guardian"`
 	Default           RateLimitRule `mapstructure:"default"`
 }
 
@@ -80,6 +81,7 @@ type ServicesConfig struct {
 	UserConsents  ServiceConfig `mapstructure:"user_consents"`
 	UserProfile   ServiceConfig `mapstructure:"user_profile"`
 	Audit         ServiceConfig `mapstructure:"audit"`
+	Guardian      ServiceConfig `mapstructure:"guardian"`
 }
 
 // ServiceConfig configurações de um microserviço
@@ -213,6 +215,10 @@ func setDefaults() {
 	viper.SetDefault("services.audit.timeout", "10s")
 	viper.SetDefault("services.audit.retries", 2)
 
+	viper.SetDefault("services.guardian.base_url", "http://localhost:8088")
+	viper.SetDefault("services.guardian.timeout", "20s")
+	viper.SetDefault("services.guardian.retries", 2)
+
 	// RabbitMQ
 	viper.SetDefault("rabbitmq.host", "localhost")
 	viper.SetDefault("rabbitmq.port", 5672)
@@ -237,6 +243,8 @@ func setDefaults() {
 	viper.SetDefault("rate_limit.rules.connections_health.window", "60s")
 	viper.SetDefault("rate_limit.rules.audits.limit", 60)
 	viper.SetDefault("rate_limit.rules.audits.window", "60s")
+	viper.SetDefault("rate_limit.rules.guardian.limit", 60)
+	viper.SetDefault("rate_limit.rules.guardian.window", "60s")
 	viper.SetDefault("connections_health.snapshot_ttl", "60s")
 	viper.SetDefault("connections_health.lock_ttl", "5s")
 	viper.SetDefault("connections_health.probe_timeout", "500ms")
