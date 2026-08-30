@@ -58,7 +58,9 @@ func (d *retryDecorator) isRetryableError(err error) bool {
 	if httpErr, ok := err.(*appdto.HTTPError); ok {
 		// Retry APENAS para erros 5xx (infraestrutura)
 		switch httpErr.Code {
-		case http.StatusInternalServerError, // 500
+		case http.StatusTooManyRequests, // 429
+			http.StatusRequestTimeout,     // 408
+			http.StatusInternalServerError, // 500
 			http.StatusBadGateway,         // 502
 			http.StatusServiceUnavailable, // 503
 			http.StatusGatewayTimeout:     // 504

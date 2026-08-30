@@ -16,7 +16,7 @@ type MSUserCreateRequestDTO struct {
 
 // PersonProfileDTO representa o perfil de pessoa física
 type PersonProfileDTO struct {
-	FullName      string `json:"fullName"`
+	FullName      string `json:"full_name"`
 	DisplayHandle string `json:"display_handle,omitempty"`
 	CPF           string `json:"cpf,omitempty"`
 	RG            string `json:"rg,omitempty"`
