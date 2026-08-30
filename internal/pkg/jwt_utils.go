@@ -15,6 +15,7 @@ type JWTClaims struct {
 	TenantId    string   `json:"tenant_id"`
 	UserID      string   `json:"userId"`
 	Email       string   `json:"email"`
+	DeviceID    string   `json:"device_id"`
 	Roles       []string `json:"roles"`
 	Authorities []string `json:"authorities"`
 }

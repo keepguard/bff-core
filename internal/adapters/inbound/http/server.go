@@ -12,6 +12,7 @@ import (
 	"github.com/keepguard/bff-core/internal/infrastructure/metrics"
 	"github.com/keepguard/bff-core/internal/infrastructure/validation"
 	"github.com/labstack/echo/v4"
+	"github.com/redis/go-redis/v9"
 	echoSwagger "github.com/swaggo/echo-swagger"
 	"go.uber.org/zap"
 )
@@ -32,6 +33,7 @@ func NewServer(
 	logger logger.Logger,
 	metrics *metrics.Metrics,
 	rateLimiter *middlewarePkg.RateLimiterMiddleware,
+	redisClient *redis.Client,
 	companyClient client.CompanyClient,
 	auditPublisher auditport.EventPublisher,
 ) Server {
@@ -67,7 +69,7 @@ func NewServer(
 		logger:      logger,
 		metrics:     metrics,
 		rateLimiter: rateLimiter,
-		jwt:         middlewarePkg.NewJWTMiddleware(config.JWT.Secret, zapLogger),
+		jwt:         middlewarePkg.NewJWTMiddlewareWithRedis(config.JWT.Secret, redisClient, zapLogger),
 	}
 }
 

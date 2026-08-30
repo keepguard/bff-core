@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strings"
@@ -9,13 +10,15 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/keepguard/bff-core/internal/pkg"
 	"github.com/labstack/echo/v4"
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
 
-// JWTMiddleware implementa middleware JWT com validação local
+// JWTMiddleware implementa middleware JWT com validação local e verificação de revogação/blacklist no Redis
 type JWTMiddleware struct {
-	jwtSecret string
-	logger    *zap.Logger
+	jwtSecret   string
+	redisClient *redis.Client
+	logger      *zap.Logger
 }
 
 // NewJWTMiddleware cria um novo middleware JWT
@@ -26,7 +29,16 @@ func NewJWTMiddleware(jwtSecret string, logger *zap.Logger) *JWTMiddleware {
 	}
 }
 
-// Middleware retorna o middleware JWT que valida o token LOCALMENTE
+// NewJWTMiddlewareWithRedis cria um novo middleware JWT com checagem no Redis
+func NewJWTMiddlewareWithRedis(jwtSecret string, redisClient *redis.Client, logger *zap.Logger) *JWTMiddleware {
+	return &JWTMiddleware{
+		jwtSecret:   jwtSecret,
+		redisClient: redisClient,
+		logger:      logger,
+	}
+}
+
+// Middleware retorna o middleware JWT que valida o token LOCALMENTE e no Redis
 func (j *JWTMiddleware) Middleware() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
@@ -69,6 +81,76 @@ func (j *JWTMiddleware) Middleware() echo.MiddlewareFunc {
 					Message:       "tenant_id do token JWT é obrigatório",
 					CorrelationID: correlationID,
 				})
+			}
+
+			// Validação de revogação e blacklist no Redis
+			if j.redisClient != nil {
+				codeUser := claims.CodeUser
+				if codeUser == "" {
+					codeUser = claims.Sub
+				}
+				if codeUser == "" {
+					codeUser = claims.UserID
+				}
+				codeUserNorm := strings.ToLower(strings.TrimSpace(codeUser))
+
+				if codeUserNorm != "" {
+					// 1. Checar se o token ainda existe no Redis (se foi deslogado/revogado)
+					loginTokenKey := fmt.Sprintf("tokenlogin:%s:%s", codeUserNorm, token)
+					ctx, cancel := context.WithTimeout(c.Request().Context(), 500*time.Millisecond)
+					exists, err := j.redisClient.Exists(ctx, loginTokenKey).Result()
+					cancel()
+					if err != nil {
+						j.logger.Warn("Falha ao consultar tokenlogin no Redis (bypass ativo)",
+							zap.String("correlationId", correlationID),
+							zap.String("codeUser", codeUser),
+							zap.Error(err),
+						)
+					} else if exists == 0 {
+						j.logger.Warn("Requisição rejeitada pelo BFF: Token revogado ou inexistente no Redis",
+							zap.String("correlationId", correlationID),
+							zap.String("codeUser", codeUser),
+							zap.String("path", c.Path()),
+						)
+						return c.JSON(http.StatusUnauthorized, pkg.ErrorResponse{
+							Error:         "TOKEN_REVOKED",
+							Message:       "Sessão revogada ou expirada. Por favor, realize login novamente.",
+							CorrelationID: correlationID,
+						})
+					}
+
+					// 2. Checar se o dispositivo está na Blacklist
+					deviceId := claims.DeviceID
+					if deviceId == "" {
+						deviceId = c.Request().Header.Get("X-Device-Id")
+					}
+					if deviceId != "" {
+						blacklistKey := fmt.Sprintf("device:blacklist:%s:%s", codeUser, deviceId)
+						ctxB, cancelB := context.WithTimeout(c.Request().Context(), 500*time.Millisecond)
+						blacklisted, errB := j.redisClient.Exists(ctxB, blacklistKey).Result()
+						cancelB()
+						if errB != nil {
+							j.logger.Warn("Falha ao consultar blacklist no Redis (bypass ativo)",
+								zap.String("correlationId", correlationID),
+								zap.String("codeUser", codeUser),
+								zap.String("deviceId", deviceId),
+								zap.Error(errB),
+							)
+						} else if blacklisted > 0 {
+							j.logger.Warn("Requisição rejeitada pelo BFF: Dispositivo bloqueado na Blacklist",
+								zap.String("correlationId", correlationID),
+								zap.String("codeUser", codeUser),
+								zap.String("deviceId", deviceId),
+								zap.String("path", c.Path()),
+							)
+							return c.JSON(http.StatusForbidden, pkg.ErrorResponse{
+								Error:         "DEVICE_BLACKLISTED",
+								Message:       "Este dispositivo foi bloqueado para acesso a esta conta.",
+								CorrelationID: correlationID,
+							})
+						}
+					}
+				}
 			}
 
 			c.Set("claims", claims)
@@ -139,6 +221,9 @@ func (j *JWTMiddleware) validateTokenLocal(tokenString, tenantIdHeader string) (
 	}
 	if email, ok := mapClaims["email"].(string); ok {
 		claims.Email = email
+	}
+	if deviceID, ok := mapClaims["device_id"].(string); ok {
+		claims.DeviceID = deviceID
 	}
 	claims.Roles = stringSliceFromClaim(mapClaims["roles"])
 	claims.Authorities = stringSliceFromClaim(mapClaims["authorities"])
