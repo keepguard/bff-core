@@ -35,6 +35,7 @@ func NewCollectorAgentHandlers(
 type collectorAgentCreateBody struct {
 	Name            string                      `json:"name"`
 	Description     string                      `json:"description,omitempty"`
+	Context         string                      `json:"context,omitempty"`
 	CollectorType   string                      `json:"collectorType"`
 	CollectorConfig json.RawMessage             `json:"collectorConfig"`
 	Prompt          string                      `json:"prompt,omitempty"`
@@ -45,6 +46,7 @@ type collectorAgentCreateBody struct {
 type collectorAgentUpdateBody struct {
 	Name            *string                      `json:"name,omitempty"`
 	Description     *string                      `json:"description,omitempty"`
+	Context         *string                      `json:"context,omitempty"`
 	CollectorConfig json.RawMessage              `json:"collectorConfig,omitempty"`
 	Prompt          *string                      `json:"prompt,omitempty"`
 	Schedule        *appdto.CollectorScheduleDTO `json:"schedule,omitempty"`
@@ -129,10 +131,15 @@ func (h *CollectorAgentHandlers) CreateCollectorAgentHandler(c echo.Context) err
 	if body.Enabled != nil {
 		enabled = *body.Enabled
 	}
+	contextLabel := strings.TrimSpace(body.Context)
+	if contextLabel == "" {
+		contextLabel = "geral"
+	}
 	schedule := appdto.MapCollectorScheduleDTO(body.Schedule)
 	raw, err := h.collectorClient.CreateAgent(c.Request().Context(), companyID, correlationID, appdto.CollectorAgentWriteRaw{
 		Name:            body.Name,
 		Description:     optionalString(body.Description),
+		Context:         &contextLabel,
 		CollectorType:   body.CollectorType,
 		CollectorConfig: body.CollectorConfig,
 		Prompt:          optionalString(body.Prompt),
@@ -167,6 +174,7 @@ func (h *CollectorAgentHandlers) UpdateCollectorAgentHandler(c echo.Context) err
 		CollectorConfig: body.CollectorConfig,
 		Prompt:          body.Prompt,
 		Description:     body.Description,
+		Context:         body.Context,
 	}
 	if body.Name != nil {
 		write.Name = *body.Name

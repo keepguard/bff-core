@@ -60,6 +60,7 @@ type CollectorAgentRaw struct {
 	CompanyID       string          `json:"company_id"`
 	Name            string          `json:"name"`
 	Description     string          `json:"description"`
+	Context         string          `json:"context"`
 	CollectorType   string          `json:"collector_type"`
 	CollectorConfig json.RawMessage `json:"collector_config,omitempty"`
 	Prompt          string          `json:"prompt,omitempty"`

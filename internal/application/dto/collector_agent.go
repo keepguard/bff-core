@@ -24,6 +24,7 @@ type CollectorAgentDetailDTO struct {
 	CompanyID       string               `json:"companyId"`
 	Name            string               `json:"name"`
 	Description     string               `json:"description"`
+	Context         string               `json:"context"`
 	CollectorType   string               `json:"collectorType"`
 	CollectorConfig json.RawMessage      `json:"collectorConfig"`
 	Prompt          string               `json:"prompt"`
@@ -60,6 +61,7 @@ type PaginatedCollectorAgentsRaw struct {
 type CollectorAgentCreateRequest struct {
 	Name            string               `json:"name"`
 	Description     string               `json:"description,omitempty"`
+	Context         string               `json:"context,omitempty"`
 	CollectorType   string               `json:"collectorType"`
 	CollectorConfig json.RawMessage      `json:"collectorConfig"`
 	Prompt          string               `json:"prompt,omitempty"`
@@ -70,6 +72,7 @@ type CollectorAgentCreateRequest struct {
 type CollectorAgentUpdateRequest struct {
 	Name            *string               `json:"name,omitempty"`
 	Description     *string               `json:"description,omitempty"`
+	Context         *string               `json:"context,omitempty"`
 	CollectorConfig json.RawMessage       `json:"collectorConfig,omitempty"`
 	Prompt          *string               `json:"prompt,omitempty"`
 	Schedule        *CollectorScheduleDTO `json:"schedule,omitempty"`
@@ -78,6 +81,7 @@ type CollectorAgentUpdateRequest struct {
 type CollectorAgentWriteRaw struct {
 	Name            string                `json:"name,omitempty"`
 	Description     *string               `json:"description,omitempty"`
+	Context         *string               `json:"context,omitempty"`
 	CollectorType   string                `json:"collector_type,omitempty"`
 	CollectorConfig json.RawMessage       `json:"collector_config,omitempty"`
 	Prompt          *string               `json:"prompt,omitempty"`
@@ -90,12 +94,17 @@ func MapCollectorAgentRaw(raw CollectorAgentRaw) CollectorAgentDetailDTO {
 	if len(cfg) == 0 {
 		cfg = json.RawMessage(`{}`)
 	}
+	context := raw.Context
+	if context == "" {
+		context = "geral"
+	}
 	return CollectorAgentDetailDTO{
 		ID:              raw.ID,
 		Code:            raw.Code,
 		CompanyID:       raw.CompanyID,
 		Name:            raw.Name,
 		Description:     raw.Description,
+		Context:         context,
 		CollectorType:   raw.CollectorType,
 		CollectorConfig: cfg,
 		Prompt:          raw.Prompt,

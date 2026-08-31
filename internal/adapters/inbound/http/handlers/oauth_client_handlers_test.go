@@ -120,9 +120,14 @@ func (s *oauthStubCollector) CreateAgent(_ context.Context, _, _ string, body ap
 	if body.Enabled != nil {
 		enabled = *body.Enabled
 	}
+	context := "geral"
+	if body.Context != nil && *body.Context != "" {
+		context = *body.Context
+	}
 	return appdto.CollectorAgentRaw{
 		ID:            "new-agent",
 		Name:          body.Name,
+		Context:       context,
 		CollectorType: body.CollectorType,
 		Enabled:       enabled,
 	}, nil
