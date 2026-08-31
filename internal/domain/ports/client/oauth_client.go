@@ -17,4 +17,5 @@ type OAuthClientClient interface {
 
 type CollectorClient interface {
 	ListAgents(ctx context.Context, companyID, correlationID string) ([]appdto.CollectorAgentRaw, error)
+	DisableAgent(ctx context.Context, companyID, agentID, correlationID string) error
 }

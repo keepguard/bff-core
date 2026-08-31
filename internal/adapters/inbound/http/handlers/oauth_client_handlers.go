@@ -34,7 +34,6 @@ func NewOAuthClientHandlers(
 }
 
 type oauthClientCreateBody struct {
-	TenantID        string   `json:"tenantId"`
 	ClientID        string   `json:"clientId"`
 	Description     string   `json:"description,omitempty"`
 	Authorities     []string `json:"authorities,omitempty"`
@@ -43,8 +42,7 @@ type oauthClientCreateBody struct {
 
 func (h *OAuthClientHandlers) ListOAuthClientsHandler(c echo.Context) error {
 	correlationID := middlewarePkg.GetCorrelationID(c)
-	tenantID := strings.TrimSpace(c.QueryParam("tenantId"))
-	companyID, err := h.resolveCompany(c, tenantID, correlationID)
+	companyID, err := h.resolveCompany(c, correlationID)
 	if err != nil {
 		return err
 	}
@@ -59,7 +57,7 @@ func (h *OAuthClientHandlers) ListOAuthClientsHandler(c echo.Context) error {
 	if err != nil {
 		h.logger.Error("Erro ao listar OAuth clients",
 			zap.String("correlationId", correlationID),
-			zap.String("tenantId", tenantID),
+			zap.String("companyId", companyID),
 			zap.Error(err),
 		)
 		return handleError(c, err, correlationID)
@@ -69,8 +67,7 @@ func (h *OAuthClientHandlers) ListOAuthClientsHandler(c echo.Context) error {
 
 func (h *OAuthClientHandlers) GetOAuthClientHandler(c echo.Context) error {
 	correlationID := middlewarePkg.GetCorrelationID(c)
-	tenantID := strings.TrimSpace(c.QueryParam("tenantId"))
-	companyID, err := h.resolveCompany(c, tenantID, correlationID)
+	companyID, err := h.resolveCompany(c, correlationID)
 	if err != nil {
 		return err
 	}
@@ -88,7 +85,6 @@ func (h *OAuthClientHandlers) GetOAuthClientHandler(c echo.Context) error {
 	agents := h.loadAgents(c, companyID, correlationID)
 	return c.JSON(http.StatusOK, appdto.OAuthClientDetailResponse{
 		OAuthClientDTO: item,
-		TenantID:       tenantID,
 		Agents:         agents,
 	})
 }
@@ -103,11 +99,7 @@ func (h *OAuthClientHandlers) CreateOAuthClientHandler(c echo.Context) error {
 			CorrelationID: correlationID,
 		})
 	}
-	tenantID := strings.TrimSpace(body.TenantID)
-	if tenantID == "" {
-		tenantID = strings.TrimSpace(c.QueryParam("tenantId"))
-	}
-	companyID, err := h.resolveCompany(c, tenantID, correlationID)
+	companyID, err := h.resolveCompany(c, correlationID)
 	if err != nil {
 		return err
 	}
@@ -145,8 +137,7 @@ func (h *OAuthClientHandlers) UnblockOAuthClientHandler(c echo.Context) error {
 
 func (h *OAuthClientHandlers) mutate(c echo.Context, block bool) error {
 	correlationID := middlewarePkg.GetCorrelationID(c)
-	tenantID := strings.TrimSpace(c.QueryParam("tenantId"))
-	companyID, err := h.resolveCompany(c, tenantID, correlationID)
+	companyID, err := h.resolveCompany(c, correlationID)
 	if err != nil {
 		return err
 	}
@@ -167,13 +158,15 @@ func (h *OAuthClientHandlers) mutate(c echo.Context, block bool) error {
 		)
 		return handleError(c, err, correlationID)
 	}
+	if block {
+		h.disableCompanyAgents(c, companyID, correlationID)
+	}
 	return c.JSON(http.StatusOK, result)
 }
 
 func (h *OAuthClientHandlers) DeleteOAuthClientHandler(c echo.Context) error {
 	correlationID := middlewarePkg.GetCorrelationID(c)
-	tenantID := strings.TrimSpace(c.QueryParam("tenantId"))
-	companyID, err := h.resolveCompany(c, tenantID, correlationID)
+	companyID, err := h.resolveCompany(c, correlationID)
 	if err != nil {
 		return err
 	}
@@ -187,10 +180,11 @@ func (h *OAuthClientHandlers) DeleteOAuthClientHandler(c echo.Context) error {
 		)
 		return handleError(c, err, correlationID)
 	}
+	h.disableCompanyAgents(c, companyID, correlationID)
 	return c.NoContent(http.StatusNoContent)
 }
 
-func (h *OAuthClientHandlers) resolveCompany(c echo.Context, tenantID, correlationID string) (string, error) {
+func (h *OAuthClientHandlers) resolveCompany(c echo.Context, correlationID string) (string, error) {
 	if h.oauthClient == nil || h.companyClient == nil {
 		return "", c.JSON(http.StatusServiceUnavailable, pkg.ErrorResponse{
 			Error:         "SERVICE_UNAVAILABLE",
@@ -198,16 +192,20 @@ func (h *OAuthClientHandlers) resolveCompany(c echo.Context, tenantID, correlati
 			CorrelationID: correlationID,
 		})
 	}
+	if companyID := client.CompanyIDFromContext(c.Request().Context()); companyID != "" {
+		return companyID, nil
+	}
+	tenantID := middlewarePkg.ResolveTenantId(c, middlewarePkg.GetClaimsFromContext(c))
 	if strings.TrimSpace(tenantID) == "" {
 		return "", c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
 			Error:         "MISSING_TENANT",
-			Message:       "tenantId é obrigatório",
+			Message:       "tenantId do JWT é obrigatório",
 			CorrelationID: correlationID,
 		})
 	}
 	company, err := h.companyClient.GetByTenantId(c.Request().Context(), tenantID, correlationID)
 	if err != nil {
-		h.logger.Error("Erro ao resolver company pelo tenant",
+		h.logger.Error("Erro ao resolver company pelo tenant do JWT",
 			zap.String("correlationId", correlationID),
 			zap.String("tenantId", tenantID),
 			zap.Error(err),
@@ -217,7 +215,7 @@ func (h *OAuthClientHandlers) resolveCompany(c echo.Context, tenantID, correlati
 	if company.ID == "" {
 		return "", c.JSON(http.StatusNotFound, pkg.ErrorResponse{
 			Error:         "COMPANY_NOT_FOUND",
-			Message:       "Empresa não encontrada para o tenant informado",
+			Message:       "Empresa não encontrada para o tenant autenticado",
 			CorrelationID: correlationID,
 		})
 	}
@@ -252,4 +250,24 @@ func (h *OAuthClientHandlers) loadAgents(c echo.Context, companyID, correlationI
 		})
 	}
 	return out
+}
+
+func (h *OAuthClientHandlers) disableCompanyAgents(c echo.Context, companyID, correlationID string) {
+	if h.collectorClient == nil {
+		return
+	}
+	agents := h.loadAgents(c, companyID, correlationID)
+	for _, agent := range agents {
+		if !agent.Enabled || strings.TrimSpace(agent.ID) == "" {
+			continue
+		}
+		if err := h.collectorClient.DisableAgent(c.Request().Context(), companyID, agent.ID, correlationID); err != nil {
+			h.logger.Warn("Falha ao desabilitar agent após alteração do OAuth client",
+				zap.String("correlationId", correlationID),
+				zap.String("companyId", companyID),
+				zap.String("agentId", agent.ID),
+				zap.Error(err),
+			)
+		}
+	}
 }

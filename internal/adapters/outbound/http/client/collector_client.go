@@ -32,6 +32,24 @@ func NewCollectorClient(cfg *config.Config, logger *zap.Logger) domainclient.Col
 	}
 }
 
+func (c *collectorHTTP) DisableAgent(ctx context.Context, companyID, agentID, correlationID string) error {
+	if c.baseURL == "" || agentID == "" {
+		return nil
+	}
+	resp, err := c.httpClient.R().
+		SetContext(ctx).
+		SetHeader("X-Company-Id", companyID).
+		SetHeader("X-Correlation-ID", correlationID).
+		Post(c.baseURL + "/api/v1/collector/agents/" + agentID + "/disable")
+	if err != nil {
+		return MapNetworkError(err, "collector service")
+	}
+	if resp.StatusCode() != 200 && resp.StatusCode() != 204 {
+		return MapHTTPError(resp.StatusCode(), resp.Body(), "collector service")
+	}
+	return nil
+}
+
 func (c *collectorHTTP) ListAgents(ctx context.Context, companyID, correlationID string) ([]appdto.CollectorAgentRaw, error) {
 	if c.baseURL == "" {
 		return []appdto.CollectorAgentRaw{}, nil
