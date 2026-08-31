@@ -19,5 +19,11 @@ type OAuthClientClient interface {
 
 type CollectorClient interface {
 	ListAgents(ctx context.Context, companyID, correlationID string) ([]appdto.CollectorAgentRaw, error)
-	DisableAgent(ctx context.Context, companyID, agentID, correlationID string) error
+	SearchAgents(ctx context.Context, companyID, correlationID string, query map[string]string) (appdto.PaginatedCollectorAgentsRaw, error)
+	GetAgent(ctx context.Context, companyID, agentID, correlationID string) (appdto.CollectorAgentRaw, error)
+	CreateAgent(ctx context.Context, companyID, correlationID string, body appdto.CollectorAgentWriteRaw) (appdto.CollectorAgentRaw, error)
+	UpdateAgent(ctx context.Context, companyID, agentID, correlationID string, body appdto.CollectorAgentWriteRaw) (appdto.CollectorAgentRaw, error)
+	EnableAgent(ctx context.Context, companyID, agentID, correlationID string) (appdto.CollectorAgentRaw, error)
+	DisableAgent(ctx context.Context, companyID, agentID, correlationID string) (appdto.CollectorAgentRaw, error)
+	DeleteAgent(ctx context.Context, companyID, agentID, correlationID string) error
 }

@@ -34,6 +34,13 @@ type Handler interface {
 	BlockOAuthClientHandler(c echo.Context) error
 	UnblockOAuthClientHandler(c echo.Context) error
 	DeleteOAuthClientHandler(c echo.Context) error
+	ListCollectorAgentsHandler(c echo.Context) error
+	GetCollectorAgentHandler(c echo.Context) error
+	CreateCollectorAgentHandler(c echo.Context) error
+	UpdateCollectorAgentHandler(c echo.Context) error
+	EnableCollectorAgentHandler(c echo.Context) error
+	DisableCollectorAgentHandler(c echo.Context) error
+	DeleteCollectorAgentHandler(c echo.Context) error
 }
 
 // Middleware define a interface para middlewares HTTP

@@ -349,7 +349,7 @@ func (h *OAuthClientHandlers) disableCompanyAgents(c echo.Context, companyID, co
 		if !agent.Enabled || strings.TrimSpace(agent.ID) == "" {
 			continue
 		}
-		if err := h.collectorClient.DisableAgent(c.Request().Context(), companyID, agent.ID, correlationID); err != nil {
+		if _, err := h.collectorClient.DisableAgent(c.Request().Context(), companyID, agent.ID, correlationID); err != nil {
 			h.logger.Warn("Falha ao desabilitar agent após alteração do OAuth client",
 				zap.String("correlationId", correlationID),
 				zap.String("companyId", companyID),

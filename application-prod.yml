@@ -97,6 +97,9 @@ rate_limit:
     guardian:
       limit: 40
       window: 60s
+    collector:
+      limit: 40
+      window: 60s
     default:
       limit: 120
       window: 60s

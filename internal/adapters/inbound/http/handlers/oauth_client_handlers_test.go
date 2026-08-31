@@ -96,8 +96,47 @@ func (s *oauthStubCollector) ListAgents(_ context.Context, _, _ string) ([]appdt
 	return s.agents, nil
 }
 
-func (s *oauthStubCollector) DisableAgent(_ context.Context, _, agentID, _ string) error {
+func (s *oauthStubCollector) SearchAgents(_ context.Context, _, _ string, _ map[string]string) (appdto.PaginatedCollectorAgentsRaw, error) {
+	return appdto.PaginatedCollectorAgentsRaw{Content: s.agents, Size: 20, TotalPages: 1, First: true, Last: true}, nil
+}
+
+func (s *oauthStubCollector) GetAgent(_ context.Context, _, agentID, _ string) (appdto.CollectorAgentRaw, error) {
+	for _, agent := range s.agents {
+		if agent.ID == agentID {
+			return agent, nil
+		}
+	}
+	return appdto.CollectorAgentRaw{ID: agentID}, nil
+}
+
+func (s *oauthStubCollector) CreateAgent(_ context.Context, _, _ string, body appdto.CollectorAgentWriteRaw) (appdto.CollectorAgentRaw, error) {
+	enabled := true
+	if body.Enabled != nil {
+		enabled = *body.Enabled
+	}
+	return appdto.CollectorAgentRaw{
+		ID:            "new-agent",
+		Name:          body.Name,
+		CollectorType: body.CollectorType,
+		Enabled:       enabled,
+	}, nil
+}
+
+func (s *oauthStubCollector) UpdateAgent(_ context.Context, _, agentID, _ string, body appdto.CollectorAgentWriteRaw) (appdto.CollectorAgentRaw, error) {
+	return appdto.CollectorAgentRaw{ID: agentID, Name: body.Name, Enabled: true}, nil
+}
+
+func (s *oauthStubCollector) EnableAgent(_ context.Context, _, agentID, _ string) (appdto.CollectorAgentRaw, error) {
+	return appdto.CollectorAgentRaw{ID: agentID, Enabled: true}, nil
+}
+
+func (s *oauthStubCollector) DisableAgent(_ context.Context, _, agentID, _ string) (appdto.CollectorAgentRaw, error) {
 	s.disabledIDs = append(s.disabledIDs, agentID)
+	return appdto.CollectorAgentRaw{ID: agentID, Enabled: false}, nil
+}
+
+func (s *oauthStubCollector) DeleteAgent(_ context.Context, _, agentID, _ string) error {
+	s.disabledIDs = append(s.disabledIDs, "deleted:"+agentID)
 	return nil
 }
 

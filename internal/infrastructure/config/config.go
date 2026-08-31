@@ -46,6 +46,7 @@ type RateLimitRulesConfig struct {
 	ConnectionsHealth RateLimitRule `mapstructure:"connections_health"`
 	Audits            RateLimitRule `mapstructure:"audits"`
 	Guardian          RateLimitRule `mapstructure:"guardian"`
+	Collector         RateLimitRule `mapstructure:"collector"`
 	Default           RateLimitRule `mapstructure:"default"`
 }
 
@@ -250,6 +251,8 @@ func setDefaults() {
 	viper.SetDefault("rate_limit.rules.audits.window", "60s")
 	viper.SetDefault("rate_limit.rules.guardian.limit", 60)
 	viper.SetDefault("rate_limit.rules.guardian.window", "60s")
+	viper.SetDefault("rate_limit.rules.collector.limit", 60)
+	viper.SetDefault("rate_limit.rules.collector.window", "60s")
 	viper.SetDefault("connections_health.snapshot_ttl", "60s")
 	viper.SetDefault("connections_health.lock_ttl", "5s")
 	viper.SetDefault("connections_health.probe_timeout", "500ms")

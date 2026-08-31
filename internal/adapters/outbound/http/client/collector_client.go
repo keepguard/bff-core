@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/go-resty/resty/v2"
@@ -32,22 +33,44 @@ func NewCollectorClient(cfg *config.Config, logger *zap.Logger) domainclient.Col
 	}
 }
 
-func (c *collectorHTTP) DisableAgent(ctx context.Context, companyID, agentID, correlationID string) error {
-	if c.baseURL == "" || agentID == "" {
-		return nil
+func (c *collectorHTTP) agentURL(id string) string {
+	base := c.baseURL + "/api/v1/collector/agents"
+	if id == "" {
+		return base
 	}
-	resp, err := c.httpClient.R().
+	return base + "/" + id
+}
+
+func (c *collectorHTTP) req(ctx context.Context, companyID, correlationID string) *resty.Request {
+	return c.httpClient.R().
 		SetContext(ctx).
 		SetHeader("X-Company-Id", companyID).
-		SetHeader("X-Correlation-ID", correlationID).
-		Post(c.baseURL + "/api/v1/collector/agents/" + agentID + "/disable")
+		SetHeader("X-Correlation-ID", correlationID)
+}
+
+func (c *collectorHTTP) DisableAgent(ctx context.Context, companyID, agentID, correlationID string) (appdto.CollectorAgentRaw, error) {
+	return c.toggleAgent(ctx, companyID, agentID, correlationID, "disable")
+}
+
+func (c *collectorHTTP) EnableAgent(ctx context.Context, companyID, agentID, correlationID string) (appdto.CollectorAgentRaw, error) {
+	return c.toggleAgent(ctx, companyID, agentID, correlationID, "enable")
+}
+
+func (c *collectorHTTP) toggleAgent(ctx context.Context, companyID, agentID, correlationID, action string) (appdto.CollectorAgentRaw, error) {
+	if c.baseURL == "" || agentID == "" {
+		return appdto.CollectorAgentRaw{}, nil
+	}
+	var out appdto.CollectorAgentRaw
+	resp, err := c.req(ctx, companyID, correlationID).
+		SetResult(&out).
+		Post(c.agentURL(agentID) + "/" + action)
 	if err != nil {
-		return MapNetworkError(err, "collector service")
+		return appdto.CollectorAgentRaw{}, MapNetworkError(err, "collector service")
 	}
 	if resp.StatusCode() != 200 && resp.StatusCode() != 204 {
-		return MapHTTPError(resp.StatusCode(), resp.Body(), "collector service")
+		return appdto.CollectorAgentRaw{}, MapHTTPError(resp.StatusCode(), resp.Body(), "collector service")
 	}
-	return nil
+	return out, nil
 }
 
 func (c *collectorHTTP) ListAgents(ctx context.Context, companyID, correlationID string) ([]appdto.CollectorAgentRaw, error) {
@@ -55,12 +78,9 @@ func (c *collectorHTTP) ListAgents(ctx context.Context, companyID, correlationID
 		return []appdto.CollectorAgentRaw{}, nil
 	}
 	var out []appdto.CollectorAgentRaw
-	resp, err := c.httpClient.R().
-		SetContext(ctx).
-		SetHeader("X-Company-Id", companyID).
-		SetHeader("X-Correlation-ID", correlationID).
+	resp, err := c.req(ctx, companyID, correlationID).
 		SetResult(&out).
-		Get(c.baseURL + "/api/v1/collector/agents")
+		Get(c.agentURL(""))
 	if err != nil {
 		return nil, MapNetworkError(err, "collector service")
 	}
@@ -71,4 +91,105 @@ func (c *collectorHTTP) ListAgents(ctx context.Context, companyID, correlationID
 		out = []appdto.CollectorAgentRaw{}
 	}
 	return out, nil
+}
+
+func (c *collectorHTTP) SearchAgents(ctx context.Context, companyID, correlationID string, query map[string]string) (appdto.PaginatedCollectorAgentsRaw, error) {
+	if c.baseURL == "" {
+		return appdto.PaginatedCollectorAgentsRaw{Content: []appdto.CollectorAgentRaw{}}, nil
+	}
+	var out appdto.PaginatedCollectorAgentsRaw
+	req := c.req(ctx, companyID, correlationID).SetResult(&out)
+	for key, value := range query {
+		if value != "" {
+			req.SetQueryParam(key, value)
+		}
+	}
+	resp, err := req.Get(c.agentURL(""))
+	if err != nil {
+		return appdto.PaginatedCollectorAgentsRaw{}, MapNetworkError(err, "collector service")
+	}
+	if resp.StatusCode() != 200 {
+		return appdto.PaginatedCollectorAgentsRaw{}, MapHTTPError(resp.StatusCode(), resp.Body(), "collector service")
+	}
+	if out.Content == nil {
+		out.Content = []appdto.CollectorAgentRaw{}
+	}
+	return out, nil
+}
+
+func (c *collectorHTTP) GetAgent(ctx context.Context, companyID, agentID, correlationID string) (appdto.CollectorAgentRaw, error) {
+	if c.baseURL == "" {
+		return appdto.CollectorAgentRaw{}, nil
+	}
+	var out appdto.CollectorAgentRaw
+	resp, err := c.req(ctx, companyID, correlationID).
+		SetResult(&out).
+		Get(c.agentURL(agentID))
+	if err != nil {
+		return appdto.CollectorAgentRaw{}, MapNetworkError(err, "collector service")
+	}
+	if resp.StatusCode() != 200 {
+		return appdto.CollectorAgentRaw{}, MapHTTPError(resp.StatusCode(), resp.Body(), "collector service")
+	}
+	return out, nil
+}
+
+func (c *collectorHTTP) CreateAgent(ctx context.Context, companyID, correlationID string, body appdto.CollectorAgentWriteRaw) (appdto.CollectorAgentRaw, error) {
+	if c.baseURL == "" {
+		return appdto.CollectorAgentRaw{}, nil
+	}
+	payload, err := json.Marshal(body)
+	if err != nil {
+		return appdto.CollectorAgentRaw{}, err
+	}
+	var out appdto.CollectorAgentRaw
+	resp, err := c.req(ctx, companyID, correlationID).
+		SetHeader("Content-Type", "application/json").
+		SetBody(payload).
+		SetResult(&out).
+		Post(c.agentURL(""))
+	if err != nil {
+		return appdto.CollectorAgentRaw{}, MapNetworkError(err, "collector service")
+	}
+	if resp.StatusCode() != 200 && resp.StatusCode() != 201 {
+		return appdto.CollectorAgentRaw{}, MapHTTPError(resp.StatusCode(), resp.Body(), "collector service")
+	}
+	return out, nil
+}
+
+func (c *collectorHTTP) UpdateAgent(ctx context.Context, companyID, agentID, correlationID string, body appdto.CollectorAgentWriteRaw) (appdto.CollectorAgentRaw, error) {
+	if c.baseURL == "" {
+		return appdto.CollectorAgentRaw{}, nil
+	}
+	payload, err := json.Marshal(body)
+	if err != nil {
+		return appdto.CollectorAgentRaw{}, err
+	}
+	var out appdto.CollectorAgentRaw
+	resp, err := c.req(ctx, companyID, correlationID).
+		SetHeader("Content-Type", "application/json").
+		SetBody(payload).
+		SetResult(&out).
+		Put(c.agentURL(agentID))
+	if err != nil {
+		return appdto.CollectorAgentRaw{}, MapNetworkError(err, "collector service")
+	}
+	if resp.StatusCode() != 200 {
+		return appdto.CollectorAgentRaw{}, MapHTTPError(resp.StatusCode(), resp.Body(), "collector service")
+	}
+	return out, nil
+}
+
+func (c *collectorHTTP) DeleteAgent(ctx context.Context, companyID, agentID, correlationID string) error {
+	if c.baseURL == "" || agentID == "" {
+		return nil
+	}
+	resp, err := c.req(ctx, companyID, correlationID).Delete(c.agentURL(agentID))
+	if err != nil {
+		return MapNetworkError(err, "collector service")
+	}
+	if resp.StatusCode() != 200 && resp.StatusCode() != 204 {
+		return MapHTTPError(resp.StatusCode(), resp.Body(), "collector service")
+	}
+	return nil
 }

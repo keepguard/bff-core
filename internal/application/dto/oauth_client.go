@@ -1,18 +1,20 @@
 package dto
 
+import "encoding/json"
+
 type OAuthClientDTO struct {
-	ID               string   `json:"id"`
-	CompanyID        string   `json:"companyId"`
-	ClientID         string   `json:"clientId"`
-	ClientSecret     string   `json:"clientSecret,omitempty"`
-	ServiceRoleID    string   `json:"serviceRoleId,omitempty"`
-	ServiceRoleName  string   `json:"serviceRoleName,omitempty"`
-	Authorities      []string `json:"authorities"`
-	Status           string   `json:"status"`
-	TokenTTLSeconds  int      `json:"tokenTtlSeconds"`
-	Description      string   `json:"description,omitempty"`
-	CreatedAt        string   `json:"createdAt"`
-	UpdatedAt        string   `json:"updatedAt"`
+	ID              string   `json:"id"`
+	CompanyID       string   `json:"companyId"`
+	ClientID        string   `json:"clientId"`
+	ClientSecret    string   `json:"clientSecret,omitempty"`
+	ServiceRoleID   string   `json:"serviceRoleId,omitempty"`
+	ServiceRoleName string   `json:"serviceRoleName,omitempty"`
+	Authorities     []string `json:"authorities"`
+	Status          string   `json:"status"`
+	TokenTTLSeconds int      `json:"tokenTtlSeconds"`
+	Description     string   `json:"description,omitempty"`
+	CreatedAt       string   `json:"createdAt"`
+	UpdatedAt       string   `json:"updatedAt"`
 }
 
 type PaginatedOAuthClients struct {
@@ -53,15 +55,18 @@ type OAuthServiceRoleDTO struct {
 }
 
 type CollectorAgentRaw struct {
-	ID            string `json:"id"`
-	Code          string `json:"code"`
-	CompanyID     string `json:"company_id"`
-	Name          string `json:"name"`
-	Description   string `json:"description"`
-	CollectorType string `json:"collector_type"`
-	Enabled       bool   `json:"enabled"`
-	CreatedAt     string `json:"created_at"`
-	UpdatedAt     string `json:"updated_at"`
+	ID              string          `json:"id"`
+	Code            string          `json:"code"`
+	CompanyID       string          `json:"company_id"`
+	Name            string          `json:"name"`
+	Description     string          `json:"description"`
+	CollectorType   string          `json:"collector_type"`
+	CollectorConfig json.RawMessage `json:"collector_config,omitempty"`
+	Prompt          string          `json:"prompt,omitempty"`
+	Schedule        json.RawMessage `json:"schedule,omitempty"`
+	Enabled         bool            `json:"enabled"`
+	CreatedAt       string          `json:"created_at"`
+	UpdatedAt       string          `json:"updated_at"`
 }
 
 type CollectorAgentDTO struct {

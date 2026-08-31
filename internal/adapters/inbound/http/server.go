@@ -157,6 +157,19 @@ func (s *serverImpl) SetupRoutes(handlers Handler) {
 	userGroup.POST("/core/oauth/clients/:id/unblock", handlers.UnblockOAuthClientHandler, oauthAdmin...)
 	userGroup.DELETE("/core/oauth/clients/:id", handlers.DeleteOAuthClientHandler, oauthAdmin...)
 
+	collectorAdmin := []echo.MiddlewareFunc{
+		s.jwt.Middleware(),
+		middlewarePkg.RequireAnyRole("ADMIN", "SYSTEM"),
+		rl.Limit("collector", rules.Collector),
+	}
+	userGroup.GET("/core/collector/agents", handlers.ListCollectorAgentsHandler, collectorAdmin...)
+	userGroup.POST("/core/collector/agents", handlers.CreateCollectorAgentHandler, collectorAdmin...)
+	userGroup.GET("/core/collector/agents/:id", handlers.GetCollectorAgentHandler, collectorAdmin...)
+	userGroup.PUT("/core/collector/agents/:id", handlers.UpdateCollectorAgentHandler, collectorAdmin...)
+	userGroup.POST("/core/collector/agents/:id/enable", handlers.EnableCollectorAgentHandler, collectorAdmin...)
+	userGroup.POST("/core/collector/agents/:id/disable", handlers.DisableCollectorAgentHandler, collectorAdmin...)
+	userGroup.DELETE("/core/collector/agents/:id", handlers.DeleteCollectorAgentHandler, collectorAdmin...)
+
 	s.logger.Info("Rotas configuradas com sucesso com proteção de Rate Limit",
 		zap.String("port", s.config.Server.Port),
 	)
