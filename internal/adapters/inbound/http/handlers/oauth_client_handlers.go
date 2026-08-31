@@ -41,6 +41,12 @@ type oauthClientCreateBody struct {
 	TokenTTLSeconds *int   `json:"tokenTtlSeconds,omitempty"`
 }
 
+type oauthClientUpdateBody struct {
+	Description     string `json:"description,omitempty"`
+	RoleID          string `json:"roleId"`
+	TokenTTLSeconds *int   `json:"tokenTtlSeconds,omitempty"`
+}
+
 func (h *OAuthClientHandlers) ListOAuthClientsHandler(c echo.Context) error {
 	correlationID := middlewarePkg.GetCorrelationID(c)
 	companyID, err := h.resolveCompany(c, correlationID)
@@ -137,6 +143,45 @@ func (h *OAuthClientHandlers) CreateOAuthClientHandler(c echo.Context) error {
 		return handleError(c, err, correlationID)
 	}
 	return c.JSON(http.StatusCreated, created)
+}
+
+func (h *OAuthClientHandlers) UpdateOAuthClientHandler(c echo.Context) error {
+	correlationID := middlewarePkg.GetCorrelationID(c)
+	var body oauthClientUpdateBody
+	if err := c.Bind(&body); err != nil {
+		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
+			Error:         "INVALID_BODY",
+			Message:       "JSON inválido",
+			CorrelationID: correlationID,
+		})
+	}
+	companyID, err := h.resolveCompany(c, correlationID)
+	if err != nil {
+		return err
+	}
+	if strings.TrimSpace(body.RoleID) == "" {
+		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
+			Error:         "MISSING_ROLE_ID",
+			Message:       "roleId é obrigatório",
+			CorrelationID: correlationID,
+		})
+	}
+	token := middlewarePkg.GetTokenFromContext(c)
+	id := c.Param("id")
+	updated, err := h.oauthClient.Update(c.Request().Context(), companyID, token, correlationID, id, appdto.OAuthClientUpdateRequest{
+		Description:     body.Description,
+		RoleID:          body.RoleID,
+		TokenTTLSeconds: body.TokenTTLSeconds,
+	})
+	if err != nil {
+		h.logger.Error("Erro ao atualizar OAuth client",
+			zap.String("correlationId", correlationID),
+			zap.String("id", id),
+			zap.Error(err),
+		)
+		return handleError(c, err, correlationID)
+	}
+	return c.JSON(http.StatusOK, updated)
 }
 
 func (h *OAuthClientHandlers) ListOAuthServiceRolesHandler(c echo.Context) error {

@@ -99,6 +99,26 @@ func (c *oauthClientHTTP) Create(ctx context.Context, companyID, bearerToken, co
 	return out, nil
 }
 
+func (c *oauthClientHTTP) Update(ctx context.Context, companyID, bearerToken, correlationID, id string, body appdto.OAuthClientUpdateRequest) (appdto.OAuthClientDTO, error) {
+	var out appdto.OAuthClientDTO
+	resp, err := c.httpClient.R().
+		SetContext(ctx).
+		SetHeader("Authorization", "Bearer "+bearerToken).
+		SetHeader("X-Company-Id", companyID).
+		SetHeader("X-Correlation-ID", correlationID).
+		SetHeader("Content-Type", "application/json").
+		SetBody(body).
+		SetResult(&out).
+		Put(fmt.Sprintf("%s/api/v1/auth/oauth/clients/%s", c.baseURL, id))
+	if err != nil {
+		return appdto.OAuthClientDTO{}, MapNetworkError(err, "auth service")
+	}
+	if resp.StatusCode() != http.StatusOK {
+		return appdto.OAuthClientDTO{}, MapHTTPError(resp.StatusCode(), resp.Body(), "auth service")
+	}
+	return out, nil
+}
+
 func (c *oauthClientHTTP) ListServiceRoles(ctx context.Context, companyID, bearerToken, correlationID string) ([]appdto.OAuthServiceRoleDTO, error) {
 	var out []appdto.OAuthServiceRoleDTO
 	resp, err := c.httpClient.R().

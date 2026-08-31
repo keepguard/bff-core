@@ -34,6 +34,12 @@ type OAuthClientCreateRequest struct {
 	TokenTTLSeconds *int   `json:"tokenTtlSeconds,omitempty"`
 }
 
+type OAuthClientUpdateRequest struct {
+	Description     string `json:"description,omitempty"`
+	RoleID          string `json:"roleId"`
+	TokenTTLSeconds *int   `json:"tokenTtlSeconds,omitempty"`
+}
+
 type OAuthServiceRoleAuthorityDTO struct {
 	Name        string `json:"name"`
 	Description string `json:"description,omitempty"`

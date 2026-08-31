@@ -152,6 +152,7 @@ func (s *serverImpl) SetupRoutes(handlers Handler) {
 	userGroup.GET("/core/oauth/clients/service-roles", handlers.ListOAuthServiceRolesHandler, oauthAdmin...)
 	userGroup.GET("/core/oauth/clients/:id", handlers.GetOAuthClientHandler, oauthAdmin...)
 	userGroup.POST("/core/oauth/clients", handlers.CreateOAuthClientHandler, oauthAdmin...)
+	userGroup.PUT("/core/oauth/clients/:id", handlers.UpdateOAuthClientHandler, oauthAdmin...)
 	userGroup.POST("/core/oauth/clients/:id/block", handlers.BlockOAuthClientHandler, oauthAdmin...)
 	userGroup.POST("/core/oauth/clients/:id/unblock", handlers.UnblockOAuthClientHandler, oauthAdmin...)
 	userGroup.DELETE("/core/oauth/clients/:id", handlers.DeleteOAuthClientHandler, oauthAdmin...)

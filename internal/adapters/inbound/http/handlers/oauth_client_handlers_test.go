@@ -34,6 +34,21 @@ func (s *stubOAuthClient) Create(_ context.Context, _, _, _ string, body appdto.
 	return appdto.OAuthClientDTO{ID: "new-id", ClientID: body.ClientID, Status: "ACTIVE", ServiceRoleID: body.RoleID}, nil
 }
 
+func (s *stubOAuthClient) Update(_ context.Context, _, _, _, id string, body appdto.OAuthClientUpdateRequest) (appdto.OAuthClientDTO, error) {
+	ttl := 28800
+	if body.TokenTTLSeconds != nil {
+		ttl = *body.TokenTTLSeconds
+	}
+	return appdto.OAuthClientDTO{
+		ID:              id,
+		ClientID:        "investbot-collector",
+		Status:          "ACTIVE",
+		Description:     body.Description,
+		ServiceRoleID:   body.RoleID,
+		TokenTTLSeconds: ttl,
+	}, nil
+}
+
 func (s *stubOAuthClient) ListServiceRoles(_ context.Context, _, _, _ string) ([]appdto.OAuthServiceRoleDTO, error) {
 	return []appdto.OAuthServiceRoleDTO{{
 		ID:   "role-1",
@@ -304,5 +319,61 @@ func TestCreateOAuthClientHandler_RequiresRoleID(t *testing.T) {
 	}
 	if !strings.Contains(rec.Body.String(), "MISSING_ROLE_ID") {
 		t.Fatalf("expected MISSING_ROLE_ID, got %s", rec.Body.String())
+	}
+}
+
+func TestUpdateOAuthClientHandler_RequiresRoleID(t *testing.T) {
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/core/oauth/clients/c1", strings.NewReader(`{"description":"x","tokenTtlSeconds":3600}`))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	req = req.WithContext(client.WithCompanyID(req.Context(), "company-1"))
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.SetParamNames("id")
+	c.SetParamValues("c1")
+	c.Set("claims", &pkg.JWTClaims{Roles: []string{"ADMIN"}, TenantId: "tenant-1"})
+	c.Set("token", "jwt-token")
+	h := NewOAuthClientHandlers(&stubOAuthClient{}, &oauthStubCompany{id: "company-1"}, &oauthStubCollector{}, zap.NewNop())
+	if err := h.UpdateOAuthClientHandler(c); err != nil {
+		t.Fatal(err)
+	}
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d body=%s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "MISSING_ROLE_ID") {
+		t.Fatalf("expected MISSING_ROLE_ID, got %s", rec.Body.String())
+	}
+}
+
+func TestUpdateOAuthClientHandler_ValidBodyDoesNotDisableAgents(t *testing.T) {
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/core/oauth/clients/c1", strings.NewReader(`{"description":"collector","roleId":"role-1","tokenTtlSeconds":3600}`))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	req = req.WithContext(client.WithCompanyID(req.Context(), "company-1"))
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.SetParamNames("id")
+	c.SetParamValues("c1")
+	c.Set("claims", &pkg.JWTClaims{Roles: []string{"ADMIN"}, TenantId: "tenant-1"})
+	c.Set("token", "jwt-token")
+	collector := &oauthStubCollector{agents: []appdto.CollectorAgentRaw{
+		{ID: "a1", Name: "Coletor A", Enabled: true},
+	}}
+	h := NewOAuthClientHandlers(&stubOAuthClient{}, &oauthStubCompany{id: "company-1"}, collector, zap.NewNop())
+	if err := h.UpdateOAuthClientHandler(c); err != nil {
+		t.Fatal(err)
+	}
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
+	}
+	var body appdto.OAuthClientDTO
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	if body.ServiceRoleID != "role-1" || body.Description != "collector" || body.TokenTTLSeconds != 3600 {
+		t.Fatalf("expected updated fields, got %+v", body)
+	}
+	if len(collector.disabledIDs) != 0 {
+		t.Fatalf("update should not disable agents, got %v", collector.disabledIDs)
 	}
 }
