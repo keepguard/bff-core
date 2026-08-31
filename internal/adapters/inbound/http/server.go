@@ -149,6 +149,7 @@ func (s *serverImpl) SetupRoutes(handlers Handler) {
 		rl.Limit("guardian", rules.Guardian),
 	}
 	userGroup.GET("/core/oauth/clients", handlers.ListOAuthClientsHandler, oauthAdmin...)
+	userGroup.GET("/core/oauth/clients/service-roles", handlers.ListOAuthServiceRolesHandler, oauthAdmin...)
 	userGroup.GET("/core/oauth/clients/:id", handlers.GetOAuthClientHandler, oauthAdmin...)
 	userGroup.POST("/core/oauth/clients", handlers.CreateOAuthClientHandler, oauthAdmin...)
 	userGroup.POST("/core/oauth/clients/:id/block", handlers.BlockOAuthClientHandler, oauthAdmin...)

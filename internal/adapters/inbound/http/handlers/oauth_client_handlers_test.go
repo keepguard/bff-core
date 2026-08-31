@@ -31,7 +31,18 @@ func (s *stubOAuthClient) GetByID(_ context.Context, _, _, _, id string) (appdto
 }
 
 func (s *stubOAuthClient) Create(_ context.Context, _, _, _ string, body appdto.OAuthClientCreateRequest) (appdto.OAuthClientDTO, error) {
-	return appdto.OAuthClientDTO{ID: "new-id", ClientID: body.ClientID, Status: "ACTIVE"}, nil
+	return appdto.OAuthClientDTO{ID: "new-id", ClientID: body.ClientID, Status: "ACTIVE", ServiceRoleID: body.RoleID}, nil
+}
+
+func (s *stubOAuthClient) ListServiceRoles(_ context.Context, _, _, _ string) ([]appdto.OAuthServiceRoleDTO, error) {
+	return []appdto.OAuthServiceRoleDTO{{
+		ID:   "role-1",
+		Name: "ROLE_SERVICE_COLLECTOR",
+		Authorities: []appdto.OAuthServiceRoleAuthorityDTO{
+			{Name: "knowledge:write", Description: "grava"},
+			{Name: "knowledge:read", Description: "lê"},
+		},
+	}}, nil
 }
 
 func (s *stubOAuthClient) Block(_ context.Context, _, _, _, _ string) (appdto.OAuthClientDTO, error) {
@@ -251,5 +262,47 @@ func TestGetOAuthClientHandler_ReportsCollectorUnavailable(t *testing.T) {
 	}
 	if len(body.Agents) != 0 {
 		t.Fatalf("expected empty agents when collector fails, got %+v", body.Agents)
+	}
+}
+
+func TestListOAuthServiceRolesHandler_ReturnsCatalog(t *testing.T) {
+	c, rec := oauthContext(http.MethodGet, "/api/v1/core/oauth/clients/service-roles", "company-1", &pkg.JWTClaims{
+		Roles:    []string{"ADMIN"},
+		TenantId: "tenant-1",
+	})
+	h := NewOAuthClientHandlers(&stubOAuthClient{}, &oauthStubCompany{id: "company-1"}, &oauthStubCollector{}, zap.NewNop())
+	if err := h.ListOAuthServiceRolesHandler(c); err != nil {
+		t.Fatal(err)
+	}
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
+	}
+	var body []appdto.OAuthServiceRoleDTO
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	if len(body) != 1 || body[0].Name != "ROLE_SERVICE_COLLECTOR" {
+		t.Fatalf("expected collector service role, got %+v", body)
+	}
+}
+
+func TestCreateOAuthClientHandler_RequiresRoleID(t *testing.T) {
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/core/oauth/clients", strings.NewReader(`{"clientId":"srv-x"}`))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	req = req.WithContext(client.WithCompanyID(req.Context(), "company-1"))
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.Set("claims", &pkg.JWTClaims{Roles: []string{"ADMIN"}, TenantId: "tenant-1"})
+	c.Set("token", "jwt-token")
+	h := NewOAuthClientHandlers(&stubOAuthClient{}, &oauthStubCompany{id: "company-1"}, &oauthStubCollector{}, zap.NewNop())
+	if err := h.CreateOAuthClientHandler(c); err != nil {
+		t.Fatal(err)
+	}
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d body=%s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "MISSING_ROLE_ID") {
+		t.Fatalf("expected MISSING_ROLE_ID, got %s", rec.Body.String())
 	}
 }

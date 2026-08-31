@@ -29,6 +29,7 @@ type Handler interface {
 	ListOAuthClientsHandler(c echo.Context) error
 	GetOAuthClientHandler(c echo.Context) error
 	CreateOAuthClientHandler(c echo.Context) error
+	ListOAuthServiceRolesHandler(c echo.Context) error
 	BlockOAuthClientHandler(c echo.Context) error
 	UnblockOAuthClientHandler(c echo.Context) error
 	DeleteOAuthClientHandler(c echo.Context) error

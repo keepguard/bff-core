@@ -1,16 +1,18 @@
 package dto
 
 type OAuthClientDTO struct {
-	ID              string   `json:"id"`
-	CompanyID       string   `json:"companyId"`
-	ClientID        string   `json:"clientId"`
-	ClientSecret    string   `json:"clientSecret,omitempty"`
-	Authorities     []string `json:"authorities"`
-	Status          string   `json:"status"`
-	TokenTTLSeconds int      `json:"tokenTtlSeconds"`
-	Description     string   `json:"description,omitempty"`
-	CreatedAt       string   `json:"createdAt"`
-	UpdatedAt       string   `json:"updatedAt"`
+	ID               string   `json:"id"`
+	CompanyID        string   `json:"companyId"`
+	ClientID         string   `json:"clientId"`
+	ClientSecret     string   `json:"clientSecret,omitempty"`
+	ServiceRoleID    string   `json:"serviceRoleId,omitempty"`
+	ServiceRoleName  string   `json:"serviceRoleName,omitempty"`
+	Authorities      []string `json:"authorities"`
+	Status           string   `json:"status"`
+	TokenTTLSeconds  int      `json:"tokenTtlSeconds"`
+	Description      string   `json:"description,omitempty"`
+	CreatedAt        string   `json:"createdAt"`
+	UpdatedAt        string   `json:"updatedAt"`
 }
 
 type PaginatedOAuthClients struct {
@@ -26,10 +28,22 @@ type PaginatedOAuthClients struct {
 }
 
 type OAuthClientCreateRequest struct {
-	ClientID        string   `json:"clientId"`
-	Description     string   `json:"description,omitempty"`
-	Authorities     []string `json:"authorities,omitempty"`
-	TokenTTLSeconds *int     `json:"tokenTtlSeconds,omitempty"`
+	ClientID        string `json:"clientId"`
+	Description     string `json:"description,omitempty"`
+	RoleID          string `json:"roleId"`
+	TokenTTLSeconds *int   `json:"tokenTtlSeconds,omitempty"`
+}
+
+type OAuthServiceRoleAuthorityDTO struct {
+	Name        string `json:"name"`
+	Description string `json:"description,omitempty"`
+}
+
+type OAuthServiceRoleDTO struct {
+	ID          string                         `json:"id"`
+	Name        string                         `json:"name"`
+	Description string                         `json:"description,omitempty"`
+	Authorities []OAuthServiceRoleAuthorityDTO `json:"authorities"`
 }
 
 type CollectorAgentRaw struct {

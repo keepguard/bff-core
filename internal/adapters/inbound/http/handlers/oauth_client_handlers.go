@@ -35,10 +35,10 @@ func NewOAuthClientHandlers(
 }
 
 type oauthClientCreateBody struct {
-	ClientID        string   `json:"clientId"`
-	Description     string   `json:"description,omitempty"`
-	Authorities     []string `json:"authorities,omitempty"`
-	TokenTTLSeconds *int     `json:"tokenTtlSeconds,omitempty"`
+	ClientID        string `json:"clientId"`
+	Description     string `json:"description,omitempty"`
+	RoleID          string `json:"roleId"`
+	TokenTTLSeconds *int   `json:"tokenTtlSeconds,omitempty"`
 }
 
 func (h *OAuthClientHandlers) ListOAuthClientsHandler(c echo.Context) error {
@@ -115,11 +115,18 @@ func (h *OAuthClientHandlers) CreateOAuthClientHandler(c echo.Context) error {
 			CorrelationID: correlationID,
 		})
 	}
+	if strings.TrimSpace(body.RoleID) == "" {
+		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
+			Error:         "MISSING_ROLE_ID",
+			Message:       "roleId é obrigatório",
+			CorrelationID: correlationID,
+		})
+	}
 	token := middlewarePkg.GetTokenFromContext(c)
 	created, err := h.oauthClient.Create(c.Request().Context(), companyID, token, correlationID, appdto.OAuthClientCreateRequest{
 		ClientID:        body.ClientID,
 		Description:     body.Description,
-		Authorities:     body.Authorities,
+		RoleID:          body.RoleID,
 		TokenTTLSeconds: body.TokenTTLSeconds,
 	})
 	if err != nil {
@@ -130,6 +137,27 @@ func (h *OAuthClientHandlers) CreateOAuthClientHandler(c echo.Context) error {
 		return handleError(c, err, correlationID)
 	}
 	return c.JSON(http.StatusCreated, created)
+}
+
+func (h *OAuthClientHandlers) ListOAuthServiceRolesHandler(c echo.Context) error {
+	correlationID := middlewarePkg.GetCorrelationID(c)
+	companyID, err := h.resolveCompany(c, correlationID)
+	if err != nil {
+		return err
+	}
+	token := middlewarePkg.GetTokenFromContext(c)
+	roles, err := h.oauthClient.ListServiceRoles(c.Request().Context(), companyID, token, correlationID)
+	if err != nil {
+		h.logger.Error("Erro ao listar service roles",
+			zap.String("correlationId", correlationID),
+			zap.Error(err),
+		)
+		return handleError(c, err, correlationID)
+	}
+	if roles == nil {
+		roles = []appdto.OAuthServiceRoleDTO{}
+	}
+	return c.JSON(http.StatusOK, roles)
 }
 
 func (h *OAuthClientHandlers) BlockOAuthClientHandler(c echo.Context) error {
