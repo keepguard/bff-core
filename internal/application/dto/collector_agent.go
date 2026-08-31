@@ -150,3 +150,61 @@ func MapPaginatedCollectorAgents(raw PaginatedCollectorAgentsRaw) PaginatedColle
 		HasPrevious:   raw.HasPrevious,
 	}
 }
+
+type CollectorAgentTestPreviewRaw struct {
+	FileName         string `json:"file_name"`
+	ContentType      string `json:"content_type"`
+	SizeBytes        int    `json:"size_bytes"`
+	PreviewTruncated bool   `json:"preview_truncated"`
+	PreviewText      string `json:"preview_text,omitempty"`
+}
+
+type CollectorAgentTestResultRaw struct {
+	Success        bool                            `json:"success"`
+	AgentID        string                          `json:"agent_id"`
+	CollectorType  string                          `json:"collector_type"`
+	ItemsCollected int                             `json:"items_collected"`
+	DurationMs     int64                           `json:"duration_ms"`
+	Error          *string                         `json:"error"`
+	Preview        []CollectorAgentTestPreviewRaw  `json:"preview"`
+}
+
+type CollectorAgentTestPreviewDTO struct {
+	FileName         string `json:"fileName"`
+	ContentType      string `json:"contentType"`
+	SizeBytes        int    `json:"sizeBytes"`
+	PreviewTruncated bool   `json:"previewTruncated"`
+	PreviewText      string `json:"previewText,omitempty"`
+}
+
+type CollectorAgentTestResultDTO struct {
+	Success        bool                           `json:"success"`
+	AgentID        string                         `json:"agentId"`
+	CollectorType  string                         `json:"collectorType"`
+	ItemsCollected int                            `json:"itemsCollected"`
+	DurationMs     int64                          `json:"durationMs"`
+	Error          *string                        `json:"error"`
+	Preview        []CollectorAgentTestPreviewDTO `json:"preview"`
+}
+
+func MapCollectorAgentTestResult(raw CollectorAgentTestResultRaw) CollectorAgentTestResultDTO {
+	preview := make([]CollectorAgentTestPreviewDTO, 0, len(raw.Preview))
+	for _, item := range raw.Preview {
+		preview = append(preview, CollectorAgentTestPreviewDTO{
+			FileName:         item.FileName,
+			ContentType:      item.ContentType,
+			SizeBytes:        item.SizeBytes,
+			PreviewTruncated: item.PreviewTruncated,
+			PreviewText:      item.PreviewText,
+		})
+	}
+	return CollectorAgentTestResultDTO{
+		Success:        raw.Success,
+		AgentID:        raw.AgentID,
+		CollectorType:  raw.CollectorType,
+		ItemsCollected: raw.ItemsCollected,
+		DurationMs:     raw.DurationMs,
+		Error:          raw.Error,
+		Preview:        preview,
+	}
+}

@@ -168,6 +168,7 @@ func (s *serverImpl) SetupRoutes(handlers Handler) {
 	userGroup.PUT("/core/collector/agents/:id", handlers.UpdateCollectorAgentHandler, collectorAdmin...)
 	userGroup.POST("/core/collector/agents/:id/enable", handlers.EnableCollectorAgentHandler, collectorAdmin...)
 	userGroup.POST("/core/collector/agents/:id/disable", handlers.DisableCollectorAgentHandler, collectorAdmin...)
+	userGroup.POST("/core/collector/agents/:id/test", handlers.TestCollectorAgentHandler, collectorAdmin...)
 	userGroup.DELETE("/core/collector/agents/:id", handlers.DeleteCollectorAgentHandler, collectorAdmin...)
 
 	s.logger.Info("Rotas configuradas com sucesso com proteção de Rate Limit",

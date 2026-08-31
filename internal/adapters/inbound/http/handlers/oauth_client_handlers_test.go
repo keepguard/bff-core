@@ -135,6 +135,15 @@ func (s *oauthStubCollector) DisableAgent(_ context.Context, _, agentID, _ strin
 	return appdto.CollectorAgentRaw{ID: agentID, Enabled: false}, nil
 }
 
+func (s *oauthStubCollector) TestAgent(_ context.Context, _, agentID, _ string) (appdto.CollectorAgentTestResultDTO, error) {
+	return appdto.CollectorAgentTestResultDTO{
+		Success:        true,
+		AgentID:        agentID,
+		ItemsCollected: 1,
+		Preview:        []appdto.CollectorAgentTestPreviewDTO{},
+	}, nil
+}
+
 func (s *oauthStubCollector) DeleteAgent(_ context.Context, _, agentID, _ string) error {
 	s.disabledIDs = append(s.disabledIDs, "deleted:"+agentID)
 	return nil

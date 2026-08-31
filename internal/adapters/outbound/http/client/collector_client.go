@@ -193,3 +193,29 @@ func (c *collectorHTTP) DeleteAgent(ctx context.Context, companyID, agentID, cor
 	}
 	return nil
 }
+
+func (c *collectorHTTP) TestAgent(ctx context.Context, companyID, agentID, correlationID string) (appdto.CollectorAgentTestResultDTO, error) {
+	if c.baseURL == "" || agentID == "" {
+		return appdto.CollectorAgentTestResultDTO{}, nil
+	}
+	testClient := resty.New()
+	testClient.SetTimeout(60 * time.Second)
+	testClient.SetRetryCount(0)
+
+	var raw appdto.CollectorAgentTestResultRaw
+	resp, err := testClient.R().
+		SetContext(ctx).
+		SetHeader("X-Company-Id", companyID).
+		SetHeader("X-Correlation-ID", correlationID).
+		SetHeader("Content-Type", "application/json").
+		SetBody(map[string]any{}).
+		SetResult(&raw).
+		Post(c.agentURL(agentID) + "/test")
+	if err != nil {
+		return appdto.CollectorAgentTestResultDTO{}, MapNetworkError(err, "collector service")
+	}
+	if resp.StatusCode() != 200 {
+		return appdto.CollectorAgentTestResultDTO{}, MapHTTPError(resp.StatusCode(), resp.Body(), "collector service")
+	}
+	return appdto.MapCollectorAgentTestResult(raw), nil
+}

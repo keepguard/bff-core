@@ -232,6 +232,23 @@ func (h *CollectorAgentHandlers) DeleteCollectorAgentHandler(c echo.Context) err
 	return c.NoContent(http.StatusNoContent)
 }
 
+func (h *CollectorAgentHandlers) TestCollectorAgentHandler(c echo.Context) error {
+	correlationID := middlewarePkg.GetCorrelationID(c)
+	companyID, err := h.resolveCompany(c, correlationID)
+	if err != nil {
+		return err
+	}
+	result, err := h.collectorClient.TestAgent(c.Request().Context(), companyID, c.Param("id"), correlationID)
+	if err != nil {
+		h.logger.Error("Erro ao testar agent",
+			zap.String("correlationId", correlationID),
+			zap.Error(err),
+		)
+		return handleError(c, err, correlationID)
+	}
+	return c.JSON(http.StatusOK, result)
+}
+
 func (h *CollectorAgentHandlers) resolveCompany(c echo.Context, correlationID string) (string, error) {
 	if h.collectorClient == nil || h.companyClient == nil {
 		return "", c.JSON(http.StatusServiceUnavailable, pkg.ErrorResponse{

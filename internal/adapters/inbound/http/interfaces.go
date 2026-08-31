@@ -40,6 +40,7 @@ type Handler interface {
 	UpdateCollectorAgentHandler(c echo.Context) error
 	EnableCollectorAgentHandler(c echo.Context) error
 	DisableCollectorAgentHandler(c echo.Context) error
+	TestCollectorAgentHandler(c echo.Context) error
 	DeleteCollectorAgentHandler(c echo.Context) error
 }
 
