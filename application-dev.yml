@@ -38,6 +38,10 @@ services:
     base_url: "http://ms-ai-guardian:8088"
     timeout: "20s"
     retries: 2
+  collector:
+    base_url: "http://srv-data-collector:8630"
+    timeout: "5s"
+    retries: 1
 
 rabbitmq:
   host: "rabbitmq"

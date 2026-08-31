@@ -82,6 +82,7 @@ type ServicesConfig struct {
 	UserProfile   ServiceConfig `mapstructure:"user_profile"`
 	Audit         ServiceConfig `mapstructure:"audit"`
 	Guardian      ServiceConfig `mapstructure:"guardian"`
+	Collector     ServiceConfig `mapstructure:"collector"`
 }
 
 // ServiceConfig configurações de um microserviço
@@ -93,11 +94,11 @@ type ServiceConfig struct {
 
 // RabbitMQConfig configurações do RabbitMQ
 type RabbitMQConfig struct {
-	Host       string `mapstructure:"host"`
-	Port       int    `mapstructure:"port"`
-	User       string `mapstructure:"user"`
-	Password   string `mapstructure:"password"`
-	VHost      string `mapstructure:"vhost"`
+	Host       string            `mapstructure:"host"`
+	Port       int               `mapstructure:"port"`
+	User       string            `mapstructure:"user"`
+	Password   string            `mapstructure:"password"`
+	VHost      string            `mapstructure:"vhost"`
 	Exchange   string            `mapstructure:"exchange"`
 	RoutingKey string            `mapstructure:"routing_key"`
 	Durable    bool              `mapstructure:"durable"`
@@ -218,6 +219,10 @@ func setDefaults() {
 	viper.SetDefault("services.guardian.base_url", "http://localhost:8088")
 	viper.SetDefault("services.guardian.timeout", "20s")
 	viper.SetDefault("services.guardian.retries", 2)
+
+	viper.SetDefault("services.collector.base_url", "http://localhost:8630")
+	viper.SetDefault("services.collector.timeout", "5s")
+	viper.SetDefault("services.collector.retries", 1)
 
 	// RabbitMQ
 	viper.SetDefault("rabbitmq.host", "localhost")

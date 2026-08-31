@@ -24,9 +24,9 @@ import (
 	communicationdecorator "github.com/keepguard/bff-core/internal/adapters/outbound/http/decorator/communication"
 	companydecorator "github.com/keepguard/bff-core/internal/adapters/outbound/http/decorator/company"
 	userdecorator "github.com/keepguard/bff-core/internal/adapters/outbound/http/decorator/user"
+	auditPublisher "github.com/keepguard/bff-core/internal/adapters/outbound/messaging/audit"
 	messagingDecorator "github.com/keepguard/bff-core/internal/adapters/outbound/messaging/decorator"
 	rabbitmqPublisher "github.com/keepguard/bff-core/internal/adapters/outbound/messaging/rabbitmq"
-	auditPublisher "github.com/keepguard/bff-core/internal/adapters/outbound/messaging/audit"
 	"github.com/keepguard/bff-core/internal/application/connections"
 	"github.com/keepguard/bff-core/internal/application/register"
 	"github.com/keepguard/bff-core/internal/infrastructure/cache"
@@ -306,7 +306,10 @@ func main() {
 	auditHandlers := handlersPkg.NewAuditHandlers(auditClient, zapLogger)
 	guardianClient := httpclient.NewGuardianClient(cfg, zapLogger)
 	guardianHandlers := handlersPkg.NewGuardianHandlers(guardianClient, zapLogger)
-	httpHandlers := handlersPkg.NewCombinedHandlers(registerHandlers, userHandlers, consentHandlers, connectionsHandlers, auditHandlers, guardianHandlers)
+	oauthClientHTTP := httpclient.NewOAuthClientHTTP(cfg, zapLogger)
+	collectorClient := httpclient.NewCollectorClient(cfg, zapLogger)
+	oauthClientHandlers := handlersPkg.NewOAuthClientHandlers(oauthClientHTTP, companyClient, collectorClient, zapLogger)
+	httpHandlers := handlersPkg.NewCombinedHandlers(registerHandlers, userHandlers, consentHandlers, connectionsHandlers, auditHandlers, guardianHandlers, oauthClientHandlers)
 
 	rateLimiterMiddleware := middlewarePkg.NewRateLimiterMiddleware(redisClient, cfg.RateLimit, zapLogger, metricsInstance)
 

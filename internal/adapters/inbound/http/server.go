@@ -5,8 +5,8 @@ import (
 	"net/http"
 
 	middlewarePkg "github.com/keepguard/bff-core/internal/adapters/inbound/http/middleware"
-	"github.com/keepguard/bff-core/internal/domain/ports/client"
 	auditport "github.com/keepguard/bff-core/internal/domain/ports/audit"
+	"github.com/keepguard/bff-core/internal/domain/ports/client"
 	"github.com/keepguard/bff-core/internal/infrastructure/config"
 	"github.com/keepguard/bff-core/internal/infrastructure/logger"
 	"github.com/keepguard/bff-core/internal/infrastructure/metrics"
@@ -142,6 +142,18 @@ func (s *serverImpl) SetupRoutes(handlers Handler) {
 	userGroup.GET("/core/guardian/alert-recipients", handlers.ListGuardianRecipientsHandler, guardianAdmin...)
 	userGroup.PUT("/core/guardian/alert-recipients", handlers.UpsertGuardianRecipientHandler, guardianAdmin...)
 	userGroup.PATCH("/core/guardian/alert-recipients/:id", handlers.PatchGuardianRecipientHandler, guardianAdmin...)
+
+	oauthAdmin := []echo.MiddlewareFunc{
+		s.jwt.Middleware(),
+		middlewarePkg.RequireAnyRole("ADMIN", "SYSTEM"),
+		rl.Limit("guardian", rules.Guardian),
+	}
+	userGroup.GET("/core/oauth/clients", handlers.ListOAuthClientsHandler, oauthAdmin...)
+	userGroup.GET("/core/oauth/clients/:id", handlers.GetOAuthClientHandler, oauthAdmin...)
+	userGroup.POST("/core/oauth/clients", handlers.CreateOAuthClientHandler, oauthAdmin...)
+	userGroup.POST("/core/oauth/clients/:id/block", handlers.BlockOAuthClientHandler, oauthAdmin...)
+	userGroup.POST("/core/oauth/clients/:id/unblock", handlers.UnblockOAuthClientHandler, oauthAdmin...)
+	userGroup.DELETE("/core/oauth/clients/:id", handlers.DeleteOAuthClientHandler, oauthAdmin...)
 
 	s.logger.Info("Rotas configuradas com sucesso com proteção de Rate Limit",
 		zap.String("port", s.config.Server.Port),

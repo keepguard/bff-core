@@ -26,6 +26,12 @@ type Handler interface {
 	ListGuardianRecipientsHandler(c echo.Context) error
 	UpsertGuardianRecipientHandler(c echo.Context) error
 	PatchGuardianRecipientHandler(c echo.Context) error
+	ListOAuthClientsHandler(c echo.Context) error
+	GetOAuthClientHandler(c echo.Context) error
+	CreateOAuthClientHandler(c echo.Context) error
+	BlockOAuthClientHandler(c echo.Context) error
+	UnblockOAuthClientHandler(c echo.Context) error
+	DeleteOAuthClientHandler(c echo.Context) error
 }
 
 // Middleware define a interface para middlewares HTTP
