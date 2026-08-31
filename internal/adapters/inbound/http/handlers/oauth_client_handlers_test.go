@@ -60,9 +60,13 @@ func (s *oauthStubCompany) GetByTenantId(_ context.Context, _, _ string) (compan
 type oauthStubCollector struct {
 	agents      []appdto.CollectorAgentRaw
 	disabledIDs []string
+	listErr     error
 }
 
 func (s *oauthStubCollector) ListAgents(_ context.Context, _, _ string) ([]appdto.CollectorAgentRaw, error) {
+	if s.listErr != nil {
+		return nil, s.listErr
+	}
 	return s.agents, nil
 }
 
@@ -219,5 +223,33 @@ func TestGetOAuthClientHandler_ReturnsAgents(t *testing.T) {
 	}
 	if len(body.Agents) != 1 || body.Agents[0].Name != "Coletor A" {
 		t.Fatalf("expected agent list in response, got %+v", body.Agents)
+	}
+}
+
+func TestGetOAuthClientHandler_ReportsCollectorUnavailable(t *testing.T) {
+	c, rec := oauthContext(http.MethodGet, "/api/v1/core/oauth/clients/c1", "company-1", &pkg.JWTClaims{
+		Roles:    []string{"ADMIN"},
+		TenantId: "tenant-1",
+	})
+	c.SetParamNames("id")
+	c.SetParamValues("c1")
+	h := NewOAuthClientHandlers(&stubOAuthClient{}, &oauthStubCompany{id: "company-1"}, &oauthStubCollector{
+		listErr: echo.NewHTTPError(http.StatusBadGateway, "collector down"),
+	}, zap.NewNop())
+	if err := h.GetOAuthClientHandler(c); err != nil {
+		t.Fatal(err)
+	}
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
+	}
+	var body appdto.OAuthClientDetailResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	if body.AgentsLoadError == "" {
+		t.Fatalf("expected agentsLoadError in response, got %+v", body)
+	}
+	if len(body.Agents) != 0 {
+		t.Fatalf("expected empty agents when collector fails, got %+v", body.Agents)
 	}
 }

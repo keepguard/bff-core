@@ -58,6 +58,7 @@ type CollectorAgentDTO struct {
 
 type OAuthClientDetailResponse struct {
 	OAuthClientDTO
-	TenantID string              `json:"tenantId,omitempty"`
-	Agents   []CollectorAgentDTO `json:"agents"`
+	TenantID        string              `json:"tenantId,omitempty"`
+	Agents          []CollectorAgentDTO `json:"agents"`
+	AgentsLoadError string              `json:"agentsLoadError,omitempty"`
 }

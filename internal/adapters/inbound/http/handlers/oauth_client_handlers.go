@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 
@@ -82,11 +83,15 @@ func (h *OAuthClientHandlers) GetOAuthClientHandler(c echo.Context) error {
 		)
 		return handleError(c, err, correlationID)
 	}
-	agents := h.loadAgents(c, companyID, correlationID)
-	return c.JSON(http.StatusOK, appdto.OAuthClientDetailResponse{
+	agents, agentsLoadErr := h.loadAgents(c, companyID, correlationID)
+	resp := appdto.OAuthClientDetailResponse{
 		OAuthClientDTO: item,
 		Agents:         agents,
-	})
+	}
+	if agentsLoadErr != nil {
+		resp.AgentsLoadError = agentsLoadErr.Error()
+	}
+	return c.JSON(http.StatusOK, resp)
 }
 
 func (h *OAuthClientHandlers) CreateOAuthClientHandler(c echo.Context) error {
@@ -222,9 +227,11 @@ func (h *OAuthClientHandlers) resolveCompany(c echo.Context, correlationID strin
 	return company.ID, nil
 }
 
-func (h *OAuthClientHandlers) loadAgents(c echo.Context, companyID, correlationID string) []appdto.CollectorAgentDTO {
+const collectorUnavailableMsg = "srv-data-collector indisponível"
+
+func (h *OAuthClientHandlers) loadAgents(c echo.Context, companyID, correlationID string) ([]appdto.CollectorAgentDTO, error) {
 	if h.collectorClient == nil {
-		return []appdto.CollectorAgentDTO{}
+		return []appdto.CollectorAgentDTO{}, nil
 	}
 	raw, err := h.collectorClient.ListAgents(c.Request().Context(), companyID, correlationID)
 	if err != nil {
@@ -233,7 +240,7 @@ func (h *OAuthClientHandlers) loadAgents(c echo.Context, companyID, correlationI
 			zap.String("companyId", companyID),
 			zap.Error(err),
 		)
-		return []appdto.CollectorAgentDTO{}
+		return []appdto.CollectorAgentDTO{}, errors.New(collectorUnavailableMsg)
 	}
 	out := make([]appdto.CollectorAgentDTO, 0, len(raw))
 	for _, item := range raw {
@@ -249,14 +256,22 @@ func (h *OAuthClientHandlers) loadAgents(c echo.Context, companyID, correlationI
 			UpdatedAt:     item.UpdatedAt,
 		})
 	}
-	return out
+	return out, nil
 }
 
 func (h *OAuthClientHandlers) disableCompanyAgents(c echo.Context, companyID, correlationID string) {
 	if h.collectorClient == nil {
 		return
 	}
-	agents := h.loadAgents(c, companyID, correlationID)
+	agents, err := h.loadAgents(c, companyID, correlationID)
+	if err != nil {
+		h.logger.Warn("Collector indisponível ao desabilitar agents",
+			zap.String("correlationId", correlationID),
+			zap.String("companyId", companyID),
+			zap.Error(err),
+		)
+		return
+	}
 	for _, agent := range agents {
 		if !agent.Enabled || strings.TrimSpace(agent.ID) == "" {
 			continue
