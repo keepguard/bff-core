@@ -23,6 +23,8 @@ env:
   userProfileServiceUrl: "http://ms-user-profile:8091"
   auditServiceUrl: "http://srv-audit:8620"
   guardianServiceUrl: "http://ms-ai-guardian:8088"
+  collectorServiceUrl: "http://srv-data-collector:8630"
+  knowledgeServiceUrl: "http://ms-knowledge:8090"
 
 imagePullSecrets:
   - name: ghcr-secret

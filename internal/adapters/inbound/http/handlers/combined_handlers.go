@@ -10,6 +10,7 @@ type CombinedHandlers struct {
 	*GuardianHandlers
 	*OAuthClientHandlers
 	*CollectorAgentHandlers
+	*KnowledgeHandlers
 }
 
 // NewCombinedHandlers cria CombinedHandlers.
@@ -22,6 +23,7 @@ func NewCombinedHandlers(
 	guardianHandlers *GuardianHandlers,
 	oauthClientHandlers *OAuthClientHandlers,
 	collectorAgentHandlers *CollectorAgentHandlers,
+	knowledgeHandlers *KnowledgeHandlers,
 ) *CombinedHandlers {
 	return &CombinedHandlers{
 		RegisterHandlers:       registerHandlers,
@@ -32,5 +34,6 @@ func NewCombinedHandlers(
 		GuardianHandlers:       guardianHandlers,
 		OAuthClientHandlers:    oauthClientHandlers,
 		CollectorAgentHandlers: collectorAgentHandlers,
+		KnowledgeHandlers:      knowledgeHandlers,
 	}
 }

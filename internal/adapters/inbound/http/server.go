@@ -172,6 +172,13 @@ func (s *serverImpl) SetupRoutes(handlers Handler) {
 	userGroup.GET("/core/collector/agents/:id/executions", handlers.ListCollectorAgentExecutionsHandler, collectorAdmin...)
 	userGroup.DELETE("/core/collector/agents/:id", handlers.DeleteCollectorAgentHandler, collectorAdmin...)
 
+	knowledgeAdmin := []echo.MiddlewareFunc{
+		s.jwt.Middleware(),
+		middlewarePkg.RequireAnyRole("ADMIN", "SYSTEM"),
+		rl.Limit("knowledge", rules.Knowledge),
+	}
+	userGroup.POST("/core/knowledge/ask", handlers.AskKnowledgeHandler, knowledgeAdmin...)
+
 	s.logger.Info("Rotas configuradas com sucesso com proteção de Rate Limit",
 		zap.String("port", s.config.Server.Port),
 	)

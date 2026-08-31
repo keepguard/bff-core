@@ -42,6 +42,10 @@ services:
     base_url: "http://srv-data-collector:8630"
     timeout: "5s"
     retries: 1
+  knowledge:
+    base_url: "http://ms-knowledge:8090"
+    timeout: "60s"
+    retries: 1
 
 rabbitmq:
   host: "rabbit-1"
@@ -99,6 +103,9 @@ rate_limit:
       window: 60s
     collector:
       limit: 40
+      window: 60s
+    knowledge:
+      limit: 20
       window: 60s
     default:
       limit: 120

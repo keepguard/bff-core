@@ -1,4 +1,4 @@
-version: "1.0.59-SNAPSHOT"
+version: "1.0.61-SNAPSHOT"
 
 server:
   port: "8282"
@@ -39,6 +39,10 @@ services:
   collector:
     base_url: "http://localhost:8630"
     timeout: "5s"
+    retries: 1
+  knowledge:
+    base_url: "http://localhost:8090"
+    timeout: "60s"
     retries: 1
 
 rabbitmq:

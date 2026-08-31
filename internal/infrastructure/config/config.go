@@ -47,6 +47,7 @@ type RateLimitRulesConfig struct {
 	Audits            RateLimitRule `mapstructure:"audits"`
 	Guardian          RateLimitRule `mapstructure:"guardian"`
 	Collector         RateLimitRule `mapstructure:"collector"`
+	Knowledge         RateLimitRule `mapstructure:"knowledge"`
 	Default           RateLimitRule `mapstructure:"default"`
 }
 
@@ -84,6 +85,7 @@ type ServicesConfig struct {
 	Audit         ServiceConfig `mapstructure:"audit"`
 	Guardian      ServiceConfig `mapstructure:"guardian"`
 	Collector     ServiceConfig `mapstructure:"collector"`
+	Knowledge     ServiceConfig `mapstructure:"knowledge"`
 }
 
 // ServiceConfig configurações de um microserviço
@@ -175,6 +177,9 @@ func Load() (*Config, error) {
 	if err := viper.Unmarshal(&config); err != nil {
 		return nil, err
 	}
+	if v := strings.TrimSpace(os.Getenv("KNOWLEDGE_BASE_URL")); v != "" {
+		config.Services.Knowledge.BaseURL = v
+	}
 
 	return &config, nil
 }
@@ -225,6 +230,10 @@ func setDefaults() {
 	viper.SetDefault("services.collector.timeout", "5s")
 	viper.SetDefault("services.collector.retries", 1)
 
+	viper.SetDefault("services.knowledge.base_url", "http://localhost:8090")
+	viper.SetDefault("services.knowledge.timeout", "60s")
+	viper.SetDefault("services.knowledge.retries", 1)
+
 	// RabbitMQ
 	viper.SetDefault("rabbitmq.host", "localhost")
 	viper.SetDefault("rabbitmq.port", 5672)
@@ -253,6 +262,8 @@ func setDefaults() {
 	viper.SetDefault("rate_limit.rules.guardian.window", "60s")
 	viper.SetDefault("rate_limit.rules.collector.limit", 60)
 	viper.SetDefault("rate_limit.rules.collector.window", "60s")
+	viper.SetDefault("rate_limit.rules.knowledge.limit", 30)
+	viper.SetDefault("rate_limit.rules.knowledge.window", "60s")
 	viper.SetDefault("connections_health.snapshot_ttl", "60s")
 	viper.SetDefault("connections_health.lock_ttl", "5s")
 	viper.SetDefault("connections_health.probe_timeout", "500ms")
