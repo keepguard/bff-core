@@ -87,6 +87,9 @@ type oauthStubCollector struct {
 	agents      []appdto.CollectorAgentRaw
 	disabledIDs []string
 	listErr     error
+	getErr      error
+	executions  []appdto.CollectorExecutionRaw
+	execErr     error
 }
 
 func (s *oauthStubCollector) ListAgents(_ context.Context, _, _ string) ([]appdto.CollectorAgentRaw, error) {
@@ -101,6 +104,9 @@ func (s *oauthStubCollector) SearchAgents(_ context.Context, _, _ string, _ map[
 }
 
 func (s *oauthStubCollector) GetAgent(_ context.Context, _, agentID, _ string) (appdto.CollectorAgentRaw, error) {
+	if s.getErr != nil {
+		return appdto.CollectorAgentRaw{}, s.getErr
+	}
 	for _, agent := range s.agents {
 		if agent.ID == agentID {
 			return agent, nil
@@ -142,6 +148,16 @@ func (s *oauthStubCollector) TestAgent(_ context.Context, _, agentID, _ string) 
 		ItemsCollected: 1,
 		Preview:        []appdto.CollectorAgentTestPreviewDTO{},
 	}, nil
+}
+
+func (s *oauthStubCollector) ListAgentExecutions(_ context.Context, _, _, _ string, _ int) ([]appdto.CollectorExecutionRaw, error) {
+	if s.execErr != nil {
+		return nil, s.execErr
+	}
+	if s.executions == nil {
+		return []appdto.CollectorExecutionRaw{}, nil
+	}
+	return s.executions, nil
 }
 
 func (s *oauthStubCollector) DeleteAgent(_ context.Context, _, agentID, _ string) error {

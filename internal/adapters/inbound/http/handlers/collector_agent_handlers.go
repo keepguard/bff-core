@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"strings"
 
 	middlewarePkg "github.com/keepguard/bff-core/internal/adapters/inbound/http/middleware"
@@ -247,6 +248,31 @@ func (h *CollectorAgentHandlers) TestCollectorAgentHandler(c echo.Context) error
 		return handleError(c, err, correlationID)
 	}
 	return c.JSON(http.StatusOK, result)
+}
+
+func (h *CollectorAgentHandlers) ListCollectorAgentExecutionsHandler(c echo.Context) error {
+	correlationID := middlewarePkg.GetCorrelationID(c)
+	companyID, err := h.resolveCompany(c, correlationID)
+	if err != nil {
+		return err
+	}
+	limit := 50
+	if raw := strings.TrimSpace(c.QueryParam("limit")); raw != "" {
+		if parsed, parseErr := strconv.Atoi(raw); parseErr == nil && parsed > 0 {
+			limit = parsed
+		}
+	}
+	executions, err := h.collectorClient.ListAgentExecutions(
+		c.Request().Context(), companyID, c.Param("id"), correlationID, limit,
+	)
+	if err != nil {
+		h.logger.Error("Erro ao listar execuções do agent",
+			zap.String("correlationId", correlationID),
+			zap.Error(err),
+		)
+		return handleError(c, err, correlationID)
+	}
+	return c.JSON(http.StatusOK, appdto.MapCollectorExecutions(executions))
 }
 
 func (h *CollectorAgentHandlers) resolveCompany(c echo.Context, correlationID string) (string, error) {

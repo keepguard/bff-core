@@ -187,6 +187,49 @@ type CollectorAgentTestResultDTO struct {
 	Preview        []CollectorAgentTestPreviewDTO `json:"preview"`
 }
 
+type CollectorExecutionRaw struct {
+	ID             string  `json:"id"`
+	AgentID        string  `json:"agent_id"`
+	StartedAt      string  `json:"started_at"`
+	FinishedAt     *string `json:"finished_at,omitempty"`
+	Status         string  `json:"status"`
+	ItemsCollected int     `json:"items_collected"`
+	ItemsUploaded  int     `json:"items_uploaded"`
+	ErrorMessage   string  `json:"error_message,omitempty"`
+}
+
+type CollectorExecutionDTO struct {
+	ID             string  `json:"id"`
+	AgentID        string  `json:"agentId"`
+	StartedAt      string  `json:"startedAt"`
+	FinishedAt     *string `json:"finishedAt,omitempty"`
+	Status         string  `json:"status"`
+	ItemsCollected int     `json:"itemsCollected"`
+	ItemsUploaded  int     `json:"itemsUploaded"`
+	ErrorMessage   string  `json:"errorMessage,omitempty"`
+}
+
+func MapCollectorExecution(raw CollectorExecutionRaw) CollectorExecutionDTO {
+	return CollectorExecutionDTO{
+		ID:             raw.ID,
+		AgentID:        raw.AgentID,
+		StartedAt:      raw.StartedAt,
+		FinishedAt:     raw.FinishedAt,
+		Status:         raw.Status,
+		ItemsCollected: raw.ItemsCollected,
+		ItemsUploaded:  raw.ItemsUploaded,
+		ErrorMessage:   raw.ErrorMessage,
+	}
+}
+
+func MapCollectorExecutions(raw []CollectorExecutionRaw) []CollectorExecutionDTO {
+	out := make([]CollectorExecutionDTO, 0, len(raw))
+	for _, item := range raw {
+		out = append(out, MapCollectorExecution(item))
+	}
+	return out
+}
+
 func MapCollectorAgentTestResult(raw CollectorAgentTestResultRaw) CollectorAgentTestResultDTO {
 	preview := make([]CollectorAgentTestPreviewDTO, 0, len(raw.Preview))
 	for _, item := range raw.Preview {

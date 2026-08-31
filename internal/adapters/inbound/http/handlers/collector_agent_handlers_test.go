@@ -100,3 +100,78 @@ func TestCreateCollectorAgentHandler_RejectsWithoutRole(t *testing.T) {
 		t.Fatalf("expected 403, got %d body=%s", rec.Code, rec.Body.String())
 	}
 }
+
+func TestListCollectorAgentExecutionsHandler_OK(t *testing.T) {
+	finished := "2026-08-31T19:47:00Z"
+	stub := &oauthStubCollector{
+		executions: []appdto.CollectorExecutionRaw{
+			{
+				ID:             "exec-1",
+				AgentID:        "a1",
+				StartedAt:      "2026-08-31T19:46:00Z",
+				FinishedAt:     &finished,
+				Status:         "SUCCESS",
+				ItemsCollected: 1,
+				ItemsUploaded:  1,
+			},
+		},
+	}
+	c, rec := oauthContext(http.MethodGet, "/api/v1/core/collector/agents/a1/executions", "company-1", &pkg.JWTClaims{
+		Roles:    []string{"ADMIN"},
+		TenantId: "tenant-1",
+	})
+	c.SetParamNames("id")
+	c.SetParamValues("a1")
+	h := NewCollectorAgentHandlers(stub, &oauthStubCompany{id: "company-1"}, zap.NewNop())
+	if err := h.ListCollectorAgentExecutionsHandler(c); err != nil {
+		t.Fatal(err)
+	}
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
+	}
+	var out []appdto.CollectorExecutionDTO
+	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
+		t.Fatal(err)
+	}
+	if len(out) != 1 || out[0].ID != "exec-1" || out[0].AgentID != "a1" || out[0].ItemsUploaded != 1 || out[0].Status != "SUCCESS" {
+		t.Fatalf("unexpected executions: %+v", out)
+	}
+}
+
+func TestListCollectorAgentExecutionsHandler_NotFound(t *testing.T) {
+	stub := &oauthStubCollector{
+		execErr: &appdto.HTTPError{Code: http.StatusNotFound, Message: "Recurso não encontrado"},
+	}
+	c, rec := oauthContext(http.MethodGet, "/api/v1/core/collector/agents/missing/executions", "company-1", &pkg.JWTClaims{
+		Roles:    []string{"ADMIN"},
+		TenantId: "tenant-1",
+	})
+	c.SetParamNames("id")
+	c.SetParamValues("missing")
+	h := NewCollectorAgentHandlers(stub, &oauthStubCompany{id: "company-1"}, zap.NewNop())
+	if err := h.ListCollectorAgentExecutionsHandler(c); err != nil {
+		t.Fatal(err)
+	}
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestListCollectorAgentExecutionsHandler_RejectsWithoutRole(t *testing.T) {
+	e := echo.New()
+	h := NewCollectorAgentHandlers(&oauthStubCollector{}, &oauthStubCompany{id: "company-1"}, zap.NewNop())
+	handler := middlewarePkg.RequireAnyRole("ADMIN", "SYSTEM")(h.ListCollectorAgentExecutionsHandler)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/core/collector/agents/a1/executions", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.SetParamNames("id")
+	c.SetParamValues("a1")
+	c.Set("claims", &pkg.JWTClaims{Roles: []string{"USER"}, TenantId: "tenant-1"})
+	if err := handler(c); err != nil {
+		t.Fatal(err)
+	}
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("expected 403, got %d body=%s", rec.Code, rec.Body.String())
+	}
+}

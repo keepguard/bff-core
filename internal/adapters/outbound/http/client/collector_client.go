@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"encoding/json"
+	"strconv"
 	"time"
 
 	"github.com/go-resty/resty/v2"
@@ -192,6 +193,33 @@ func (c *collectorHTTP) DeleteAgent(ctx context.Context, companyID, agentID, cor
 		return MapHTTPError(resp.StatusCode(), resp.Body(), "collector service")
 	}
 	return nil
+}
+
+func (c *collectorHTTP) ListAgentExecutions(ctx context.Context, companyID, agentID, correlationID string, limit int) ([]appdto.CollectorExecutionRaw, error) {
+	if c.baseURL == "" || agentID == "" {
+		return []appdto.CollectorExecutionRaw{}, nil
+	}
+	if _, err := c.GetAgent(ctx, companyID, agentID, correlationID); err != nil {
+		return nil, err
+	}
+	if limit <= 0 {
+		limit = 50
+	}
+	var out []appdto.CollectorExecutionRaw
+	resp, err := c.req(ctx, companyID, correlationID).
+		SetQueryParam("limit", strconv.Itoa(limit)).
+		SetResult(&out).
+		Get(c.agentURL(agentID) + "/executions")
+	if err != nil {
+		return nil, MapNetworkError(err, "collector service")
+	}
+	if resp.StatusCode() != 200 {
+		return nil, MapHTTPError(resp.StatusCode(), resp.Body(), "collector service")
+	}
+	if out == nil {
+		out = []appdto.CollectorExecutionRaw{}
+	}
+	return out, nil
 }
 
 func (c *collectorHTTP) TestAgent(ctx context.Context, companyID, agentID, correlationID string) (appdto.CollectorAgentTestResultDTO, error) {
