@@ -85,6 +85,20 @@ func TestMapHTTPError_InvalidToken(t *testing.T) {
 	assert.Equal(t, string(body), httpErr.Details)
 }
 
+func TestMapHTTPError_UsesErrorFieldWhenMessageEmpty(t *testing.T) {
+	body := []byte(`{"error":"agent não encontrado"}`)
+	err := MapHTTPError(http.StatusNotFound, body, "collector service")
+	httpErr := err.(*appdto.HTTPError)
+	assert.Equal(t, "agent não encontrado", httpErr.Message)
+}
+
+func TestMapHTTPError_TranslatesEnglishDetail(t *testing.T) {
+	body := []byte(`{"error":"NOT_FOUND","message":"User not found"}`)
+	err := MapHTTPError(http.StatusNotFound, body, "auth service")
+	httpErr := err.(*appdto.HTTPError)
+	assert.Equal(t, "Usuário não encontrado", httpErr.Message)
+}
+
 func TestGetDefaultMessageForStatus_4xx(t *testing.T) {
 	testCases := []struct {
 		statusCode int
@@ -115,10 +129,10 @@ func TestGetDefaultMessageForStatus_5xx(t *testing.T) {
 		statusCode int
 		expected   string
 	}{
-		{http.StatusInternalServerError, "ms-user encontrou um erro interno"},
-		{http.StatusBadGateway, "ms-user temporariamente indisponível"},
-		{http.StatusServiceUnavailable, "ms-user indisponível"},
-		{http.StatusGatewayTimeout, "ms-user não respondeu a tempo"},
+		{http.StatusInternalServerError, "serviço de usuários encontrou um erro interno"},
+		{http.StatusBadGateway, "serviço de usuários temporariamente indisponível"},
+		{http.StatusServiceUnavailable, "serviço de usuários indisponível"},
+		{http.StatusGatewayTimeout, "serviço de usuários não respondeu a tempo"},
 	}
 
 	for _, tc := range testCases {
@@ -137,7 +151,7 @@ func TestGetDefaultMessageForStatus_Unknown(t *testing.T) {
 	message := getDefaultMessageForStatus(999, "ms-user")
 
 	// Assert
-	assert.Equal(t, "ms-user retornou erro 999", message)
+	assert.Equal(t, "serviço de usuários retornou erro 999", message)
 }
 
 func TestMapNetworkError(t *testing.T) {
@@ -150,7 +164,7 @@ func TestMapNetworkError(t *testing.T) {
 
 	// Assert
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "erro ao comunicar com ms-user")
+	assert.Contains(t, err.Error(), "erro ao comunicar com serviço de usuários")
 	assert.Contains(t, err.Error(), "connection refused")
 	assert.ErrorIs(t, err, originalErr)
 }

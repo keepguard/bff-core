@@ -305,7 +305,7 @@ func (h *CollectorAgentHandlers) GetCollectorExecutionPayloadsHandler(c echo.Con
 	if h.knowledgeClient == nil {
 		return c.JSON(http.StatusServiceUnavailable, pkg.ErrorResponse{
 			Error:         "SERVICE_UNAVAILABLE",
-			Message:       "Knowledge indisponível",
+			Message:       "Serviço de conhecimento indisponível",
 			CorrelationID: correlationID,
 		})
 	}
@@ -537,6 +537,7 @@ type collectorDataSourceCreateBody struct {
 	Variables           json.RawMessage             `json:"variables"`
 	Notes               string                      `json:"notes,omitempty"`
 	Enabled             *bool                       `json:"enabled,omitempty"`
+	RateLimit           json.RawMessage             `json:"rateLimit,omitempty"`
 }
 
 type collectorDataSourceUpdateBody struct {
@@ -552,6 +553,7 @@ type collectorDataSourceUpdateBody struct {
 	ConfigTemplate      json.RawMessage              `json:"configTemplate,omitempty"`
 	Variables           json.RawMessage              `json:"variables,omitempty"`
 	Notes               *string                      `json:"notes,omitempty"`
+	RateLimit           json.RawMessage              `json:"rateLimit,omitempty"`
 }
 
 func (h *CollectorAgentHandlers) CreateCollectorDataSourceHandler(c echo.Context) error {
@@ -612,6 +614,7 @@ func (h *CollectorAgentHandlers) CreateCollectorDataSourceHandler(c echo.Context
 		Variables:           body.Variables,
 		Notes:               optionalString(body.Notes),
 		Enabled:             body.Enabled,
+		RateLimit:           body.RateLimit,
 	})
 	if err != nil {
 		h.logger.Error("Erro ao criar fonte de dados",
@@ -647,6 +650,7 @@ func (h *CollectorAgentHandlers) UpdateCollectorDataSourceHandler(c echo.Context
 		ConfigTemplate:      body.ConfigTemplate,
 		Variables:           body.Variables,
 		Notes:               body.Notes,
+		RateLimit:           body.RateLimit,
 	}
 	if body.Name != nil {
 		write.Name = *body.Name

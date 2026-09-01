@@ -35,7 +35,7 @@ func NewKnowledgeClient(cfg *config.Config, logger *zap.Logger) domainclient.Kno
 
 func (c *knowledgeHTTP) Ask(ctx context.Context, companyID, bearerToken, correlationID string, body appdto.KnowledgeAskRequest) (appdto.KnowledgeAskResponse, error) {
 	if c.baseURL == "" {
-		return appdto.KnowledgeAskResponse{}, MapHTTPError(503, []byte(`{"message":"knowledge service indisponível"}`), "knowledge service")
+		return appdto.KnowledgeAskResponse{}, MapHTTPError(503, []byte(`{"message":"Serviço de conhecimento indisponível"}`), "knowledge service")
 	}
 	var out appdto.KnowledgeAskResponse
 	req := c.httpClient.R().
@@ -74,7 +74,7 @@ func (c *knowledgeHTTP) authReq(ctx context.Context, companyID, bearerToken, cor
 
 func (c *knowledgeHTTP) GetSnapshot(ctx context.Context, companyID, bearerToken, correlationID, snapshotID string) (appdto.KnowledgeSnapshotDTO, error) {
 	if c.baseURL == "" {
-		return appdto.KnowledgeSnapshotDTO{}, MapHTTPError(503, []byte(`{"message":"knowledge service indisponível"}`), "knowledge service")
+		return appdto.KnowledgeSnapshotDTO{}, MapHTTPError(503, []byte(`{"message":"Serviço de conhecimento indisponível"}`), "knowledge service")
 	}
 	var out appdto.KnowledgeSnapshotDTO
 	resp, err := c.authReq(ctx, companyID, bearerToken, correlationID).
@@ -91,7 +91,7 @@ func (c *knowledgeHTTP) GetSnapshot(ctx context.Context, companyID, bearerToken,
 
 func (c *knowledgeHTTP) GetDocumentPreview(ctx context.Context, companyID, bearerToken, correlationID, documentID string) (appdto.KnowledgeDocumentPreviewDTO, error) {
 	if c.baseURL == "" {
-		return appdto.KnowledgeDocumentPreviewDTO{}, MapHTTPError(503, []byte(`{"message":"knowledge service indisponível"}`), "knowledge service")
+		return appdto.KnowledgeDocumentPreviewDTO{}, MapHTTPError(503, []byte(`{"message":"Serviço de conhecimento indisponível"}`), "knowledge service")
 	}
 	var out appdto.KnowledgeDocumentPreviewDTO
 	resp, err := c.authReq(ctx, companyID, bearerToken, correlationID).
@@ -108,7 +108,7 @@ func (c *knowledgeHTTP) GetDocumentPreview(ctx context.Context, companyID, beare
 
 func (c *knowledgeHTTP) GetCollectionResults(ctx context.Context, companyID, bearerToken, correlationID, agentID, collectedAt string, windowSeconds int) (appdto.KnowledgeCollectionResultsDTO, error) {
 	if c.baseURL == "" {
-		return appdto.KnowledgeCollectionResultsDTO{}, MapHTTPError(503, []byte(`{"message":"knowledge service indisponível"}`), "knowledge service")
+		return appdto.KnowledgeCollectionResultsDTO{}, MapHTTPError(503, []byte(`{"message":"Serviço de conhecimento indisponível"}`), "knowledge service")
 	}
 	if windowSeconds <= 0 {
 		windowSeconds = 60

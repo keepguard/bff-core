@@ -44,7 +44,7 @@ func (h *KnowledgeHandlers) AskKnowledgeHandler(c echo.Context) error {
 	if h.knowledgeClient == nil || h.companyClient == nil {
 		return c.JSON(http.StatusServiceUnavailable, pkg.ErrorResponse{
 			Error:         "SERVICE_UNAVAILABLE",
-			Message:       "Knowledge indisponível",
+			Message:       "Serviço de conhecimento indisponível",
 			CorrelationID: correlationID,
 		})
 	}
@@ -127,7 +127,7 @@ func (h *KnowledgeHandlers) resolveCompany(c echo.Context, correlationID string)
 	if h.companyClient == nil {
 		return "", c.JSON(http.StatusServiceUnavailable, pkg.ErrorResponse{
 			Error:         "SERVICE_UNAVAILABLE",
-			Message:       "Knowledge indisponível",
+			Message:       "Serviço de conhecimento indisponível",
 			CorrelationID: correlationID,
 		})
 	}

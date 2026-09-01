@@ -300,7 +300,7 @@ func (h *OAuthClientHandlers) resolveCompany(c echo.Context, correlationID strin
 	return company.ID, nil
 }
 
-const collectorUnavailableMsg = "srv-data-collector indisponível"
+const collectorUnavailableMsg = "Serviço de coleta indisponível"
 
 func (h *OAuthClientHandlers) loadAgents(c echo.Context, companyID, correlationID string) ([]appdto.CollectorAgentDTO, error) {
 	if h.collectorClient == nil {

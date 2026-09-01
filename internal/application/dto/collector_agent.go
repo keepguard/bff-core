@@ -297,6 +297,7 @@ type CollectorDataSourceDTO struct {
 	Variables           json.RawMessage      `json:"variables"`
 	Notes               string               `json:"notes,omitempty"`
 	Enabled             bool                 `json:"enabled"`
+	RateLimit           json.RawMessage      `json:"rateLimit,omitempty"`
 	CreatedAt           string               `json:"createdAt,omitempty"`
 	UpdatedAt           string               `json:"updatedAt,omitempty"`
 }
@@ -320,6 +321,7 @@ type CollectorDataSourceRaw struct {
 	Variables           json.RawMessage `json:"variables"`
 	Notes               string          `json:"notes,omitempty"`
 	Enabled             bool            `json:"enabled"`
+	RateLimit           json.RawMessage `json:"rate_limit,omitempty"`
 	CreatedAt           string          `json:"created_at,omitempty"`
 	UpdatedAt           string          `json:"updated_at,omitempty"`
 }
@@ -339,6 +341,7 @@ type CollectorDataSourceWriteRaw struct {
 	Variables           json.RawMessage `json:"variables,omitempty"`
 	Notes               *string         `json:"notes,omitempty"`
 	Enabled             *bool           `json:"enabled,omitempty"`
+	RateLimit           json.RawMessage `json:"rate_limit,omitempty"`
 }
 
 func MapCollectorDataSourceRaw(raw CollectorDataSourceRaw) CollectorDataSourceDTO {
@@ -365,6 +368,7 @@ func MapCollectorDataSourceRaw(raw CollectorDataSourceRaw) CollectorDataSourceDT
 		Variables:           raw.Variables,
 		Notes:               raw.Notes,
 		Enabled:             raw.Enabled,
+		RateLimit:           raw.RateLimit,
 		CreatedAt:           raw.CreatedAt,
 		UpdatedAt:           raw.UpdatedAt,
 	}
