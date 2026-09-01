@@ -36,4 +36,5 @@ type CollectorClient interface {
 	EnableDataSource(ctx context.Context, companyID, sourceID, correlationID string) (appdto.CollectorDataSourceRaw, error)
 	DisableDataSource(ctx context.Context, companyID, sourceID, correlationID string) (appdto.CollectorDataSourceRaw, error)
 	DeleteDataSource(ctx context.Context, companyID, sourceID, correlationID string) error
+	PropagateDataSource(ctx context.Context, companyID, sourceID, correlationID string, body appdto.PropagateDataSourceWriteRaw) (appdto.PropagateDataSourceRaw, error)
 }

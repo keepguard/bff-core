@@ -404,3 +404,35 @@ func (c *collectorHTTP) DeleteDataSource(ctx context.Context, companyID, sourceI
 	}
 	return nil
 }
+
+func (c *collectorHTTP) PropagateDataSource(ctx context.Context, companyID, sourceID, correlationID string, body appdto.PropagateDataSourceWriteRaw) (appdto.PropagateDataSourceRaw, error) {
+	if c.baseURL == "" || sourceID == "" {
+		return appdto.PropagateDataSourceRaw{Previews: []appdto.PropagateAgentPreviewRaw{}}, nil
+	}
+	payload, err := json.Marshal(body)
+	if err != nil {
+		return appdto.PropagateDataSourceRaw{}, err
+	}
+	propagateClient := resty.New()
+	propagateClient.SetTimeout(60 * time.Second)
+	propagateClient.SetRetryCount(0)
+	var out appdto.PropagateDataSourceRaw
+	resp, err := propagateClient.R().
+		SetContext(ctx).
+		SetHeader("X-Company-Id", companyID).
+		SetHeader("X-Correlation-ID", correlationID).
+		SetHeader("Content-Type", "application/json").
+		SetBody(payload).
+		SetResult(&out).
+		Post(c.dataSourceURL(sourceID) + "/propagate")
+	if err != nil {
+		return appdto.PropagateDataSourceRaw{}, MapNetworkError(err, "collector service")
+	}
+	if resp.StatusCode() != 200 {
+		return appdto.PropagateDataSourceRaw{}, MapHTTPError(resp.StatusCode(), resp.Body(), "collector service")
+	}
+	if out.Previews == nil {
+		out.Previews = []appdto.PropagateAgentPreviewRaw{}
+	}
+	return out, nil
+}

@@ -206,7 +206,7 @@ func TestListCollectorDataSourcesHandler_OK(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
 		t.Fatal(err)
 	}
-	if len(out) != 1 || out[0].Slug != "status-invest" || out[0].CollectorType != "API_REST" || out[0].Scope != "keepguard" {
+	if len(out) != 1 || out[0].Slug != "status-invest" || out[0].CollectorType != "API_REST" || out[0].Scope != "company" {
 		t.Fatalf("unexpected sources: %+v", out)
 	}
 }
@@ -258,6 +258,34 @@ func TestDeleteCollectorDataSourceHandler_NoContent(t *testing.T) {
 	}
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("expected 204, got %d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestPropagateCollectorDataSourceHandler_OK(t *testing.T) {
+	body := `{"fields":["url"],"dryRun":true}`
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/core/collector/data-sources/src-1/propagate", strings.NewReader(body))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	req = req.WithContext(client.WithCompanyID(req.Context(), "company-1"))
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.Set("claims", &pkg.JWTClaims{Roles: []string{"ADMIN"}, TenantId: "tenant-1"})
+	c.SetParamNames("id")
+	c.SetParamValues("src-1")
+
+	h := NewCollectorAgentHandlers(&oauthStubCollector{}, &oauthStubCompany{id: "company-1"}, nil, zap.NewNop())
+	if err := h.PropagateCollectorDataSourceHandler(c); err != nil {
+		t.Fatal(err)
+	}
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
+	}
+	var out appdto.PropagateDataSourceDTO
+	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
+		t.Fatal(err)
+	}
+	if !out.DryRun || out.TotalLinked != 2 || out.Updated != 2 || len(out.Previews) != 1 || out.Previews[0].AfterURL != "https://new.com/PETR4" {
+		t.Fatalf("unexpected propagate payload: %+v", out)
 	}
 }
 

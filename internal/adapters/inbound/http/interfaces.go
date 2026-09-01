@@ -49,6 +49,7 @@ type Handler interface {
 	UpdateCollectorDataSourceHandler(c echo.Context) error
 	EnableCollectorDataSourceHandler(c echo.Context) error
 	DisableCollectorDataSourceHandler(c echo.Context) error
+	PropagateCollectorDataSourceHandler(c echo.Context) error
 	DeleteCollectorDataSourceHandler(c echo.Context) error
 	DeleteCollectorAgentHandler(c echo.Context) error
 	AskKnowledgeHandler(c echo.Context) error

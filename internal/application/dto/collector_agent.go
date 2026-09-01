@@ -344,11 +344,7 @@ type CollectorDataSourceWriteRaw struct {
 func MapCollectorDataSourceRaw(raw CollectorDataSourceRaw) CollectorDataSourceDTO {
 	scope := raw.Scope
 	if scope == "" {
-		if raw.CompanyID == "" {
-			scope = "keepguard"
-		} else {
-			scope = "company"
-		}
+		scope = "company"
 	}
 	return CollectorDataSourceDTO{
 		ID:                  raw.ID,
@@ -380,4 +376,77 @@ func MapCollectorDataSources(raw []CollectorDataSourceRaw) []CollectorDataSource
 		out = append(out, MapCollectorDataSourceRaw(item))
 	}
 	return out
+}
+
+type PropagateDataSourceWriteRaw struct {
+	Fields []string `json:"fields"`
+	DryRun bool     `json:"dry_run"`
+	Limit  int      `json:"limit,omitempty"`
+}
+
+type PropagateAgentPreviewRaw struct {
+	AgentID    string `json:"agent_id"`
+	AgentName  string `json:"agent_name"`
+	Ticker     string `json:"ticker"`
+	BeforeURL  string `json:"before_url"`
+	AfterURL   string `json:"after_url"`
+	Changed    bool   `json:"changed"`
+	SkipReason string `json:"skip_reason,omitempty"`
+}
+
+type PropagateDataSourceRaw struct {
+	TotalLinked int                        `json:"total_linked"`
+	Updated     int                        `json:"updated"`
+	Skipped     int                        `json:"skipped"`
+	Failed      int                        `json:"failed"`
+	DryRun      bool                       `json:"dry_run"`
+	Previews    []PropagateAgentPreviewRaw `json:"previews"`
+	Errors      []string                   `json:"errors,omitempty"`
+}
+
+type PropagateAgentPreviewDTO struct {
+	AgentID    string `json:"agentId"`
+	AgentName  string `json:"agentName"`
+	Ticker     string `json:"ticker"`
+	BeforeURL  string `json:"beforeUrl"`
+	AfterURL   string `json:"afterUrl"`
+	Changed    bool   `json:"changed"`
+	SkipReason string `json:"skipReason,omitempty"`
+}
+
+type PropagateDataSourceDTO struct {
+	TotalLinked int                        `json:"totalLinked"`
+	Updated     int                        `json:"updated"`
+	Skipped     int                        `json:"skipped"`
+	Failed      int                        `json:"failed"`
+	DryRun      bool                       `json:"dryRun"`
+	Previews    []PropagateAgentPreviewDTO `json:"previews"`
+	Errors      []string                   `json:"errors,omitempty"`
+}
+
+func MapPropagateDataSourceRaw(raw PropagateDataSourceRaw) PropagateDataSourceDTO {
+	previews := make([]PropagateAgentPreviewDTO, 0, len(raw.Previews))
+	for _, item := range raw.Previews {
+		previews = append(previews, PropagateAgentPreviewDTO{
+			AgentID:    item.AgentID,
+			AgentName:  item.AgentName,
+			Ticker:     item.Ticker,
+			BeforeURL:  item.BeforeURL,
+			AfterURL:   item.AfterURL,
+			Changed:    item.Changed,
+			SkipReason: item.SkipReason,
+		})
+	}
+	if raw.Errors == nil {
+		raw.Errors = []string{}
+	}
+	return PropagateDataSourceDTO{
+		TotalLinked: raw.TotalLinked,
+		Updated:     raw.Updated,
+		Skipped:     raw.Skipped,
+		Failed:      raw.Failed,
+		DryRun:      raw.DryRun,
+		Previews:    previews,
+		Errors:      raw.Errors,
+	}
 }

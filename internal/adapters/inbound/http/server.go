@@ -177,6 +177,7 @@ func (s *serverImpl) SetupRoutes(handlers Handler) {
 	userGroup.PUT("/core/collector/data-sources/:id", handlers.UpdateCollectorDataSourceHandler, collectorAdmin...)
 	userGroup.POST("/core/collector/data-sources/:id/enable", handlers.EnableCollectorDataSourceHandler, collectorAdmin...)
 	userGroup.POST("/core/collector/data-sources/:id/disable", handlers.DisableCollectorDataSourceHandler, collectorAdmin...)
+	userGroup.POST("/core/collector/data-sources/:id/propagate", handlers.PropagateCollectorDataSourceHandler, collectorAdmin...)
 	userGroup.DELETE("/core/collector/data-sources/:id", handlers.DeleteCollectorDataSourceHandler, collectorAdmin...)
 	userGroup.DELETE("/core/collector/agents/:id", handlers.DeleteCollectorAgentHandler, collectorAdmin...)
 

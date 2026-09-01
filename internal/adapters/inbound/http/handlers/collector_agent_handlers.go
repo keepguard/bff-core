@@ -722,6 +722,48 @@ func (h *CollectorAgentHandlers) DeleteCollectorDataSourceHandler(c echo.Context
 	return c.NoContent(http.StatusNoContent)
 }
 
+type collectorPropagateBody struct {
+	Fields []string `json:"fields"`
+	DryRun bool     `json:"dryRun"`
+	Limit  int      `json:"limit,omitempty"`
+}
+
+func (h *CollectorAgentHandlers) PropagateCollectorDataSourceHandler(c echo.Context) error {
+	correlationID := middlewarePkg.GetCorrelationID(c)
+	var body collectorPropagateBody
+	if err := c.Bind(&body); err != nil {
+		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
+			Error:         "INVALID_BODY",
+			Message:       "JSON inválido",
+			CorrelationID: correlationID,
+		})
+	}
+	if len(body.Fields) == 0 {
+		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
+			Error:         "MISSING_FIELDS",
+			Message:       "fields é obrigatório",
+			CorrelationID: correlationID,
+		})
+	}
+	companyID, err := h.resolveCompany(c, correlationID)
+	if err != nil {
+		return err
+	}
+	raw, err := h.collectorClient.PropagateDataSource(c.Request().Context(), companyID, c.Param("id"), correlationID, appdto.PropagateDataSourceWriteRaw{
+		Fields: body.Fields,
+		DryRun: body.DryRun,
+		Limit:  body.Limit,
+	})
+	if err != nil {
+		h.logger.Error("Erro ao propagar fonte de dados",
+			zap.String("correlationId", correlationID),
+			zap.Error(err),
+		)
+		return handleError(c, err, correlationID)
+	}
+	return c.JSON(http.StatusOK, appdto.MapPropagateDataSourceRaw(raw))
+}
+
 func (h *CollectorAgentHandlers) resolveCompany(c echo.Context, correlationID string) (string, error) {
 	if h.collectorClient == nil || h.companyClient == nil {
 		return "", c.JSON(http.StatusServiceUnavailable, pkg.ErrorResponse{

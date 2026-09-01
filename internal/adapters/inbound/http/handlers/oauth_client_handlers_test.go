@@ -240,6 +240,27 @@ func (s *oauthStubCollector) DeleteDataSource(_ context.Context, _, sourceID, _ 
 	return nil
 }
 
+func (s *oauthStubCollector) PropagateDataSource(_ context.Context, _, sourceID, _ string, body appdto.PropagateDataSourceWriteRaw) (appdto.PropagateDataSourceRaw, error) {
+	return appdto.PropagateDataSourceRaw{
+		TotalLinked: 2,
+		Updated:     2,
+		Skipped:     0,
+		Failed:      0,
+		DryRun:      body.DryRun,
+		Previews: []appdto.PropagateAgentPreviewRaw{
+			{
+				AgentID:   "a1",
+				AgentName: "PETR4 Status",
+				Ticker:    "PETR4",
+				BeforeURL: "https://old.com/PETR4",
+				AfterURL:  "https://new.com/PETR4",
+				Changed:   true,
+			},
+		},
+		Errors: []string{},
+	}, nil
+}
+
 func oauthContext(method, path string, companyID string, claims *pkg.JWTClaims) (echo.Context, *httptest.ResponseRecorder) {
 	e := echo.New()
 	req := httptest.NewRequest(method, path, nil)
