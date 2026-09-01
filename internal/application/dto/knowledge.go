@@ -53,3 +53,47 @@ type KnowledgeAskResponse struct {
 	Disclaimer  string               `json:"disclaimer,omitempty"`
 	Freshness   *KnowledgeFreshness  `json:"freshness,omitempty"`
 }
+
+type KnowledgeSnapshotDTO struct {
+	ID            string         `json:"id"`
+	CompanyID     string         `json:"companyId"`
+	AgentID       string         `json:"agentId"`
+	AgentCode     string         `json:"agentCode"`
+	CollectorType string         `json:"collectorType"`
+	Context       string         `json:"context"`
+	EntityHint    string         `json:"entityHint"`
+	CollectedAt   string         `json:"collectedAt"`
+	IngestedAt    string         `json:"ingestedAt"`
+	Schema        string         `json:"schema"`
+	SourceURL     string         `json:"sourceUrl"`
+	Payload       map[string]any `json:"payload"`
+}
+
+type KnowledgeDocumentPreviewDTO struct {
+	ID               string `json:"id"`
+	CompanyID        string `json:"companyId"`
+	SourceAgentID    string `json:"sourceAgentId"`
+	FileName         string `json:"fileName"`
+	ContentType      string `json:"contentType"`
+	CollectedAt      string `json:"collectedAt"`
+	EntityHint       string `json:"entityHint"`
+	Status           string `json:"status"`
+	PreviewText      string `json:"previewText"`
+	PreviewAvailable bool   `json:"previewAvailable"`
+	Message          string `json:"message"`
+}
+
+type KnowledgeCollectionResultsDTO struct {
+	Snapshots []KnowledgeSnapshotDTO        `json:"snapshots"`
+	Documents []KnowledgeDocumentPreviewDTO `json:"documents"`
+}
+
+type ExecutionPayloadItemDTO struct {
+	Kind        string         `json:"kind"`
+	ID          string         `json:"id"`
+	ContentType string         `json:"contentType,omitempty"`
+	FileName    string         `json:"fileName,omitempty"`
+	Payload     map[string]any `json:"payload,omitempty"`
+	Metadata    map[string]any `json:"metadata,omitempty"`
+	PreviewText string         `json:"previewText,omitempty"`
+}
