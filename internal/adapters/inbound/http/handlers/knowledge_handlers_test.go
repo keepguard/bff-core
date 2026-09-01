@@ -19,8 +19,11 @@ import (
 )
 
 type stubKnowledgeClient struct {
-	last    appdto.KnowledgeAskRequest
-	sources []appdto.KnowledgeAskSource
+	last     appdto.KnowledgeAskRequest
+	sources  []appdto.KnowledgeAskSource
+	snapshot appdto.KnowledgeSnapshotDTO
+	document appdto.KnowledgeDocumentPreviewDTO
+	results  appdto.KnowledgeCollectionResultsDTO
 }
 
 func (s *stubKnowledgeClient) Ask(_ context.Context, _, _, _ string, body appdto.KnowledgeAskRequest) (appdto.KnowledgeAskResponse, error) {
@@ -35,6 +38,39 @@ func (s *stubKnowledgeClient) Ask(_ context.Context, _, _, _ string, body appdto
 		Answer:      "MS Auth healthy, 16:46, 132 ms",
 		Sources:     sources,
 		Convergence: true,
+	}, nil
+}
+
+func (s *stubKnowledgeClient) GetSnapshot(_ context.Context, _, _, _, snapshotID string) (appdto.KnowledgeSnapshotDTO, error) {
+	if s.snapshot.ID != "" {
+		return s.snapshot, nil
+	}
+	return appdto.KnowledgeSnapshotDTO{
+		ID:      snapshotID,
+		Payload: map[string]any{"ticker": "PETR4"},
+	}, nil
+}
+
+func (s *stubKnowledgeClient) GetDocumentPreview(_ context.Context, _, _, _, documentID string) (appdto.KnowledgeDocumentPreviewDTO, error) {
+	if s.document.ID != "" {
+		return s.document, nil
+	}
+	return appdto.KnowledgeDocumentPreviewDTO{
+		ID:               documentID,
+		FileName:         "page.html",
+		ContentType:      "text/html",
+		PreviewText:      "<html>ok</html>",
+		PreviewAvailable: true,
+	}, nil
+}
+
+func (s *stubKnowledgeClient) GetCollectionResults(_ context.Context, _, _, _, _, _ string, _ int) (appdto.KnowledgeCollectionResultsDTO, error) {
+	if s.results.Snapshots != nil || s.results.Documents != nil {
+		return s.results, nil
+	}
+	return appdto.KnowledgeCollectionResultsDTO{
+		Snapshots: []appdto.KnowledgeSnapshotDTO{},
+		Documents: []appdto.KnowledgeDocumentPreviewDTO{},
 	}, nil
 }
 

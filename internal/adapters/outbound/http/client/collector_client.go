@@ -222,6 +222,29 @@ func (c *collectorHTTP) ListAgentExecutions(ctx context.Context, companyID, agen
 	return out, nil
 }
 
+func (c *collectorHTTP) GetExecution(ctx context.Context, companyID, executionID, correlationID string) (appdto.CollectorExecutionRaw, error) {
+	if c.baseURL == "" || executionID == "" {
+		return appdto.CollectorExecutionRaw{}, nil
+	}
+	var out appdto.CollectorExecutionRaw
+	resp, err := c.req(ctx, companyID, correlationID).
+		SetResult(&out).
+		Get(c.baseURL + "/api/v1/collector/executions/" + executionID)
+	if err != nil {
+		return appdto.CollectorExecutionRaw{}, MapNetworkError(err, "collector service")
+	}
+	if resp.StatusCode() != 200 {
+		return appdto.CollectorExecutionRaw{}, MapHTTPError(resp.StatusCode(), resp.Body(), "collector service")
+	}
+	if out.AgentID == "" {
+		return out, nil
+	}
+	if _, agentErr := c.GetAgent(ctx, companyID, out.AgentID, correlationID); agentErr != nil {
+		return appdto.CollectorExecutionRaw{}, agentErr
+	}
+	return out, nil
+}
+
 func (c *collectorHTTP) TestAgent(ctx context.Context, companyID, agentID, correlationID string) (appdto.CollectorAgentTestResultDTO, error) {
 	if c.baseURL == "" || agentID == "" {
 		return appdto.CollectorAgentTestResultDTO{}, nil

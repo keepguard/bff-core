@@ -309,8 +309,8 @@ func main() {
 	oauthClientHTTP := httpclient.NewOAuthClientHTTP(cfg, zapLogger)
 	collectorClient := httpclient.NewCollectorClient(cfg, zapLogger)
 	oauthClientHandlers := handlersPkg.NewOAuthClientHandlers(oauthClientHTTP, companyClient, collectorClient, zapLogger)
-	collectorAgentHandlers := handlersPkg.NewCollectorAgentHandlers(collectorClient, companyClient, zapLogger)
 	knowledgeClient := httpclient.NewKnowledgeClient(cfg, zapLogger)
+	collectorAgentHandlers := handlersPkg.NewCollectorAgentHandlers(collectorClient, companyClient, knowledgeClient, zapLogger)
 	knowledgeHandlers := handlersPkg.NewKnowledgeHandlers(knowledgeClient, collectorClient, companyClient, zapLogger)
 	httpHandlers := handlersPkg.NewCombinedHandlers(registerHandlers, userHandlers, consentHandlers, connectionsHandlers, auditHandlers, guardianHandlers, oauthClientHandlers, collectorAgentHandlers, knowledgeHandlers)
 

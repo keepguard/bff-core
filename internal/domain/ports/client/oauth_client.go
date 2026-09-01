@@ -27,6 +27,7 @@ type CollectorClient interface {
 	DisableAgent(ctx context.Context, companyID, agentID, correlationID string) (appdto.CollectorAgentRaw, error)
 	TestAgent(ctx context.Context, companyID, agentID, correlationID string) (appdto.CollectorAgentTestResultDTO, error)
 	ListAgentExecutions(ctx context.Context, companyID, agentID, correlationID string, limit int) ([]appdto.CollectorExecutionRaw, error)
+	GetExecution(ctx context.Context, companyID, executionID, correlationID string) (appdto.CollectorExecutionRaw, error)
 	DeleteAgent(ctx context.Context, companyID, agentID, correlationID string) error
 	ListDataSources(ctx context.Context, companyID, correlationID string) ([]appdto.CollectorDataSourceRaw, error)
 }

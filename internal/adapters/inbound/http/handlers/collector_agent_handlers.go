@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"strconv"
@@ -17,17 +18,20 @@ import (
 type CollectorAgentHandlers struct {
 	collectorClient client.CollectorClient
 	companyClient   client.CompanyClient
+	knowledgeClient client.KnowledgeClient
 	logger          *zap.Logger
 }
 
 func NewCollectorAgentHandlers(
 	collectorClient client.CollectorClient,
 	companyClient client.CompanyClient,
+	knowledgeClient client.KnowledgeClient,
 	logger *zap.Logger,
 ) *CollectorAgentHandlers {
 	return &CollectorAgentHandlers{
 		collectorClient: collectorClient,
 		companyClient:   companyClient,
+		knowledgeClient: knowledgeClient,
 		logger:          logger,
 	}
 }
@@ -41,7 +45,7 @@ type collectorAgentCreateBody struct {
 	Prompt          string                      `json:"prompt,omitempty"`
 	Schedule        appdto.CollectorScheduleDTO `json:"schedule"`
 	Enabled         *bool                       `json:"enabled,omitempty"`
-	DataSourceID    string                       `json:"dataSourceId,omitempty"`
+	DataSourceID    string                      `json:"dataSourceId,omitempty"`
 }
 
 type collectorAgentUpdateBody struct {
@@ -51,7 +55,7 @@ type collectorAgentUpdateBody struct {
 	CollectorConfig json.RawMessage              `json:"collectorConfig,omitempty"`
 	Prompt          *string                      `json:"prompt,omitempty"`
 	Schedule        *appdto.CollectorScheduleDTO `json:"schedule,omitempty"`
-	DataSourceID    *string                       `json:"dataSourceId,omitempty"`
+	DataSourceID    *string                      `json:"dataSourceId,omitempty"`
 }
 
 func (h *CollectorAgentHandlers) ListCollectorAgentsHandler(c echo.Context) error {
@@ -290,6 +294,191 @@ func (h *CollectorAgentHandlers) ListCollectorAgentExecutionsHandler(c echo.Cont
 		return handleError(c, err, correlationID)
 	}
 	return c.JSON(http.StatusOK, appdto.MapCollectorExecutions(executions))
+}
+
+func (h *CollectorAgentHandlers) GetCollectorExecutionPayloadsHandler(c echo.Context) error {
+	correlationID := middlewarePkg.GetCorrelationID(c)
+	companyID, err := h.resolveCompany(c, correlationID)
+	if err != nil {
+		return err
+	}
+	if h.knowledgeClient == nil {
+		return c.JSON(http.StatusServiceUnavailable, pkg.ErrorResponse{
+			Error:         "SERVICE_UNAVAILABLE",
+			Message:       "Knowledge indisponível",
+			CorrelationID: correlationID,
+		})
+	}
+	executionID := strings.TrimSpace(c.Param("executionId"))
+	if executionID == "" {
+		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
+			Error:         "BAD_REQUEST",
+			Message:       "executionId é obrigatório",
+			CorrelationID: correlationID,
+		})
+	}
+	execution, execErr := h.collectorClient.GetExecution(c.Request().Context(), companyID, executionID, correlationID)
+	if execErr != nil {
+		h.logger.Error("Erro ao buscar execução",
+			zap.String("correlationId", correlationID),
+			zap.String("executionId", executionID),
+			zap.Error(execErr),
+		)
+		return handleError(c, execErr, correlationID)
+	}
+	items, loadErr := h.loadExecutionPayloads(c, companyID, correlationID, execution)
+	if loadErr != nil {
+		h.logger.Error("Erro ao carregar payloads da execução",
+			zap.String("correlationId", correlationID),
+			zap.String("executionId", executionID),
+			zap.Error(loadErr),
+		)
+		return handleError(c, loadErr, correlationID)
+	}
+	if items == nil {
+		items = []appdto.ExecutionPayloadItemDTO{}
+	}
+	return c.JSON(http.StatusOK, items)
+}
+
+func (h *CollectorAgentHandlers) loadExecutionPayloads(
+	c echo.Context, companyID, correlationID string, execution appdto.CollectorExecutionRaw,
+) ([]appdto.ExecutionPayloadItemDTO, error) {
+	bearer := bearerFrom(c)
+	ctx := c.Request().Context()
+	refs := parsePayloadRefs(execution.Metadata)
+	if len(refs) > 0 {
+		items := make([]appdto.ExecutionPayloadItemDTO, 0, len(refs))
+		for _, ref := range refs {
+			item, err := h.loadPayloadRef(ctx, companyID, bearer, correlationID, ref)
+			if err != nil {
+				if isNotFound(err) {
+					continue
+				}
+				return nil, err
+			}
+			items = append(items, item)
+		}
+		return items, nil
+	}
+	if strings.TrimSpace(execution.AgentID) == "" || strings.TrimSpace(execution.StartedAt) == "" {
+		return []appdto.ExecutionPayloadItemDTO{}, nil
+	}
+	results, err := h.knowledgeClient.GetCollectionResults(
+		ctx, companyID, bearer, correlationID, execution.AgentID, execution.StartedAt, 60,
+	)
+	if err != nil {
+		return nil, err
+	}
+	items := make([]appdto.ExecutionPayloadItemDTO, 0, len(results.Snapshots)+len(results.Documents))
+	for _, snapshot := range results.Snapshots {
+		items = append(items, snapshotToPayloadItem(snapshot))
+	}
+	for _, document := range results.Documents {
+		items = append(items, documentToPayloadItem(document))
+	}
+	return items, nil
+}
+
+type payloadRef struct {
+	Kind string
+	ID   string
+}
+
+func parsePayloadRefs(metadata map[string]any) []payloadRef {
+	if metadata == nil {
+		return nil
+	}
+	raw, ok := metadata["payload_refs"]
+	if !ok || raw == nil {
+		return nil
+	}
+	var rows []any
+	switch typed := raw.(type) {
+	case []any:
+		rows = typed
+	case []map[string]any:
+		for _, item := range typed {
+			rows = append(rows, item)
+		}
+	default:
+		return nil
+	}
+	refs := make([]payloadRef, 0, len(rows))
+	for _, row := range rows {
+		item, ok := row.(map[string]any)
+		if !ok {
+			continue
+		}
+		kind, _ := item["kind"].(string)
+		id, _ := item["id"].(string)
+		kind = strings.TrimSpace(strings.ToLower(kind))
+		id = strings.TrimSpace(id)
+		if (kind != "snapshot" && kind != "document") || id == "" {
+			continue
+		}
+		refs = append(refs, payloadRef{Kind: kind, ID: id})
+	}
+	return refs
+}
+
+func (h *CollectorAgentHandlers) loadPayloadRef(
+	ctx context.Context, companyID, bearer, correlationID string, ref payloadRef,
+) (appdto.ExecutionPayloadItemDTO, error) {
+	switch ref.Kind {
+	case "snapshot":
+		snapshot, err := h.knowledgeClient.GetSnapshot(ctx, companyID, bearer, correlationID, ref.ID)
+		if err != nil {
+			return appdto.ExecutionPayloadItemDTO{}, err
+		}
+		return snapshotToPayloadItem(snapshot), nil
+	case "document":
+		document, err := h.knowledgeClient.GetDocumentPreview(ctx, companyID, bearer, correlationID, ref.ID)
+		if err != nil {
+			return appdto.ExecutionPayloadItemDTO{}, err
+		}
+		return documentToPayloadItem(document), nil
+	default:
+		return appdto.ExecutionPayloadItemDTO{}, nil
+	}
+}
+
+func snapshotToPayloadItem(snapshot appdto.KnowledgeSnapshotDTO) appdto.ExecutionPayloadItemDTO {
+	return appdto.ExecutionPayloadItemDTO{
+		Kind:        "snapshot",
+		ID:          snapshot.ID,
+		ContentType: "application/json",
+		Payload:     snapshot.Payload,
+		Metadata: map[string]any{
+			"collectorType": snapshot.CollectorType,
+			"entityHint":    snapshot.EntityHint,
+			"collectedAt":   snapshot.CollectedAt,
+			"schema":        snapshot.Schema,
+			"sourceUrl":     snapshot.SourceURL,
+		},
+	}
+}
+
+func documentToPayloadItem(document appdto.KnowledgeDocumentPreviewDTO) appdto.ExecutionPayloadItemDTO {
+	return appdto.ExecutionPayloadItemDTO{
+		Kind:        "document",
+		ID:          document.ID,
+		ContentType: document.ContentType,
+		FileName:    document.FileName,
+		PreviewText: document.PreviewText,
+		Metadata: map[string]any{
+			"entityHint":       document.EntityHint,
+			"collectedAt":      document.CollectedAt,
+			"status":           document.Status,
+			"previewAvailable": document.PreviewAvailable,
+			"message":          document.Message,
+		},
+	}
+}
+
+func isNotFound(err error) bool {
+	httpErr, ok := err.(*appdto.HTTPError)
+	return ok && httpErr.Code == http.StatusNotFound
 }
 
 func (h *CollectorAgentHandlers) ListCollectorDataSourcesHandler(c echo.Context) error {

@@ -166,6 +166,21 @@ func (s *oauthStubCollector) ListAgentExecutions(_ context.Context, _, _, _ stri
 	return s.executions, nil
 }
 
+func (s *oauthStubCollector) GetExecution(_ context.Context, _, executionID, _ string) (appdto.CollectorExecutionRaw, error) {
+	if s.execErr != nil {
+		return appdto.CollectorExecutionRaw{}, s.execErr
+	}
+	for _, execution := range s.executions {
+		if execution.ID == executionID {
+			return execution, nil
+		}
+	}
+	if len(s.executions) == 1 {
+		return s.executions[0], nil
+	}
+	return appdto.CollectorExecutionRaw{ID: executionID, AgentID: "a1"}, nil
+}
+
 func (s *oauthStubCollector) DeleteAgent(_ context.Context, _, agentID, _ string) error {
 	s.disabledIDs = append(s.disabledIDs, "deleted:"+agentID)
 	return nil

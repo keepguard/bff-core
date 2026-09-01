@@ -32,7 +32,7 @@ func TestCreateCollectorAgentHandler_Created(t *testing.T) {
 	c.Set("claims", &pkg.JWTClaims{Roles: []string{"ADMIN"}, TenantId: "tenant-1"})
 	c.Set("token", "jwt-token")
 
-	h := NewCollectorAgentHandlers(&oauthStubCollector{}, &oauthStubCompany{id: "company-1"}, zap.NewNop())
+	h := NewCollectorAgentHandlers(&oauthStubCollector{}, &oauthStubCompany{id: "company-1"}, nil, zap.NewNop())
 	if err := h.CreateCollectorAgentHandler(c); err != nil {
 		t.Fatal(err)
 	}
@@ -55,7 +55,7 @@ func TestDeleteCollectorAgentHandler_NoContent(t *testing.T) {
 	})
 	c.SetParamNames("id")
 	c.SetParamValues("a1")
-	h := NewCollectorAgentHandlers(&oauthStubCollector{}, &oauthStubCompany{id: "company-1"}, zap.NewNop())
+	h := NewCollectorAgentHandlers(&oauthStubCollector{}, &oauthStubCompany{id: "company-1"}, nil, zap.NewNop())
 	if err := h.DeleteCollectorAgentHandler(c); err != nil {
 		t.Fatal(err)
 	}
@@ -74,7 +74,7 @@ func TestCreateCollectorAgentHandler_RequiresName(t *testing.T) {
 	c.Set("claims", &pkg.JWTClaims{Roles: []string{"ADMIN"}, TenantId: "tenant-1"})
 	c.Set("token", "jwt-token")
 
-	h := NewCollectorAgentHandlers(&oauthStubCollector{}, &oauthStubCompany{id: "company-1"}, zap.NewNop())
+	h := NewCollectorAgentHandlers(&oauthStubCollector{}, &oauthStubCompany{id: "company-1"}, nil, zap.NewNop())
 	if err := h.CreateCollectorAgentHandler(c); err != nil {
 		t.Fatal(err)
 	}
@@ -85,7 +85,7 @@ func TestCreateCollectorAgentHandler_RequiresName(t *testing.T) {
 
 func TestCreateCollectorAgentHandler_RejectsWithoutRole(t *testing.T) {
 	e := echo.New()
-	h := NewCollectorAgentHandlers(&oauthStubCollector{}, &oauthStubCompany{id: "company-1"}, zap.NewNop())
+	h := NewCollectorAgentHandlers(&oauthStubCollector{}, &oauthStubCompany{id: "company-1"}, nil, zap.NewNop())
 	handler := middlewarePkg.RequireAnyRole("ADMIN", "SYSTEM")(h.CreateCollectorAgentHandler)
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/core/collector/agents", strings.NewReader(`{"name":"x","collectorType":"API_REST"}`))
@@ -122,7 +122,7 @@ func TestListCollectorAgentExecutionsHandler_OK(t *testing.T) {
 	})
 	c.SetParamNames("id")
 	c.SetParamValues("a1")
-	h := NewCollectorAgentHandlers(stub, &oauthStubCompany{id: "company-1"}, zap.NewNop())
+	h := NewCollectorAgentHandlers(stub, &oauthStubCompany{id: "company-1"}, nil, zap.NewNop())
 	if err := h.ListCollectorAgentExecutionsHandler(c); err != nil {
 		t.Fatal(err)
 	}
@@ -148,7 +148,7 @@ func TestListCollectorAgentExecutionsHandler_NotFound(t *testing.T) {
 	})
 	c.SetParamNames("id")
 	c.SetParamValues("missing")
-	h := NewCollectorAgentHandlers(stub, &oauthStubCompany{id: "company-1"}, zap.NewNop())
+	h := NewCollectorAgentHandlers(stub, &oauthStubCompany{id: "company-1"}, nil, zap.NewNop())
 	if err := h.ListCollectorAgentExecutionsHandler(c); err != nil {
 		t.Fatal(err)
 	}
@@ -159,7 +159,7 @@ func TestListCollectorAgentExecutionsHandler_NotFound(t *testing.T) {
 
 func TestListCollectorAgentExecutionsHandler_RejectsWithoutRole(t *testing.T) {
 	e := echo.New()
-	h := NewCollectorAgentHandlers(&oauthStubCollector{}, &oauthStubCompany{id: "company-1"}, zap.NewNop())
+	h := NewCollectorAgentHandlers(&oauthStubCollector{}, &oauthStubCompany{id: "company-1"}, nil, zap.NewNop())
 	handler := middlewarePkg.RequireAnyRole("ADMIN", "SYSTEM")(h.ListCollectorAgentExecutionsHandler)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/core/collector/agents/a1/executions", nil)
@@ -187,7 +187,7 @@ func TestListCollectorDataSourcesHandler_OK(t *testing.T) {
 				ID:              "src-1",
 				Slug:            "status-invest",
 				Name:            "Status Invest",
-				CollectorType:  "API_REST",
+				CollectorType:   "API_REST",
 				DefaultContext:  "investimentos",
 				DefaultSchedule: []byte(`{"days_of_week":[1],"start_time":"09:00","end_time":"17:00","interval_minutes":60,"timezone":"UTC"}`),
 				ConfigTemplate:  []byte(`{"url":"https://statusinvest.com.br"}`),
@@ -195,7 +195,7 @@ func TestListCollectorDataSourcesHandler_OK(t *testing.T) {
 			},
 		},
 	}
-	h := NewCollectorAgentHandlers(stub, &oauthStubCompany{id: "company-1"}, zap.NewNop())
+	h := NewCollectorAgentHandlers(stub, &oauthStubCompany{id: "company-1"}, nil, zap.NewNop())
 	if err := h.ListCollectorDataSourcesHandler(c); err != nil {
 		t.Fatal(err)
 	}
@@ -208,5 +208,99 @@ func TestListCollectorDataSourcesHandler_OK(t *testing.T) {
 	}
 	if len(out) != 1 || out[0].Slug != "status-invest" || out[0].CollectorType != "API_REST" {
 		t.Fatalf("unexpected sources: %+v", out)
+	}
+}
+
+func TestGetCollectorExecutionPayloadsHandler_UsesPayloadRefs(t *testing.T) {
+	stub := &oauthStubCollector{
+		executions: []appdto.CollectorExecutionRaw{
+			{
+				ID:             "exec-1",
+				AgentID:        "a1",
+				StartedAt:      "2026-09-01T03:18:00Z",
+				Status:         "SUCCESS",
+				ItemsCollected: 1,
+				ItemsUploaded:  1,
+				Metadata: map[string]any{
+					"payload_refs": []any{
+						map[string]any{"kind": "snapshot", "id": "snap-1"},
+					},
+				},
+			},
+		},
+	}
+	knowledge := &stubKnowledgeClient{
+		snapshot: appdto.KnowledgeSnapshotDTO{
+			ID:            "snap-1",
+			CollectorType: "API_REST",
+			EntityHint:    "PETR4",
+			Payload:       map[string]any{"ticker": "PETR4", "price": 32.1},
+		},
+	}
+	c, rec := oauthContext(http.MethodGet, "/api/v1/core/collector/executions/exec-1/payloads", "company-1", &pkg.JWTClaims{
+		Roles:    []string{"ADMIN"},
+		TenantId: "tenant-1",
+	})
+	c.SetParamNames("executionId")
+	c.SetParamValues("exec-1")
+	h := NewCollectorAgentHandlers(stub, &oauthStubCompany{id: "company-1"}, knowledge, zap.NewNop())
+	if err := h.GetCollectorExecutionPayloadsHandler(c); err != nil {
+		t.Fatal(err)
+	}
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
+	}
+	var out []appdto.ExecutionPayloadItemDTO
+	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
+		t.Fatal(err)
+	}
+	if len(out) != 1 || out[0].Kind != "snapshot" || out[0].ID != "snap-1" {
+		t.Fatalf("unexpected payloads: %+v", out)
+	}
+	if out[0].Payload["ticker"] != "PETR4" {
+		t.Fatalf("expected ticker in payload, got %+v", out[0].Payload)
+	}
+}
+
+func TestGetCollectorExecutionPayloadsHandler_FallbackCollectionResults(t *testing.T) {
+	stub := &oauthStubCollector{
+		executions: []appdto.CollectorExecutionRaw{
+			{
+				ID:             "exec-2",
+				AgentID:        "a1",
+				StartedAt:      "2026-09-01T03:18:00Z",
+				Status:         "SUCCESS",
+				ItemsCollected: 1,
+				ItemsUploaded:  1,
+			},
+		},
+	}
+	knowledge := &stubKnowledgeClient{
+		results: appdto.KnowledgeCollectionResultsDTO{
+			Snapshots: []appdto.KnowledgeSnapshotDTO{{
+				ID:      "snap-fallback",
+				Payload: map[string]any{"ok": true},
+			}},
+		},
+	}
+	c, rec := oauthContext(http.MethodGet, "/api/v1/core/collector/executions/exec-2/payloads", "company-1", &pkg.JWTClaims{
+		Roles:    []string{"ADMIN"},
+		TenantId: "tenant-1",
+	})
+	c.SetParamNames("executionId")
+	c.SetParamValues("exec-2")
+	h := NewCollectorAgentHandlers(stub, &oauthStubCompany{id: "company-1"}, knowledge, zap.NewNop())
+	if err := h.GetCollectorExecutionPayloadsHandler(c); err != nil {
+		t.Fatal(err)
+	}
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
+	}
+	var out []appdto.ExecutionPayloadItemDTO
+	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
+		t.Fatal(err)
+	}
+	if len(out) != 1 || out[0].ID != "snap-fallback" {
+		t.Fatalf("unexpected fallback payloads: %+v", out)
 	}
 }
