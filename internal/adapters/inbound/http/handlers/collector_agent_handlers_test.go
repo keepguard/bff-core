@@ -206,8 +206,58 @@ func TestListCollectorDataSourcesHandler_OK(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
 		t.Fatal(err)
 	}
-	if len(out) != 1 || out[0].Slug != "status-invest" || out[0].CollectorType != "API_REST" {
+	if len(out) != 1 || out[0].Slug != "status-invest" || out[0].CollectorType != "API_REST" || out[0].Scope != "keepguard" {
 		t.Fatalf("unexpected sources: %+v", out)
+	}
+}
+
+func TestCreateCollectorDataSourceHandler_Created(t *testing.T) {
+	body := `{
+		"name":"CVM fatos",
+		"slug":"cvm-fatos",
+		"collectorType":"HTML_SCRAPER",
+		"defaultSchedule":{"daysOfWeek":[1],"startTime":"09:00","endTime":"17:00","intervalMinutes":60,"timezone":"UTC"},
+		"configTemplate":{"url":"https://exemplo.com/{{ticker_lower}}"},
+		"variables":[{"key":"ticker","label":"Ticker","required":true}]
+	}`
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/core/collector/data-sources", strings.NewReader(body))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	req = req.WithContext(client.WithCompanyID(req.Context(), "company-1"))
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.Set("claims", &pkg.JWTClaims{Roles: []string{"ADMIN"}, TenantId: "tenant-1"})
+	c.Set("token", "jwt-token")
+
+	h := NewCollectorAgentHandlers(&oauthStubCollector{}, &oauthStubCompany{id: "company-1"}, nil, zap.NewNop())
+	if err := h.CreateCollectorDataSourceHandler(c); err != nil {
+		t.Fatal(err)
+	}
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d body=%s", rec.Code, rec.Body.String())
+	}
+	var created appdto.CollectorDataSourceDTO
+	if err := json.Unmarshal(rec.Body.Bytes(), &created); err != nil {
+		t.Fatal(err)
+	}
+	if created.Slug != "cvm-fatos" || created.Scope != "company" || !created.Enabled {
+		t.Fatalf("unexpected create payload: %+v", created)
+	}
+}
+
+func TestDeleteCollectorDataSourceHandler_NoContent(t *testing.T) {
+	c, rec := oauthContext(http.MethodDelete, "/api/v1/core/collector/data-sources/src-1", "company-1", &pkg.JWTClaims{
+		Roles:    []string{"ADMIN"},
+		TenantId: "tenant-1",
+	})
+	c.SetParamNames("id")
+	c.SetParamValues("src-1")
+	h := NewCollectorAgentHandlers(&oauthStubCollector{}, &oauthStubCompany{id: "company-1"}, nil, zap.NewNop())
+	if err := h.DeleteCollectorDataSourceHandler(c); err != nil {
+		t.Fatal(err)
+	}
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("expected 204, got %d body=%s", rec.Code, rec.Body.String())
 	}
 }
 

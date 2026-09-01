@@ -176,13 +176,13 @@ type CollectorAgentTestPreviewRaw struct {
 }
 
 type CollectorAgentTestResultRaw struct {
-	Success        bool                            `json:"success"`
-	AgentID        string                          `json:"agent_id"`
-	CollectorType  string                          `json:"collector_type"`
-	ItemsCollected int                             `json:"items_collected"`
-	DurationMs     int64                           `json:"duration_ms"`
-	Error          *string                         `json:"error"`
-	Preview        []CollectorAgentTestPreviewRaw  `json:"preview"`
+	Success        bool                           `json:"success"`
+	AgentID        string                         `json:"agent_id"`
+	CollectorType  string                         `json:"collector_type"`
+	ItemsCollected int                            `json:"items_collected"`
+	DurationMs     int64                          `json:"duration_ms"`
+	Error          *string                        `json:"error"`
+	Preview        []CollectorAgentTestPreviewRaw `json:"preview"`
 }
 
 type CollectorAgentTestPreviewDTO struct {
@@ -279,61 +279,98 @@ type CollectorDataSourceVariable struct {
 }
 
 type CollectorDataSourceDTO struct {
-	ID                   string                        `json:"id"`
-	Code                 string                          `json:"code"`
-	Slug                 string                          `json:"slug"`
-	Name                 string                          `json:"name"`
-	Description          string                         `json:"description"`
-	WebsiteURL           string                          `json:"websiteUrl,omitempty"`
-	CollectorType       string                          `json:"collectorType"`
-	NameTemplate          string                         `json:"nameTemplate,omitempty"`
-	DescriptionTemplate  string                         `json:"descriptionTemplate,omitempty"`
-	PromptTemplate       string                         `json:"promptTemplate,omitempty"`
-	DefaultContext       string                          `json:"defaultContext"`
-	DefaultSchedule      CollectorScheduleDTO            `json:"defaultSchedule"`
-	ConfigTemplate       json.RawMessage               `json:"configTemplate"`
-	Variables            json.RawMessage               `json:"variables"`
-	Notes                string                          `json:"notes,omitempty"`
-	CreatedAt            string                         `json:"createdAt,omitempty"`
+	ID                  string               `json:"id"`
+	Code                string               `json:"code"`
+	CompanyID           string               `json:"companyId,omitempty"`
+	Scope               string               `json:"scope"`
+	Slug                string               `json:"slug"`
+	Name                string               `json:"name"`
+	Description         string               `json:"description"`
+	WebsiteURL          string               `json:"websiteUrl,omitempty"`
+	CollectorType       string               `json:"collectorType"`
+	NameTemplate        string               `json:"nameTemplate,omitempty"`
+	DescriptionTemplate string               `json:"descriptionTemplate,omitempty"`
+	PromptTemplate      string               `json:"promptTemplate,omitempty"`
+	DefaultContext      string               `json:"defaultContext"`
+	DefaultSchedule     CollectorScheduleDTO `json:"defaultSchedule"`
+	ConfigTemplate      json.RawMessage      `json:"configTemplate"`
+	Variables           json.RawMessage      `json:"variables"`
+	Notes               string               `json:"notes,omitempty"`
+	Enabled             bool                 `json:"enabled"`
+	CreatedAt           string               `json:"createdAt,omitempty"`
+	UpdatedAt           string               `json:"updatedAt,omitempty"`
 }
 
 type CollectorDataSourceRaw struct {
-	ID                   string          `json:"id"`
-	Code                 string          `json:"code"`
-	Slug                 string          `json:"slug"`
-	Name                 string          `json:"name"`
-	Description          string          `json:"description"`
-	WebsiteURL           string          `json:"website_url,omitempty"`
+	ID                  string          `json:"id"`
+	Code                string          `json:"code"`
+	CompanyID           string          `json:"company_id,omitempty"`
+	Scope               string          `json:"scope,omitempty"`
+	Slug                string          `json:"slug"`
+	Name                string          `json:"name"`
+	Description         string          `json:"description"`
+	WebsiteURL          string          `json:"website_url,omitempty"`
 	CollectorType       string          `json:"collector_type"`
-	NameTemplate          string          `json:"name_template,omitempty"`
-	DescriptionTemplate  string          `json:"description_template,omitempty"`
-	PromptTemplate       string          `json:"prompt_template,omitempty"`
-	DefaultContext       string          `json:"default_context"`
-	DefaultSchedule      json.RawMessage `json:"default_schedule"`
-	ConfigTemplate       json.RawMessage `json:"config_template"`
-	Variables            json.RawMessage `json:"variables"`
-	Notes                string          `json:"notes,omitempty"`
-	CreatedAt            string          `json:"created_at,omitempty"`
+	NameTemplate        string          `json:"name_template,omitempty"`
+	DescriptionTemplate string          `json:"description_template,omitempty"`
+	PromptTemplate      string          `json:"prompt_template,omitempty"`
+	DefaultContext      string          `json:"default_context"`
+	DefaultSchedule     json.RawMessage `json:"default_schedule"`
+	ConfigTemplate      json.RawMessage `json:"config_template"`
+	Variables           json.RawMessage `json:"variables"`
+	Notes               string          `json:"notes,omitempty"`
+	Enabled             bool            `json:"enabled"`
+	CreatedAt           string          `json:"created_at,omitempty"`
+	UpdatedAt           string          `json:"updated_at,omitempty"`
+}
+
+type CollectorDataSourceWriteRaw struct {
+	Name                string          `json:"name,omitempty"`
+	Slug                string          `json:"slug,omitempty"`
+	Description         *string         `json:"description,omitempty"`
+	WebsiteURL          *string         `json:"website_url,omitempty"`
+	CollectorType       string          `json:"collector_type,omitempty"`
+	NameTemplate        *string         `json:"name_template,omitempty"`
+	DescriptionTemplate *string         `json:"description_template,omitempty"`
+	PromptTemplate      *string         `json:"prompt_template,omitempty"`
+	DefaultContext      *string         `json:"default_context,omitempty"`
+	DefaultSchedule     json.RawMessage `json:"default_schedule,omitempty"`
+	ConfigTemplate      json.RawMessage `json:"config_template,omitempty"`
+	Variables           json.RawMessage `json:"variables,omitempty"`
+	Notes               *string         `json:"notes,omitempty"`
+	Enabled             *bool           `json:"enabled,omitempty"`
 }
 
 func MapCollectorDataSourceRaw(raw CollectorDataSourceRaw) CollectorDataSourceDTO {
+	scope := raw.Scope
+	if scope == "" {
+		if raw.CompanyID == "" {
+			scope = "keepguard"
+		} else {
+			scope = "company"
+		}
+	}
 	return CollectorDataSourceDTO{
-		ID:                   raw.ID,
-		Code:                 raw.Code,
-		Slug:                 raw.Slug,
-		Name:                 raw.Name,
-		Description:          raw.Description,
-		WebsiteURL:           raw.WebsiteURL,
+		ID:                  raw.ID,
+		Code:                raw.Code,
+		CompanyID:           raw.CompanyID,
+		Scope:               scope,
+		Slug:                raw.Slug,
+		Name:                raw.Name,
+		Description:         raw.Description,
+		WebsiteURL:          raw.WebsiteURL,
 		CollectorType:       raw.CollectorType,
-		NameTemplate:          raw.NameTemplate,
-		DescriptionTemplate:  raw.DescriptionTemplate,
-		PromptTemplate:       raw.PromptTemplate,
-		DefaultContext:       raw.DefaultContext,
-		DefaultSchedule:      MapCollectorScheduleRaw(raw.DefaultSchedule),
-		ConfigTemplate:       raw.ConfigTemplate,
-		Variables:            raw.Variables,
-		Notes:                raw.Notes,
-		CreatedAt:            raw.CreatedAt,
+		NameTemplate:        raw.NameTemplate,
+		DescriptionTemplate: raw.DescriptionTemplate,
+		PromptTemplate:      raw.PromptTemplate,
+		DefaultContext:      raw.DefaultContext,
+		DefaultSchedule:     MapCollectorScheduleRaw(raw.DefaultSchedule),
+		ConfigTemplate:      raw.ConfigTemplate,
+		Variables:           raw.Variables,
+		Notes:               raw.Notes,
+		Enabled:             raw.Enabled,
+		CreatedAt:           raw.CreatedAt,
+		UpdatedAt:           raw.UpdatedAt,
 	}
 }
 
@@ -344,4 +381,3 @@ func MapCollectorDataSources(raw []CollectorDataSourceRaw) []CollectorDataSource
 	}
 	return out
 }
-

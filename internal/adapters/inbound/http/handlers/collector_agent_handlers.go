@@ -487,7 +487,14 @@ func (h *CollectorAgentHandlers) ListCollectorDataSourcesHandler(c echo.Context)
 	if err != nil {
 		return err
 	}
-	raw, err := h.collectorClient.ListDataSources(c.Request().Context(), companyID, correlationID)
+	query := map[string]string{}
+	if include := strings.TrimSpace(c.QueryParam("includeDisabled")); include != "" {
+		query["include_disabled"] = include
+	}
+	if include := strings.TrimSpace(c.QueryParam("include_disabled")); include != "" {
+		query["include_disabled"] = include
+	}
+	raw, err := h.collectorClient.ListDataSources(c.Request().Context(), companyID, correlationID, query)
 	if err != nil {
 		h.logger.Error("Erro ao listar fontes de dados",
 			zap.String("correlationId", correlationID),
@@ -496,6 +503,223 @@ func (h *CollectorAgentHandlers) ListCollectorDataSourcesHandler(c echo.Context)
 		return handleError(c, err, correlationID)
 	}
 	return c.JSON(http.StatusOK, appdto.MapCollectorDataSources(raw))
+}
+
+func (h *CollectorAgentHandlers) GetCollectorDataSourceHandler(c echo.Context) error {
+	correlationID := middlewarePkg.GetCorrelationID(c)
+	companyID, err := h.resolveCompany(c, correlationID)
+	if err != nil {
+		return err
+	}
+	raw, err := h.collectorClient.GetDataSource(c.Request().Context(), companyID, c.Param("id"), correlationID)
+	if err != nil {
+		h.logger.Error("Erro ao buscar fonte de dados",
+			zap.String("correlationId", correlationID),
+			zap.Error(err),
+		)
+		return handleError(c, err, correlationID)
+	}
+	return c.JSON(http.StatusOK, appdto.MapCollectorDataSourceRaw(raw))
+}
+
+type collectorDataSourceCreateBody struct {
+	Name                string                      `json:"name"`
+	Slug                string                      `json:"slug"`
+	Description         string                      `json:"description,omitempty"`
+	WebsiteURL          string                      `json:"websiteUrl,omitempty"`
+	CollectorType       string                      `json:"collectorType"`
+	NameTemplate        string                      `json:"nameTemplate,omitempty"`
+	DescriptionTemplate string                      `json:"descriptionTemplate,omitempty"`
+	PromptTemplate      string                      `json:"promptTemplate,omitempty"`
+	DefaultContext      string                      `json:"defaultContext,omitempty"`
+	DefaultSchedule     appdto.CollectorScheduleDTO `json:"defaultSchedule"`
+	ConfigTemplate      json.RawMessage             `json:"configTemplate"`
+	Variables           json.RawMessage             `json:"variables"`
+	Notes               string                      `json:"notes,omitempty"`
+	Enabled             *bool                       `json:"enabled,omitempty"`
+}
+
+type collectorDataSourceUpdateBody struct {
+	Name                *string                      `json:"name,omitempty"`
+	Slug                *string                      `json:"slug,omitempty"`
+	Description         *string                      `json:"description,omitempty"`
+	WebsiteURL          *string                      `json:"websiteUrl,omitempty"`
+	NameTemplate        *string                      `json:"nameTemplate,omitempty"`
+	DescriptionTemplate *string                      `json:"descriptionTemplate,omitempty"`
+	PromptTemplate      *string                      `json:"promptTemplate,omitempty"`
+	DefaultContext      *string                      `json:"defaultContext,omitempty"`
+	DefaultSchedule     *appdto.CollectorScheduleDTO `json:"defaultSchedule,omitempty"`
+	ConfigTemplate      json.RawMessage              `json:"configTemplate,omitempty"`
+	Variables           json.RawMessage              `json:"variables,omitempty"`
+	Notes               *string                      `json:"notes,omitempty"`
+}
+
+func (h *CollectorAgentHandlers) CreateCollectorDataSourceHandler(c echo.Context) error {
+	correlationID := middlewarePkg.GetCorrelationID(c)
+	var body collectorDataSourceCreateBody
+	if err := c.Bind(&body); err != nil {
+		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
+			Error:         "INVALID_BODY",
+			Message:       "JSON inválido",
+			CorrelationID: correlationID,
+		})
+	}
+	if strings.TrimSpace(body.Name) == "" {
+		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
+			Error:         "MISSING_NAME",
+			Message:       "name é obrigatório",
+			CorrelationID: correlationID,
+		})
+	}
+	if strings.TrimSpace(body.Slug) == "" {
+		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
+			Error:         "MISSING_SLUG",
+			Message:       "slug é obrigatório",
+			CorrelationID: correlationID,
+		})
+	}
+	if strings.TrimSpace(body.CollectorType) == "" {
+		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
+			Error:         "MISSING_COLLECTOR_TYPE",
+			Message:       "collectorType é obrigatório",
+			CorrelationID: correlationID,
+		})
+	}
+	companyID, err := h.resolveCompany(c, correlationID)
+	if err != nil {
+		return err
+	}
+	schedule, err := json.Marshal(appdto.MapCollectorScheduleDTO(body.DefaultSchedule))
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
+			Error:         "INVALID_SCHEDULE",
+			Message:       "defaultSchedule inválido",
+			CorrelationID: correlationID,
+		})
+	}
+	raw, err := h.collectorClient.CreateDataSource(c.Request().Context(), companyID, correlationID, appdto.CollectorDataSourceWriteRaw{
+		Name:                body.Name,
+		Slug:                body.Slug,
+		Description:         optionalString(body.Description),
+		WebsiteURL:          optionalString(body.WebsiteURL),
+		CollectorType:       body.CollectorType,
+		NameTemplate:        optionalString(body.NameTemplate),
+		DescriptionTemplate: optionalString(body.DescriptionTemplate),
+		PromptTemplate:      optionalString(body.PromptTemplate),
+		DefaultContext:      optionalString(body.DefaultContext),
+		DefaultSchedule:     schedule,
+		ConfigTemplate:      body.ConfigTemplate,
+		Variables:           body.Variables,
+		Notes:               optionalString(body.Notes),
+		Enabled:             body.Enabled,
+	})
+	if err != nil {
+		h.logger.Error("Erro ao criar fonte de dados",
+			zap.String("correlationId", correlationID),
+			zap.Error(err),
+		)
+		return handleError(c, err, correlationID)
+	}
+	return c.JSON(http.StatusCreated, appdto.MapCollectorDataSourceRaw(raw))
+}
+
+func (h *CollectorAgentHandlers) UpdateCollectorDataSourceHandler(c echo.Context) error {
+	correlationID := middlewarePkg.GetCorrelationID(c)
+	var body collectorDataSourceUpdateBody
+	if err := c.Bind(&body); err != nil {
+		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
+			Error:         "INVALID_BODY",
+			Message:       "JSON inválido",
+			CorrelationID: correlationID,
+		})
+	}
+	companyID, err := h.resolveCompany(c, correlationID)
+	if err != nil {
+		return err
+	}
+	write := appdto.CollectorDataSourceWriteRaw{
+		Description:         body.Description,
+		WebsiteURL:          body.WebsiteURL,
+		NameTemplate:        body.NameTemplate,
+		DescriptionTemplate: body.DescriptionTemplate,
+		PromptTemplate:      body.PromptTemplate,
+		DefaultContext:      body.DefaultContext,
+		ConfigTemplate:      body.ConfigTemplate,
+		Variables:           body.Variables,
+		Notes:               body.Notes,
+	}
+	if body.Name != nil {
+		write.Name = *body.Name
+	}
+	if body.Slug != nil {
+		write.Slug = *body.Slug
+	}
+	if body.DefaultSchedule != nil {
+		schedule, marshalErr := json.Marshal(appdto.MapCollectorScheduleDTO(*body.DefaultSchedule))
+		if marshalErr != nil {
+			return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
+				Error:         "INVALID_SCHEDULE",
+				Message:       "defaultSchedule inválido",
+				CorrelationID: correlationID,
+			})
+		}
+		write.DefaultSchedule = schedule
+	}
+	raw, err := h.collectorClient.UpdateDataSource(c.Request().Context(), companyID, c.Param("id"), correlationID, write)
+	if err != nil {
+		h.logger.Error("Erro ao atualizar fonte de dados",
+			zap.String("correlationId", correlationID),
+			zap.Error(err),
+		)
+		return handleError(c, err, correlationID)
+	}
+	return c.JSON(http.StatusOK, appdto.MapCollectorDataSourceRaw(raw))
+}
+
+func (h *CollectorAgentHandlers) EnableCollectorDataSourceHandler(c echo.Context) error {
+	return h.toggleDataSource(c, true)
+}
+
+func (h *CollectorAgentHandlers) DisableCollectorDataSourceHandler(c echo.Context) error {
+	return h.toggleDataSource(c, false)
+}
+
+func (h *CollectorAgentHandlers) toggleDataSource(c echo.Context, enable bool) error {
+	correlationID := middlewarePkg.GetCorrelationID(c)
+	companyID, err := h.resolveCompany(c, correlationID)
+	if err != nil {
+		return err
+	}
+	var raw appdto.CollectorDataSourceRaw
+	if enable {
+		raw, err = h.collectorClient.EnableDataSource(c.Request().Context(), companyID, c.Param("id"), correlationID)
+	} else {
+		raw, err = h.collectorClient.DisableDataSource(c.Request().Context(), companyID, c.Param("id"), correlationID)
+	}
+	if err != nil {
+		h.logger.Error("Erro ao alterar status da fonte de dados",
+			zap.String("correlationId", correlationID),
+			zap.Error(err),
+		)
+		return handleError(c, err, correlationID)
+	}
+	return c.JSON(http.StatusOK, appdto.MapCollectorDataSourceRaw(raw))
+}
+
+func (h *CollectorAgentHandlers) DeleteCollectorDataSourceHandler(c echo.Context) error {
+	correlationID := middlewarePkg.GetCorrelationID(c)
+	companyID, err := h.resolveCompany(c, correlationID)
+	if err != nil {
+		return err
+	}
+	if err := h.collectorClient.DeleteDataSource(c.Request().Context(), companyID, c.Param("id"), correlationID); err != nil {
+		h.logger.Error("Erro ao excluir fonte de dados",
+			zap.String("correlationId", correlationID),
+			zap.Error(err),
+		)
+		return handleError(c, err, correlationID)
+	}
+	return c.NoContent(http.StatusNoContent)
 }
 
 func (h *CollectorAgentHandlers) resolveCompany(c echo.Context, correlationID string) (string, error) {

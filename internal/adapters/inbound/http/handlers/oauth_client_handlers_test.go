@@ -186,11 +186,58 @@ func (s *oauthStubCollector) DeleteAgent(_ context.Context, _, agentID, _ string
 	return nil
 }
 
-func (s *oauthStubCollector) ListDataSources(_ context.Context, _, _ string) ([]appdto.CollectorDataSourceRaw, error) {
+func (s *oauthStubCollector) ListDataSources(_ context.Context, _, _ string, _ map[string]string) ([]appdto.CollectorDataSourceRaw, error) {
 	if s.sources == nil {
 		return []appdto.CollectorDataSourceRaw{}, nil
 	}
 	return s.sources, nil
+}
+
+func (s *oauthStubCollector) GetDataSource(_ context.Context, _, sourceID, _ string) (appdto.CollectorDataSourceRaw, error) {
+	for _, source := range s.sources {
+		if source.ID == sourceID {
+			return source, nil
+		}
+	}
+	if len(s.sources) == 1 {
+		return s.sources[0], nil
+	}
+	return appdto.CollectorDataSourceRaw{ID: sourceID}, nil
+}
+
+func (s *oauthStubCollector) CreateDataSource(_ context.Context, _, _ string, body appdto.CollectorDataSourceWriteRaw) (appdto.CollectorDataSourceRaw, error) {
+	enabled := true
+	if body.Enabled != nil {
+		enabled = *body.Enabled
+	}
+	created := appdto.CollectorDataSourceRaw{
+		ID:            "src-created",
+		Slug:          body.Slug,
+		Name:          body.Name,
+		CollectorType: body.CollectorType,
+		Enabled:       enabled,
+		Scope:         "company",
+		CompanyID:     "company-1",
+	}
+	s.sources = append(s.sources, created)
+	return created, nil
+}
+
+func (s *oauthStubCollector) UpdateDataSource(_ context.Context, _, sourceID, _ string, body appdto.CollectorDataSourceWriteRaw) (appdto.CollectorDataSourceRaw, error) {
+	return appdto.CollectorDataSourceRaw{ID: sourceID, Name: body.Name, Slug: body.Slug, Scope: "company", Enabled: true}, nil
+}
+
+func (s *oauthStubCollector) EnableDataSource(_ context.Context, _, sourceID, _ string) (appdto.CollectorDataSourceRaw, error) {
+	return appdto.CollectorDataSourceRaw{ID: sourceID, Enabled: true, Scope: "company"}, nil
+}
+
+func (s *oauthStubCollector) DisableDataSource(_ context.Context, _, sourceID, _ string) (appdto.CollectorDataSourceRaw, error) {
+	return appdto.CollectorDataSourceRaw{ID: sourceID, Enabled: false, Scope: "company"}, nil
+}
+
+func (s *oauthStubCollector) DeleteDataSource(_ context.Context, _, sourceID, _ string) error {
+	s.disabledIDs = append(s.disabledIDs, "deleted-source:"+sourceID)
+	return nil
 }
 
 func oauthContext(method, path string, companyID string, claims *pkg.JWTClaims) (echo.Context, *httptest.ResponseRecorder) {

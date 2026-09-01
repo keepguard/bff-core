@@ -29,5 +29,11 @@ type CollectorClient interface {
 	ListAgentExecutions(ctx context.Context, companyID, agentID, correlationID string, limit int) ([]appdto.CollectorExecutionRaw, error)
 	GetExecution(ctx context.Context, companyID, executionID, correlationID string) (appdto.CollectorExecutionRaw, error)
 	DeleteAgent(ctx context.Context, companyID, agentID, correlationID string) error
-	ListDataSources(ctx context.Context, companyID, correlationID string) ([]appdto.CollectorDataSourceRaw, error)
+	ListDataSources(ctx context.Context, companyID, correlationID string, query map[string]string) ([]appdto.CollectorDataSourceRaw, error)
+	GetDataSource(ctx context.Context, companyID, sourceID, correlationID string) (appdto.CollectorDataSourceRaw, error)
+	CreateDataSource(ctx context.Context, companyID, correlationID string, body appdto.CollectorDataSourceWriteRaw) (appdto.CollectorDataSourceRaw, error)
+	UpdateDataSource(ctx context.Context, companyID, sourceID, correlationID string, body appdto.CollectorDataSourceWriteRaw) (appdto.CollectorDataSourceRaw, error)
+	EnableDataSource(ctx context.Context, companyID, sourceID, correlationID string) (appdto.CollectorDataSourceRaw, error)
+	DisableDataSource(ctx context.Context, companyID, sourceID, correlationID string) (appdto.CollectorDataSourceRaw, error)
+	DeleteDataSource(ctx context.Context, companyID, sourceID, correlationID string) error
 }

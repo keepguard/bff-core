@@ -271,14 +271,26 @@ func (c *collectorHTTP) TestAgent(ctx context.Context, companyID, agentID, corre
 	return appdto.MapCollectorAgentTestResult(raw), nil
 }
 
-func (c *collectorHTTP) ListDataSources(ctx context.Context, companyID, correlationID string) ([]appdto.CollectorDataSourceRaw, error) {
+func (c *collectorHTTP) dataSourceURL(id string) string {
+	base := c.baseURL + "/api/v1/collector/data-sources"
+	if id == "" {
+		return base
+	}
+	return base + "/" + id
+}
+
+func (c *collectorHTTP) ListDataSources(ctx context.Context, companyID, correlationID string, query map[string]string) ([]appdto.CollectorDataSourceRaw, error) {
 	if c.baseURL == "" {
 		return []appdto.CollectorDataSourceRaw{}, nil
 	}
 	var out []appdto.CollectorDataSourceRaw
-	resp, err := c.req(ctx, companyID, correlationID).
-		SetResult(&out).
-		Get(c.baseURL + "/api/v1/collector/data-sources")
+	req := c.req(ctx, companyID, correlationID).SetResult(&out)
+	for key, value := range query {
+		if value != "" {
+			req.SetQueryParam(key, value)
+		}
+	}
+	resp, err := req.Get(c.dataSourceURL(""))
 	if err != nil {
 		return nil, MapNetworkError(err, "collector service")
 	}
@@ -289,4 +301,106 @@ func (c *collectorHTTP) ListDataSources(ctx context.Context, companyID, correlat
 		out = []appdto.CollectorDataSourceRaw{}
 	}
 	return out, nil
+}
+
+func (c *collectorHTTP) GetDataSource(ctx context.Context, companyID, sourceID, correlationID string) (appdto.CollectorDataSourceRaw, error) {
+	if c.baseURL == "" {
+		return appdto.CollectorDataSourceRaw{}, nil
+	}
+	var out appdto.CollectorDataSourceRaw
+	resp, err := c.req(ctx, companyID, correlationID).
+		SetResult(&out).
+		Get(c.dataSourceURL(sourceID))
+	if err != nil {
+		return appdto.CollectorDataSourceRaw{}, MapNetworkError(err, "collector service")
+	}
+	if resp.StatusCode() != 200 {
+		return appdto.CollectorDataSourceRaw{}, MapHTTPError(resp.StatusCode(), resp.Body(), "collector service")
+	}
+	return out, nil
+}
+
+func (c *collectorHTTP) CreateDataSource(ctx context.Context, companyID, correlationID string, body appdto.CollectorDataSourceWriteRaw) (appdto.CollectorDataSourceRaw, error) {
+	if c.baseURL == "" {
+		return appdto.CollectorDataSourceRaw{}, nil
+	}
+	payload, err := json.Marshal(body)
+	if err != nil {
+		return appdto.CollectorDataSourceRaw{}, err
+	}
+	var out appdto.CollectorDataSourceRaw
+	resp, err := c.req(ctx, companyID, correlationID).
+		SetHeader("Content-Type", "application/json").
+		SetBody(payload).
+		SetResult(&out).
+		Post(c.dataSourceURL(""))
+	if err != nil {
+		return appdto.CollectorDataSourceRaw{}, MapNetworkError(err, "collector service")
+	}
+	if resp.StatusCode() != 200 && resp.StatusCode() != 201 {
+		return appdto.CollectorDataSourceRaw{}, MapHTTPError(resp.StatusCode(), resp.Body(), "collector service")
+	}
+	return out, nil
+}
+
+func (c *collectorHTTP) UpdateDataSource(ctx context.Context, companyID, sourceID, correlationID string, body appdto.CollectorDataSourceWriteRaw) (appdto.CollectorDataSourceRaw, error) {
+	if c.baseURL == "" {
+		return appdto.CollectorDataSourceRaw{}, nil
+	}
+	payload, err := json.Marshal(body)
+	if err != nil {
+		return appdto.CollectorDataSourceRaw{}, err
+	}
+	var out appdto.CollectorDataSourceRaw
+	resp, err := c.req(ctx, companyID, correlationID).
+		SetHeader("Content-Type", "application/json").
+		SetBody(payload).
+		SetResult(&out).
+		Put(c.dataSourceURL(sourceID))
+	if err != nil {
+		return appdto.CollectorDataSourceRaw{}, MapNetworkError(err, "collector service")
+	}
+	if resp.StatusCode() != 200 {
+		return appdto.CollectorDataSourceRaw{}, MapHTTPError(resp.StatusCode(), resp.Body(), "collector service")
+	}
+	return out, nil
+}
+
+func (c *collectorHTTP) EnableDataSource(ctx context.Context, companyID, sourceID, correlationID string) (appdto.CollectorDataSourceRaw, error) {
+	return c.toggleDataSource(ctx, companyID, sourceID, correlationID, "enable")
+}
+
+func (c *collectorHTTP) DisableDataSource(ctx context.Context, companyID, sourceID, correlationID string) (appdto.CollectorDataSourceRaw, error) {
+	return c.toggleDataSource(ctx, companyID, sourceID, correlationID, "disable")
+}
+
+func (c *collectorHTTP) toggleDataSource(ctx context.Context, companyID, sourceID, correlationID, action string) (appdto.CollectorDataSourceRaw, error) {
+	if c.baseURL == "" || sourceID == "" {
+		return appdto.CollectorDataSourceRaw{}, nil
+	}
+	var out appdto.CollectorDataSourceRaw
+	resp, err := c.req(ctx, companyID, correlationID).
+		SetResult(&out).
+		Post(c.dataSourceURL(sourceID) + "/" + action)
+	if err != nil {
+		return appdto.CollectorDataSourceRaw{}, MapNetworkError(err, "collector service")
+	}
+	if resp.StatusCode() != 200 && resp.StatusCode() != 204 {
+		return appdto.CollectorDataSourceRaw{}, MapHTTPError(resp.StatusCode(), resp.Body(), "collector service")
+	}
+	return out, nil
+}
+
+func (c *collectorHTTP) DeleteDataSource(ctx context.Context, companyID, sourceID, correlationID string) error {
+	if c.baseURL == "" || sourceID == "" {
+		return nil
+	}
+	resp, err := c.req(ctx, companyID, correlationID).Delete(c.dataSourceURL(sourceID))
+	if err != nil {
+		return MapNetworkError(err, "collector service")
+	}
+	if resp.StatusCode() != 200 && resp.StatusCode() != 204 {
+		return MapHTTPError(resp.StatusCode(), resp.Body(), "collector service")
+	}
+	return nil
 }

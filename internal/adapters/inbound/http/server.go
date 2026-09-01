@@ -172,6 +172,12 @@ func (s *serverImpl) SetupRoutes(handlers Handler) {
 	userGroup.GET("/core/collector/agents/:id/executions", handlers.ListCollectorAgentExecutionsHandler, collectorAdmin...)
 	userGroup.GET("/core/collector/executions/:executionId/payloads", handlers.GetCollectorExecutionPayloadsHandler, collectorAdmin...)
 	userGroup.GET("/core/collector/data-sources", handlers.ListCollectorDataSourcesHandler, collectorAdmin...)
+	userGroup.POST("/core/collector/data-sources", handlers.CreateCollectorDataSourceHandler, collectorAdmin...)
+	userGroup.GET("/core/collector/data-sources/:id", handlers.GetCollectorDataSourceHandler, collectorAdmin...)
+	userGroup.PUT("/core/collector/data-sources/:id", handlers.UpdateCollectorDataSourceHandler, collectorAdmin...)
+	userGroup.POST("/core/collector/data-sources/:id/enable", handlers.EnableCollectorDataSourceHandler, collectorAdmin...)
+	userGroup.POST("/core/collector/data-sources/:id/disable", handlers.DisableCollectorDataSourceHandler, collectorAdmin...)
+	userGroup.DELETE("/core/collector/data-sources/:id", handlers.DeleteCollectorDataSourceHandler, collectorAdmin...)
 	userGroup.DELETE("/core/collector/agents/:id", handlers.DeleteCollectorAgentHandler, collectorAdmin...)
 
 	knowledgeAdmin := []echo.MiddlewareFunc{
