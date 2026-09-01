@@ -30,6 +30,9 @@ type CollectorAgentDetailDTO struct {
 	Prompt          string               `json:"prompt"`
 	Schedule        CollectorScheduleDTO `json:"schedule"`
 	Enabled         bool                 `json:"enabled"`
+	DataSourceID    string               `json:"dataSourceId,omitempty"`
+	DataSourceSlug  string               `json:"dataSourceSlug,omitempty"`
+	DataSourceName  string               `json:"dataSourceName,omitempty"`
 	CreatedAt       string               `json:"createdAt"`
 	UpdatedAt       string               `json:"updatedAt"`
 }
@@ -87,6 +90,7 @@ type CollectorAgentWriteRaw struct {
 	Prompt          *string               `json:"prompt,omitempty"`
 	Schedule        *CollectorScheduleRaw `json:"schedule,omitempty"`
 	Enabled         *bool                 `json:"enabled,omitempty"`
+	DataSourceID    *string               `json:"data_source_id,omitempty"`
 }
 
 func MapCollectorAgentRaw(raw CollectorAgentRaw) CollectorAgentDetailDTO {
@@ -110,6 +114,9 @@ func MapCollectorAgentRaw(raw CollectorAgentRaw) CollectorAgentDetailDTO {
 		Prompt:          raw.Prompt,
 		Schedule:        MapCollectorScheduleRaw(raw.Schedule),
 		Enabled:         raw.Enabled,
+		DataSourceID:    raw.DataSourceID,
+		DataSourceSlug:  raw.DataSourceSlug,
+		DataSourceName:  raw.DataSourceName,
 		CreatedAt:       raw.CreatedAt,
 		UpdatedAt:       raw.UpdatedAt,
 	}
@@ -197,25 +204,27 @@ type CollectorAgentTestResultDTO struct {
 }
 
 type CollectorExecutionRaw struct {
-	ID             string  `json:"id"`
-	AgentID        string  `json:"agent_id"`
-	StartedAt      string  `json:"started_at"`
-	FinishedAt     *string `json:"finished_at,omitempty"`
-	Status         string  `json:"status"`
-	ItemsCollected int     `json:"items_collected"`
-	ItemsUploaded  int     `json:"items_uploaded"`
-	ErrorMessage   string  `json:"error_message,omitempty"`
+	ID             string         `json:"id"`
+	AgentID        string         `json:"agent_id"`
+	StartedAt      string         `json:"started_at"`
+	FinishedAt     *string        `json:"finished_at,omitempty"`
+	Status         string         `json:"status"`
+	ItemsCollected int            `json:"items_collected"`
+	ItemsUploaded  int            `json:"items_uploaded"`
+	ErrorMessage   string         `json:"error_message,omitempty"`
+	Metadata       map[string]any `json:"metadata,omitempty"`
 }
 
 type CollectorExecutionDTO struct {
-	ID             string  `json:"id"`
-	AgentID        string  `json:"agentId"`
-	StartedAt      string  `json:"startedAt"`
-	FinishedAt     *string `json:"finishedAt,omitempty"`
-	Status         string  `json:"status"`
-	ItemsCollected int     `json:"itemsCollected"`
-	ItemsUploaded  int     `json:"itemsUploaded"`
-	ErrorMessage   string  `json:"errorMessage,omitempty"`
+	ID             string         `json:"id"`
+	AgentID        string         `json:"agentId"`
+	StartedAt      string         `json:"startedAt"`
+	FinishedAt     *string        `json:"finishedAt,omitempty"`
+	Status         string         `json:"status"`
+	ItemsCollected int            `json:"itemsCollected"`
+	ItemsUploaded  int            `json:"itemsUploaded"`
+	ErrorMessage   string         `json:"errorMessage,omitempty"`
+	Metadata       map[string]any `json:"metadata,omitempty"`
 }
 
 func MapCollectorExecution(raw CollectorExecutionRaw) CollectorExecutionDTO {
@@ -228,6 +237,7 @@ func MapCollectorExecution(raw CollectorExecutionRaw) CollectorExecutionDTO {
 		ItemsCollected: raw.ItemsCollected,
 		ItemsUploaded:  raw.ItemsUploaded,
 		ErrorMessage:   raw.ErrorMessage,
+		Metadata:       raw.Metadata,
 	}
 }
 
@@ -260,3 +270,78 @@ func MapCollectorAgentTestResult(raw CollectorAgentTestResultRaw) CollectorAgent
 		Preview:        preview,
 	}
 }
+
+type CollectorDataSourceVariable struct {
+	Key         string `json:"key"`
+	Label       string `json:"label"`
+	Required    bool   `json:"required"`
+	Placeholder string `json:"placeholder,omitempty"`
+}
+
+type CollectorDataSourceDTO struct {
+	ID                   string                        `json:"id"`
+	Code                 string                          `json:"code"`
+	Slug                 string                          `json:"slug"`
+	Name                 string                          `json:"name"`
+	Description          string                         `json:"description"`
+	WebsiteURL           string                          `json:"websiteUrl,omitempty"`
+	CollectorType       string                          `json:"collectorType"`
+	NameTemplate          string                         `json:"nameTemplate,omitempty"`
+	DescriptionTemplate  string                         `json:"descriptionTemplate,omitempty"`
+	PromptTemplate       string                         `json:"promptTemplate,omitempty"`
+	DefaultContext       string                          `json:"defaultContext"`
+	DefaultSchedule      CollectorScheduleDTO            `json:"defaultSchedule"`
+	ConfigTemplate       json.RawMessage               `json:"configTemplate"`
+	Variables            json.RawMessage               `json:"variables"`
+	Notes                string                          `json:"notes,omitempty"`
+	CreatedAt            string                         `json:"createdAt,omitempty"`
+}
+
+type CollectorDataSourceRaw struct {
+	ID                   string          `json:"id"`
+	Code                 string          `json:"code"`
+	Slug                 string          `json:"slug"`
+	Name                 string          `json:"name"`
+	Description          string          `json:"description"`
+	WebsiteURL           string          `json:"website_url,omitempty"`
+	CollectorType       string          `json:"collector_type"`
+	NameTemplate          string          `json:"name_template,omitempty"`
+	DescriptionTemplate  string          `json:"description_template,omitempty"`
+	PromptTemplate       string          `json:"prompt_template,omitempty"`
+	DefaultContext       string          `json:"default_context"`
+	DefaultSchedule      json.RawMessage `json:"default_schedule"`
+	ConfigTemplate       json.RawMessage `json:"config_template"`
+	Variables            json.RawMessage `json:"variables"`
+	Notes                string          `json:"notes,omitempty"`
+	CreatedAt            string          `json:"created_at,omitempty"`
+}
+
+func MapCollectorDataSourceRaw(raw CollectorDataSourceRaw) CollectorDataSourceDTO {
+	return CollectorDataSourceDTO{
+		ID:                   raw.ID,
+		Code:                 raw.Code,
+		Slug:                 raw.Slug,
+		Name:                 raw.Name,
+		Description:          raw.Description,
+		WebsiteURL:           raw.WebsiteURL,
+		CollectorType:       raw.CollectorType,
+		NameTemplate:          raw.NameTemplate,
+		DescriptionTemplate:  raw.DescriptionTemplate,
+		PromptTemplate:       raw.PromptTemplate,
+		DefaultContext:       raw.DefaultContext,
+		DefaultSchedule:      MapCollectorScheduleRaw(raw.DefaultSchedule),
+		ConfigTemplate:       raw.ConfigTemplate,
+		Variables:            raw.Variables,
+		Notes:                raw.Notes,
+		CreatedAt:            raw.CreatedAt,
+	}
+}
+
+func MapCollectorDataSources(raw []CollectorDataSourceRaw) []CollectorDataSourceDTO {
+	out := make([]CollectorDataSourceDTO, 0, len(raw))
+	for _, item := range raw {
+		out = append(out, MapCollectorDataSourceRaw(item))
+	}
+	return out
+}
+

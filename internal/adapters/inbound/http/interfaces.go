@@ -42,6 +42,7 @@ type Handler interface {
 	DisableCollectorAgentHandler(c echo.Context) error
 	TestCollectorAgentHandler(c echo.Context) error
 	ListCollectorAgentExecutionsHandler(c echo.Context) error
+	ListCollectorDataSourcesHandler(c echo.Context) error
 	DeleteCollectorAgentHandler(c echo.Context) error
 	AskKnowledgeHandler(c echo.Context) error
 }

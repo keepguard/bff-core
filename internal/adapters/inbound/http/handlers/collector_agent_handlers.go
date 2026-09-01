@@ -41,6 +41,7 @@ type collectorAgentCreateBody struct {
 	Prompt          string                      `json:"prompt,omitempty"`
 	Schedule        appdto.CollectorScheduleDTO `json:"schedule"`
 	Enabled         *bool                       `json:"enabled,omitempty"`
+	DataSourceID    string                       `json:"dataSourceId,omitempty"`
 }
 
 type collectorAgentUpdateBody struct {
@@ -50,6 +51,7 @@ type collectorAgentUpdateBody struct {
 	CollectorConfig json.RawMessage              `json:"collectorConfig,omitempty"`
 	Prompt          *string                      `json:"prompt,omitempty"`
 	Schedule        *appdto.CollectorScheduleDTO `json:"schedule,omitempty"`
+	DataSourceID    *string                       `json:"dataSourceId,omitempty"`
 }
 
 func (h *CollectorAgentHandlers) ListCollectorAgentsHandler(c echo.Context) error {
@@ -145,6 +147,7 @@ func (h *CollectorAgentHandlers) CreateCollectorAgentHandler(c echo.Context) err
 		Prompt:          optionalString(body.Prompt),
 		Schedule:        &schedule,
 		Enabled:         &enabled,
+		DataSourceID:    optionalString(body.DataSourceID),
 	})
 	if err != nil {
 		h.logger.Error("Erro ao criar agent",
@@ -182,6 +185,9 @@ func (h *CollectorAgentHandlers) UpdateCollectorAgentHandler(c echo.Context) err
 	if body.Schedule != nil {
 		schedule := appdto.MapCollectorScheduleDTO(*body.Schedule)
 		write.Schedule = &schedule
+	}
+	if body.DataSourceID != nil {
+		write.DataSourceID = body.DataSourceID
 	}
 	raw, err := h.collectorClient.UpdateAgent(c.Request().Context(), companyID, c.Param("id"), correlationID, write)
 	if err != nil {
@@ -281,6 +287,23 @@ func (h *CollectorAgentHandlers) ListCollectorAgentExecutionsHandler(c echo.Cont
 		return handleError(c, err, correlationID)
 	}
 	return c.JSON(http.StatusOK, appdto.MapCollectorExecutions(executions))
+}
+
+func (h *CollectorAgentHandlers) ListCollectorDataSourcesHandler(c echo.Context) error {
+	correlationID := middlewarePkg.GetCorrelationID(c)
+	companyID, err := h.resolveCompany(c, correlationID)
+	if err != nil {
+		return err
+	}
+	raw, err := h.collectorClient.ListDataSources(c.Request().Context(), companyID, correlationID)
+	if err != nil {
+		h.logger.Error("Erro ao listar fontes de dados",
+			zap.String("correlationId", correlationID),
+			zap.Error(err),
+		)
+		return handleError(c, err, correlationID)
+	}
+	return c.JSON(http.StatusOK, appdto.MapCollectorDataSources(raw))
 }
 
 func (h *CollectorAgentHandlers) resolveCompany(c echo.Context, correlationID string) (string, error) {

@@ -66,6 +66,9 @@ type CollectorAgentRaw struct {
 	Prompt          string          `json:"prompt,omitempty"`
 	Schedule        json.RawMessage `json:"schedule,omitempty"`
 	Enabled         bool            `json:"enabled"`
+	DataSourceID    string          `json:"data_source_id,omitempty"`
+	DataSourceSlug  string          `json:"data_source_slug,omitempty"`
+	DataSourceName  string          `json:"data_source_name,omitempty"`
 	CreatedAt       string          `json:"created_at"`
 	UpdatedAt       string          `json:"updated_at"`
 }

@@ -175,3 +175,38 @@ func TestListCollectorAgentExecutionsHandler_RejectsWithoutRole(t *testing.T) {
 		t.Fatalf("expected 403, got %d body=%s", rec.Code, rec.Body.String())
 	}
 }
+
+func TestListCollectorDataSourcesHandler_OK(t *testing.T) {
+	c, rec := oauthContext(http.MethodGet, "/api/v1/core/collector/data-sources", "company-1", &pkg.JWTClaims{
+		Roles:    []string{"ADMIN"},
+		TenantId: "tenant-1",
+	})
+	stub := &oauthStubCollector{
+		sources: []appdto.CollectorDataSourceRaw{
+			{
+				ID:              "src-1",
+				Slug:            "status-invest",
+				Name:            "Status Invest",
+				CollectorType:  "API_REST",
+				DefaultContext:  "investimentos",
+				DefaultSchedule: []byte(`{"days_of_week":[1],"start_time":"09:00","end_time":"17:00","interval_minutes":60,"timezone":"UTC"}`),
+				ConfigTemplate:  []byte(`{"url":"https://statusinvest.com.br"}`),
+				Variables:       []byte(`[{"key":"ticker","label":"Ticker","required":true}]`),
+			},
+		},
+	}
+	h := NewCollectorAgentHandlers(stub, &oauthStubCompany{id: "company-1"}, zap.NewNop())
+	if err := h.ListCollectorDataSourcesHandler(c); err != nil {
+		t.Fatal(err)
+	}
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
+	}
+	var out []appdto.CollectorDataSourceDTO
+	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
+		t.Fatal(err)
+	}
+	if len(out) != 1 || out[0].Slug != "status-invest" || out[0].CollectorType != "API_REST" {
+		t.Fatalf("unexpected sources: %+v", out)
+	}
+}

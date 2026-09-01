@@ -90,6 +90,7 @@ type oauthStubCollector struct {
 	getErr      error
 	executions  []appdto.CollectorExecutionRaw
 	execErr     error
+	sources     []appdto.CollectorDataSourceRaw
 }
 
 func (s *oauthStubCollector) ListAgents(_ context.Context, _, _ string) ([]appdto.CollectorAgentRaw, error) {
@@ -168,6 +169,13 @@ func (s *oauthStubCollector) ListAgentExecutions(_ context.Context, _, _, _ stri
 func (s *oauthStubCollector) DeleteAgent(_ context.Context, _, agentID, _ string) error {
 	s.disabledIDs = append(s.disabledIDs, "deleted:"+agentID)
 	return nil
+}
+
+func (s *oauthStubCollector) ListDataSources(_ context.Context, _, _ string) ([]appdto.CollectorDataSourceRaw, error) {
+	if s.sources == nil {
+		return []appdto.CollectorDataSourceRaw{}, nil
+	}
+	return s.sources, nil
 }
 
 func oauthContext(method, path string, companyID string, claims *pkg.JWTClaims) (echo.Context, *httptest.ResponseRecorder) {

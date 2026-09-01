@@ -247,3 +247,23 @@ func (c *collectorHTTP) TestAgent(ctx context.Context, companyID, agentID, corre
 	}
 	return appdto.MapCollectorAgentTestResult(raw), nil
 }
+
+func (c *collectorHTTP) ListDataSources(ctx context.Context, companyID, correlationID string) ([]appdto.CollectorDataSourceRaw, error) {
+	if c.baseURL == "" {
+		return []appdto.CollectorDataSourceRaw{}, nil
+	}
+	var out []appdto.CollectorDataSourceRaw
+	resp, err := c.req(ctx, companyID, correlationID).
+		SetResult(&out).
+		Get(c.baseURL + "/api/v1/collector/data-sources")
+	if err != nil {
+		return nil, MapNetworkError(err, "collector service")
+	}
+	if resp.StatusCode() != 200 {
+		return nil, MapHTTPError(resp.StatusCode(), resp.Body(), "collector service")
+	}
+	if out == nil {
+		out = []appdto.CollectorDataSourceRaw{}
+	}
+	return out, nil
+}
