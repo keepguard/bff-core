@@ -203,6 +203,23 @@ type CollectorAgentTestResultDTO struct {
 	Preview        []CollectorAgentTestPreviewDTO `json:"preview"`
 }
 
+type CollectorAgentRunResultRaw struct {
+	Status  string `json:"status"`
+	AgentID string `json:"agent_id"`
+}
+
+type CollectorAgentRunResultDTO struct {
+	Status  string `json:"status"`
+	AgentID string `json:"agentId"`
+}
+
+func MapCollectorAgentRunResult(raw CollectorAgentRunResultRaw) CollectorAgentRunResultDTO {
+	return CollectorAgentRunResultDTO{
+		Status:  raw.Status,
+		AgentID: raw.AgentID,
+	}
+}
+
 type CollectorExecutionRaw struct {
 	ID             string         `json:"id"`
 	AgentID        string         `json:"agent_id"`

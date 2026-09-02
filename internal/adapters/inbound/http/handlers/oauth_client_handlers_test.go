@@ -156,6 +156,10 @@ func (s *oauthStubCollector) TestAgent(_ context.Context, _, agentID, _ string) 
 	}, nil
 }
 
+func (s *oauthStubCollector) RunAgent(_ context.Context, _, agentID, _ string) (appdto.CollectorAgentRunResultDTO, error) {
+	return appdto.CollectorAgentRunResultDTO{Status: "queued", AgentID: agentID}, nil
+}
+
 func (s *oauthStubCollector) ListAgentExecutions(_ context.Context, _, _, _ string, _ int) ([]appdto.CollectorExecutionRaw, error) {
 	if s.execErr != nil {
 		return nil, s.execErr

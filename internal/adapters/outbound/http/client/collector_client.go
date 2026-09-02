@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"encoding/json"
+	"net/http"
 	"strconv"
 	"time"
 
@@ -269,6 +270,24 @@ func (c *collectorHTTP) TestAgent(ctx context.Context, companyID, agentID, corre
 		return appdto.CollectorAgentTestResultDTO{}, MapHTTPError(resp.StatusCode(), resp.Body(), "collector service")
 	}
 	return appdto.MapCollectorAgentTestResult(raw), nil
+}
+
+func (c *collectorHTTP) RunAgent(ctx context.Context, companyID, agentID, correlationID string) (appdto.CollectorAgentRunResultDTO, error) {
+	if c.baseURL == "" || agentID == "" {
+		return appdto.CollectorAgentRunResultDTO{}, nil
+	}
+	var raw appdto.CollectorAgentRunResultRaw
+	resp, err := c.req(ctx, companyID, correlationID).
+		SetBody(map[string]any{}).
+		SetResult(&raw).
+		Post(c.agentURL(agentID) + "/run")
+	if err != nil {
+		return appdto.CollectorAgentRunResultDTO{}, MapNetworkError(err, "collector service")
+	}
+	if resp.StatusCode() != http.StatusAccepted && resp.StatusCode() != http.StatusOK {
+		return appdto.CollectorAgentRunResultDTO{}, MapHTTPError(resp.StatusCode(), resp.Body(), "collector service")
+	}
+	return appdto.MapCollectorAgentRunResult(raw), nil
 }
 
 func (c *collectorHTTP) dataSourceURL(id string) string {
