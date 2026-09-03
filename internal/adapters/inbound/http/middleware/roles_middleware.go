@@ -26,6 +26,25 @@ func RequireAnyRole(roles ...string) echo.MiddlewareFunc {
 }
 
 const AuthorityAuditRead = "audit:read"
+const AuthorityKnowledgeRead = "knowledge:read"
+
+// RequireKnowledgeRead permite ADMIN, SYSTEM ou a authority knowledge:read.
+func RequireKnowledgeRead() echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			correlationID := GetCorrelationID(c)
+			claims := GetClaimsFromContext(c)
+			if claims != nil && (pkg.HasAnyRole(claims.Roles, "ADMIN", "SYSTEM") || pkg.HasAuthority(claims.Authorities, AuthorityKnowledgeRead)) {
+				return next(c)
+			}
+			return c.JSON(http.StatusForbidden, pkg.ErrorResponse{
+				Error:         "FORBIDDEN",
+				Message:       "Acesso restrito a administradores ou à permissão knowledge:read",
+				CorrelationID: correlationID,
+			})
+		}
+	}
+}
 
 // RequireAuditRead permite ADMIN, SYSTEM ou a authority audit:read.
 func RequireAuditRead() echo.MiddlewareFunc {

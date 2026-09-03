@@ -53,6 +53,11 @@ spec:
           value: {{ .Values.env.knowledgeServiceUrl | quote }}
         - name: KNOWLEDGE_BASE_URL
           value: {{ .Values.env.knowledgeServiceUrl | quote }}
+        - name: AUTH_CLIENT_SECRET_BASE
+          valueFrom:
+            secretKeyRef:
+              name: keepguard-secret
+              key: AUTH_CLIENT_SECRET_BASE
         - name: KEEPGUARD_VALIDATION_MODERATION_ENABLED
           value: "false"
         ports:

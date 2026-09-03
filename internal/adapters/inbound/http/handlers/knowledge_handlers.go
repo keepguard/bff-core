@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"context"
+	"errors"
 	"net/http"
 	"strings"
 	"time"
@@ -13,10 +15,13 @@ import (
 	"go.uber.org/zap"
 )
 
+var errKnowledgeServiceTokenMissing = errors.New("token de serviço knowledge indisponível")
+
 type KnowledgeHandlers struct {
 	knowledgeClient client.KnowledgeClient
 	collectorClient client.CollectorClient
 	companyClient   client.CompanyClient
+	serviceToken    client.ServiceTokenClient
 	logger          *zap.Logger
 }
 
@@ -24,12 +29,14 @@ func NewKnowledgeHandlers(
 	knowledgeClient client.KnowledgeClient,
 	collectorClient client.CollectorClient,
 	companyClient client.CompanyClient,
+	serviceToken client.ServiceTokenClient,
 	logger *zap.Logger,
 ) *KnowledgeHandlers {
 	return &KnowledgeHandlers{
 		knowledgeClient: knowledgeClient,
 		collectorClient: collectorClient,
 		companyClient:   companyClient,
+		serviceToken:    serviceToken,
 		logger:          logger,
 	}
 }
@@ -68,10 +75,23 @@ func (h *KnowledgeHandlers) AskKnowledgeHandler(c echo.Context) error {
 		})
 	}
 	hints := h.sourceHints(c, companyID, correlationID, strings.TrimSpace(body.Context))
+	bearer, tokErr := knowledgeServiceBearer(c.Request().Context(), h.serviceToken, companyID)
+	if tokErr != nil {
+		h.logger.Error("Erro ao obter token OAuth do BFF para knowledge",
+			zap.String("correlationId", correlationID),
+			zap.String("companyId", companyID),
+			zap.Error(tokErr),
+		)
+		return c.JSON(http.StatusServiceUnavailable, pkg.ErrorResponse{
+			Error:         "SERVICE_UNAVAILABLE",
+			Message:       "Serviço de conhecimento indisponível",
+			CorrelationID: correlationID,
+		})
+	}
 	result, askErr := h.knowledgeClient.Ask(
 		c.Request().Context(),
 		companyID,
-		bearerFrom(c),
+		bearer,
 		correlationID,
 		appdto.KnowledgeAskRequest{
 			Question:    strings.TrimSpace(body.Question),
@@ -312,16 +332,9 @@ func parseFreshnessTime(iso string) (time.Time, error) {
 	return time.Parse(time.RFC3339, raw)
 }
 
-func bearerFrom(c echo.Context) string {
-	header := strings.TrimSpace(c.Request().Header.Get(echo.HeaderAuthorization))
-	if header != "" {
-		return header
+func knowledgeServiceBearer(ctx context.Context, tokens client.ServiceTokenClient, companyID string) (string, error) {
+	if tokens == nil {
+		return "", errKnowledgeServiceTokenMissing
 	}
-	if token, ok := c.Get("token").(string); ok && strings.TrimSpace(token) != "" {
-		if strings.HasPrefix(strings.ToLower(token), "bearer ") {
-			return token
-		}
-		return "Bearer " + token
-	}
-	return ""
+	return tokens.GetToken(ctx, companyID)
 }

@@ -310,8 +310,9 @@ func main() {
 	collectorClient := httpclient.NewCollectorClient(cfg, zapLogger)
 	oauthClientHandlers := handlersPkg.NewOAuthClientHandlers(oauthClientHTTP, companyClient, collectorClient, zapLogger)
 	knowledgeClient := httpclient.NewKnowledgeClient(cfg, zapLogger)
-	collectorAgentHandlers := handlersPkg.NewCollectorAgentHandlers(collectorClient, companyClient, knowledgeClient, zapLogger)
-	knowledgeHandlers := handlersPkg.NewKnowledgeHandlers(knowledgeClient, collectorClient, companyClient, zapLogger)
+	serviceTokenClient := httpclient.NewBffOAuthTokenClient(cfg, zapLogger)
+	collectorAgentHandlers := handlersPkg.NewCollectorAgentHandlers(collectorClient, companyClient, knowledgeClient, serviceTokenClient, zapLogger)
+	knowledgeHandlers := handlersPkg.NewKnowledgeHandlers(knowledgeClient, collectorClient, companyClient, serviceTokenClient, zapLogger)
 	httpHandlers := handlersPkg.NewCombinedHandlers(registerHandlers, userHandlers, consentHandlers, connectionsHandlers, auditHandlers, guardianHandlers, oauthClientHandlers, collectorAgentHandlers, knowledgeHandlers)
 
 	rateLimiterMiddleware := middlewarePkg.NewRateLimiterMiddleware(redisClient, cfg.RateLimit, zapLogger, metricsInstance)

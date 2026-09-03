@@ -1,4 +1,4 @@
-version: "1.0.70-SNAPSHOT"
+version: "1.0.71-SNAPSHOT"
 
 server:
   port: "8282"
@@ -44,6 +44,10 @@ services:
     base_url: "http://localhost:8090"
     timeout: "60s"
     retries: 1
+
+oauth:
+  client_id: "bff-core"
+  token_renew_before_sec: 600
 
 rabbitmq:
   host: "localhost"

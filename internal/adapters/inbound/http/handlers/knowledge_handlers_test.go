@@ -19,15 +19,34 @@ import (
 )
 
 type stubKnowledgeClient struct {
-	last     appdto.KnowledgeAskRequest
-	sources  []appdto.KnowledgeAskSource
-	snapshot appdto.KnowledgeSnapshotDTO
-	document appdto.KnowledgeDocumentPreviewDTO
-	results  appdto.KnowledgeCollectionResultsDTO
+	last       appdto.KnowledgeAskRequest
+	lastBearer string
+	sources    []appdto.KnowledgeAskSource
+	snapshot   appdto.KnowledgeSnapshotDTO
+	document   appdto.KnowledgeDocumentPreviewDTO
+	results    appdto.KnowledgeCollectionResultsDTO
 }
 
-func (s *stubKnowledgeClient) Ask(_ context.Context, _, _, _ string, body appdto.KnowledgeAskRequest) (appdto.KnowledgeAskResponse, error) {
+type stubServiceToken struct {
+	token       string
+	err         error
+	lastCompany string
+}
+
+func (s *stubServiceToken) GetToken(_ context.Context, companyID string) (string, error) {
+	s.lastCompany = companyID
+	if s.err != nil {
+		return "", s.err
+	}
+	if s.token != "" {
+		return s.token, nil
+	}
+	return "Bearer oauth-service", nil
+}
+
+func (s *stubKnowledgeClient) Ask(_ context.Context, _, bearerToken, _ string, body appdto.KnowledgeAskRequest) (appdto.KnowledgeAskResponse, error) {
 	s.last = body
+	s.lastBearer = bearerToken
 	sources := s.sources
 	if sources == nil {
 		sources = []appdto.KnowledgeAskSource{}
@@ -90,7 +109,7 @@ func TestAskKnowledgeHandler_FillsSourceHints(t *testing.T) {
 		{ID: "a1", Name: "Health snapshot", Context: "ops", Prompt: "dica da fonte ops"},
 		{ID: "a2", Name: "Juridico", Context: "juridico", Prompt: "dica juridica"},
 	}}
-	h := NewKnowledgeHandlers(knowledge, collector, &oauthStubCompany{id: "company-1"}, zap.NewNop())
+	h := NewKnowledgeHandlers(knowledge, collector, &oauthStubCompany{id: "company-1"}, &stubServiceToken{}, zap.NewNop())
 	if err := h.AskKnowledgeHandler(c); err != nil {
 		t.Fatal(err)
 	}
@@ -99,6 +118,9 @@ func TestAskKnowledgeHandler_FillsSourceHints(t *testing.T) {
 	}
 	if knowledge.last.Question != "qual a saude do ms-auth" {
 		t.Fatalf("unexpected question: %q", knowledge.last.Question)
+	}
+	if knowledge.lastBearer != "Bearer oauth-service" {
+		t.Fatalf("expected service token, got %q", knowledge.lastBearer)
 	}
 	if len(knowledge.last.SourceHints) != 1 || knowledge.last.SourceHints[0].Prompt != "dica da fonte ops" {
 		t.Fatalf("expected ops sourceHint, got %+v", knowledge.last.SourceHints)
@@ -114,8 +136,8 @@ func TestAskKnowledgeHandler_FillsSourceHints(t *testing.T) {
 
 func TestAskKnowledgeHandler_RejectsWithoutRole(t *testing.T) {
 	e := echo.New()
-	h := NewKnowledgeHandlers(&stubKnowledgeClient{}, &oauthStubCollector{}, &oauthStubCompany{id: "company-1"}, zap.NewNop())
-	handler := middlewarePkg.RequireAnyRole("ADMIN", "SYSTEM")(h.AskKnowledgeHandler)
+	h := NewKnowledgeHandlers(&stubKnowledgeClient{}, &oauthStubCollector{}, &oauthStubCompany{id: "company-1"}, &stubServiceToken{}, zap.NewNop())
+	handler := middlewarePkg.RequireKnowledgeRead()(h.AskKnowledgeHandler)
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/core/knowledge/ask", strings.NewReader(`{"question":"saude"}`))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
@@ -127,6 +149,26 @@ func TestAskKnowledgeHandler_RejectsWithoutRole(t *testing.T) {
 	}
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("expected 403, got %d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestAskKnowledgeHandler_AllowsKnowledgeReadAuthority(t *testing.T) {
+	e := echo.New()
+	knowledge := &stubKnowledgeClient{}
+	h := NewKnowledgeHandlers(knowledge, &oauthStubCollector{}, &oauthStubCompany{id: "company-1"}, &stubServiceToken{}, zap.NewNop())
+	handler := middlewarePkg.RequireKnowledgeRead()(h.AskKnowledgeHandler)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/core/knowledge/ask", strings.NewReader(`{"question":"saude"}`))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	req = req.WithContext(client.WithCompanyID(req.Context(), "company-1"))
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.Set("claims", &pkg.JWTClaims{Roles: []string{"USER"}, Authorities: []string{"knowledge:read"}, TenantId: "tenant-1"})
+	if err := handler(c); err != nil {
+		t.Fatal(err)
+	}
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
 	}
 }
 
@@ -154,7 +196,7 @@ func TestAskKnowledgeHandler_FreshnessFailedFromLastExecution(t *testing.T) {
 			ErrorMessage: "timeout no target",
 		}},
 	}
-	h := NewKnowledgeHandlers(knowledge, collector, &oauthStubCompany{id: "company-1"}, zap.NewNop())
+	h := NewKnowledgeHandlers(knowledge, collector, &oauthStubCompany{id: "company-1"}, &stubServiceToken{}, zap.NewNop())
 	if err := h.AskKnowledgeHandler(c); err != nil {
 		t.Fatal(err)
 	}
@@ -192,7 +234,7 @@ func TestAskKnowledgeHandler_CollectorDownOmitsFreshness(t *testing.T) {
 		{Kind: "FACT", Key: "ms-auth", SourceAgentID: "a1"},
 	}}
 	collector := &oauthStubCollector{execErr: errors.New("collector down")}
-	h := NewKnowledgeHandlers(knowledge, collector, &oauthStubCompany{id: "company-1"}, zap.NewNop())
+	h := NewKnowledgeHandlers(knowledge, collector, &oauthStubCompany{id: "company-1"}, &stubServiceToken{}, zap.NewNop())
 	if err := h.AskKnowledgeHandler(c); err != nil {
 		t.Fatal(err)
 	}

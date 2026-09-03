@@ -32,7 +32,7 @@ func TestCreateCollectorAgentHandler_Created(t *testing.T) {
 	c.Set("claims", &pkg.JWTClaims{Roles: []string{"ADMIN"}, TenantId: "tenant-1"})
 	c.Set("token", "jwt-token")
 
-	h := NewCollectorAgentHandlers(&oauthStubCollector{}, &oauthStubCompany{id: "company-1"}, nil, zap.NewNop())
+	h := NewCollectorAgentHandlers(&oauthStubCollector{}, &oauthStubCompany{id: "company-1"}, nil, nil, zap.NewNop())
 	if err := h.CreateCollectorAgentHandler(c); err != nil {
 		t.Fatal(err)
 	}
@@ -55,7 +55,7 @@ func TestDeleteCollectorAgentHandler_NoContent(t *testing.T) {
 	})
 	c.SetParamNames("id")
 	c.SetParamValues("a1")
-	h := NewCollectorAgentHandlers(&oauthStubCollector{}, &oauthStubCompany{id: "company-1"}, nil, zap.NewNop())
+	h := NewCollectorAgentHandlers(&oauthStubCollector{}, &oauthStubCompany{id: "company-1"}, nil, nil, zap.NewNop())
 	if err := h.DeleteCollectorAgentHandler(c); err != nil {
 		t.Fatal(err)
 	}
@@ -74,7 +74,7 @@ func TestCreateCollectorAgentHandler_RequiresName(t *testing.T) {
 	c.Set("claims", &pkg.JWTClaims{Roles: []string{"ADMIN"}, TenantId: "tenant-1"})
 	c.Set("token", "jwt-token")
 
-	h := NewCollectorAgentHandlers(&oauthStubCollector{}, &oauthStubCompany{id: "company-1"}, nil, zap.NewNop())
+	h := NewCollectorAgentHandlers(&oauthStubCollector{}, &oauthStubCompany{id: "company-1"}, nil, nil, zap.NewNop())
 	if err := h.CreateCollectorAgentHandler(c); err != nil {
 		t.Fatal(err)
 	}
@@ -85,7 +85,7 @@ func TestCreateCollectorAgentHandler_RequiresName(t *testing.T) {
 
 func TestCreateCollectorAgentHandler_RejectsWithoutRole(t *testing.T) {
 	e := echo.New()
-	h := NewCollectorAgentHandlers(&oauthStubCollector{}, &oauthStubCompany{id: "company-1"}, nil, zap.NewNop())
+	h := NewCollectorAgentHandlers(&oauthStubCollector{}, &oauthStubCompany{id: "company-1"}, nil, nil, zap.NewNop())
 	handler := middlewarePkg.RequireAnyRole("ADMIN", "SYSTEM")(h.CreateCollectorAgentHandler)
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/core/collector/agents", strings.NewReader(`{"name":"x","collectorType":"API_REST"}`))
@@ -122,7 +122,7 @@ func TestListCollectorAgentExecutionsHandler_OK(t *testing.T) {
 	})
 	c.SetParamNames("id")
 	c.SetParamValues("a1")
-	h := NewCollectorAgentHandlers(stub, &oauthStubCompany{id: "company-1"}, nil, zap.NewNop())
+	h := NewCollectorAgentHandlers(stub, &oauthStubCompany{id: "company-1"}, nil, nil, zap.NewNop())
 	if err := h.ListCollectorAgentExecutionsHandler(c); err != nil {
 		t.Fatal(err)
 	}
@@ -148,7 +148,7 @@ func TestListCollectorAgentExecutionsHandler_NotFound(t *testing.T) {
 	})
 	c.SetParamNames("id")
 	c.SetParamValues("missing")
-	h := NewCollectorAgentHandlers(stub, &oauthStubCompany{id: "company-1"}, nil, zap.NewNop())
+	h := NewCollectorAgentHandlers(stub, &oauthStubCompany{id: "company-1"}, nil, nil, zap.NewNop())
 	if err := h.ListCollectorAgentExecutionsHandler(c); err != nil {
 		t.Fatal(err)
 	}
@@ -159,7 +159,7 @@ func TestListCollectorAgentExecutionsHandler_NotFound(t *testing.T) {
 
 func TestListCollectorAgentExecutionsHandler_RejectsWithoutRole(t *testing.T) {
 	e := echo.New()
-	h := NewCollectorAgentHandlers(&oauthStubCollector{}, &oauthStubCompany{id: "company-1"}, nil, zap.NewNop())
+	h := NewCollectorAgentHandlers(&oauthStubCollector{}, &oauthStubCompany{id: "company-1"}, nil, nil, zap.NewNop())
 	handler := middlewarePkg.RequireAnyRole("ADMIN", "SYSTEM")(h.ListCollectorAgentExecutionsHandler)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/core/collector/agents/a1/executions", nil)
@@ -195,7 +195,7 @@ func TestListCollectorDataSourcesHandler_OK(t *testing.T) {
 			},
 		},
 	}
-	h := NewCollectorAgentHandlers(stub, &oauthStubCompany{id: "company-1"}, nil, zap.NewNop())
+	h := NewCollectorAgentHandlers(stub, &oauthStubCompany{id: "company-1"}, nil, nil, zap.NewNop())
 	if err := h.ListCollectorDataSourcesHandler(c); err != nil {
 		t.Fatal(err)
 	}
@@ -229,7 +229,7 @@ func TestCreateCollectorDataSourceHandler_Created(t *testing.T) {
 	c.Set("claims", &pkg.JWTClaims{Roles: []string{"ADMIN"}, TenantId: "tenant-1"})
 	c.Set("token", "jwt-token")
 
-	h := NewCollectorAgentHandlers(&oauthStubCollector{}, &oauthStubCompany{id: "company-1"}, nil, zap.NewNop())
+	h := NewCollectorAgentHandlers(&oauthStubCollector{}, &oauthStubCompany{id: "company-1"}, nil, nil, zap.NewNop())
 	if err := h.CreateCollectorDataSourceHandler(c); err != nil {
 		t.Fatal(err)
 	}
@@ -252,7 +252,7 @@ func TestDeleteCollectorDataSourceHandler_NoContent(t *testing.T) {
 	})
 	c.SetParamNames("id")
 	c.SetParamValues("src-1")
-	h := NewCollectorAgentHandlers(&oauthStubCollector{}, &oauthStubCompany{id: "company-1"}, nil, zap.NewNop())
+	h := NewCollectorAgentHandlers(&oauthStubCollector{}, &oauthStubCompany{id: "company-1"}, nil, nil, zap.NewNop())
 	if err := h.DeleteCollectorDataSourceHandler(c); err != nil {
 		t.Fatal(err)
 	}
@@ -273,7 +273,7 @@ func TestPropagateCollectorDataSourceHandler_OK(t *testing.T) {
 	c.SetParamNames("id")
 	c.SetParamValues("src-1")
 
-	h := NewCollectorAgentHandlers(&oauthStubCollector{}, &oauthStubCompany{id: "company-1"}, nil, zap.NewNop())
+	h := NewCollectorAgentHandlers(&oauthStubCollector{}, &oauthStubCompany{id: "company-1"}, nil, nil, zap.NewNop())
 	if err := h.PropagateCollectorDataSourceHandler(c); err != nil {
 		t.Fatal(err)
 	}
@@ -321,7 +321,7 @@ func TestGetCollectorExecutionPayloadsHandler_UsesPayloadRefs(t *testing.T) {
 	})
 	c.SetParamNames("executionId")
 	c.SetParamValues("exec-1")
-	h := NewCollectorAgentHandlers(stub, &oauthStubCompany{id: "company-1"}, knowledge, zap.NewNop())
+	h := NewCollectorAgentHandlers(stub, &oauthStubCompany{id: "company-1"}, knowledge, &stubServiceToken{}, zap.NewNop())
 	if err := h.GetCollectorExecutionPayloadsHandler(c); err != nil {
 		t.Fatal(err)
 	}
@@ -367,7 +367,7 @@ func TestGetCollectorExecutionPayloadsHandler_FallbackCollectionResults(t *testi
 	})
 	c.SetParamNames("executionId")
 	c.SetParamValues("exec-2")
-	h := NewCollectorAgentHandlers(stub, &oauthStubCompany{id: "company-1"}, knowledge, zap.NewNop())
+	h := NewCollectorAgentHandlers(stub, &oauthStubCompany{id: "company-1"}, knowledge, &stubServiceToken{}, zap.NewNop())
 	if err := h.GetCollectorExecutionPayloadsHandler(c); err != nil {
 		t.Fatal(err)
 	}

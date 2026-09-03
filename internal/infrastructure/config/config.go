@@ -19,6 +19,7 @@ type Config struct {
 	Redis             RedisConfig             `mapstructure:"redis"`
 	RateLimit         RateLimitConfig         `mapstructure:"rate_limit"`
 	ConnectionsHealth ConnectionsHealthConfig `mapstructure:"connections_health"`
+	OAuth             OAuthConfig             `mapstructure:"oauth"`
 	Env               string                  `mapstructure:"env"`
 }
 
@@ -86,6 +87,13 @@ type ServicesConfig struct {
 	Guardian      ServiceConfig `mapstructure:"guardian"`
 	Collector     ServiceConfig `mapstructure:"collector"`
 	Knowledge     ServiceConfig `mapstructure:"knowledge"`
+}
+
+// OAuthConfig é o client de serviço do BFF (token para ms-knowledge).
+type OAuthConfig struct {
+	ClientID            string `mapstructure:"client_id"`
+	SecretBase          string `mapstructure:"secret_base"`
+	TokenRenewBeforeSec int    `mapstructure:"token_renew_before_sec"`
 }
 
 // ServiceConfig configurações de um microserviço
@@ -180,6 +188,9 @@ func Load() (*Config, error) {
 	if v := strings.TrimSpace(os.Getenv("KNOWLEDGE_BASE_URL")); v != "" {
 		config.Services.Knowledge.BaseURL = v
 	}
+	if v := strings.TrimSpace(os.Getenv("AUTH_CLIENT_SECRET_BASE")); v != "" {
+		config.OAuth.SecretBase = v
+	}
 
 	return &config, nil
 }
@@ -233,6 +244,9 @@ func setDefaults() {
 	viper.SetDefault("services.knowledge.base_url", "http://localhost:8090")
 	viper.SetDefault("services.knowledge.timeout", "60s")
 	viper.SetDefault("services.knowledge.retries", 1)
+
+	viper.SetDefault("oauth.client_id", "bff-core")
+	viper.SetDefault("oauth.token_renew_before_sec", 600)
 
 	// RabbitMQ
 	viper.SetDefault("rabbitmq.host", "localhost")

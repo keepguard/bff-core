@@ -19,6 +19,7 @@ type CollectorAgentHandlers struct {
 	collectorClient client.CollectorClient
 	companyClient   client.CompanyClient
 	knowledgeClient client.KnowledgeClient
+	serviceToken    client.ServiceTokenClient
 	logger          *zap.Logger
 }
 
@@ -26,12 +27,14 @@ func NewCollectorAgentHandlers(
 	collectorClient client.CollectorClient,
 	companyClient client.CompanyClient,
 	knowledgeClient client.KnowledgeClient,
+	serviceToken client.ServiceTokenClient,
 	logger *zap.Logger,
 ) *CollectorAgentHandlers {
 	return &CollectorAgentHandlers{
 		collectorClient: collectorClient,
 		companyClient:   companyClient,
 		knowledgeClient: knowledgeClient,
+		serviceToken:    serviceToken,
 		logger:          logger,
 	}
 }
@@ -361,7 +364,10 @@ func (h *CollectorAgentHandlers) GetCollectorExecutionPayloadsHandler(c echo.Con
 func (h *CollectorAgentHandlers) loadExecutionPayloads(
 	c echo.Context, companyID, correlationID string, execution appdto.CollectorExecutionRaw,
 ) ([]appdto.ExecutionPayloadItemDTO, error) {
-	bearer := bearerFrom(c)
+	bearer, tokErr := knowledgeServiceBearer(c.Request().Context(), h.serviceToken, companyID)
+	if tokErr != nil {
+		return nil, tokErr
+	}
 	ctx := c.Request().Context()
 	refs := parsePayloadRefs(execution.Metadata)
 	if len(refs) > 0 {

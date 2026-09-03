@@ -184,7 +184,7 @@ func (s *serverImpl) SetupRoutes(handlers Handler) {
 
 	knowledgeAdmin := []echo.MiddlewareFunc{
 		s.jwt.Middleware(),
-		middlewarePkg.RequireAnyRole("ADMIN", "SYSTEM"),
+		middlewarePkg.RequireKnowledgeRead(),
 		rl.Limit("knowledge", rules.Knowledge),
 	}
 	userGroup.POST("/core/knowledge/ask", handlers.AskKnowledgeHandler, knowledgeAdmin...)

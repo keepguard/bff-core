@@ -47,6 +47,10 @@ services:
     timeout: "60s"
     retries: 1
 
+oauth:
+  client_id: "bff-core"
+  token_renew_before_sec: 600
+
 rabbitmq:
   host: "rabbit-1"
   port: 5672
