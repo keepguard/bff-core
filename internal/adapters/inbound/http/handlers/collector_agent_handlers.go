@@ -291,6 +291,57 @@ func (h *CollectorAgentHandlers) RunCollectorAgentHandler(c echo.Context) error 
 	return c.JSON(http.StatusAccepted, result)
 }
 
+func (h *CollectorAgentHandlers) BulkCollectorAgentsHandler(c echo.Context) error {
+	correlationID := middlewarePkg.GetCorrelationID(c)
+	companyID, err := h.resolveCompany(c, correlationID)
+	if err != nil {
+		return err
+	}
+	var body struct {
+		Action string   `json:"action"`
+		IDs    []string `json:"ids"`
+	}
+	if bindErr := c.Bind(&body); bindErr != nil {
+		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
+			Error:         "INVALID_BODY",
+			Message:       "JSON inválido",
+			CorrelationID: correlationID,
+		})
+	}
+	result, status, err := h.collectorClient.BulkAgents(c.Request().Context(), companyID, correlationID, appdto.CollectorBulkWriteRaw{
+		Action: body.Action,
+		IDs:    body.IDs,
+	})
+	if err != nil {
+		h.logger.Error("Erro ao executar lote de agents",
+			zap.String("correlationId", correlationID),
+			zap.Error(err),
+		)
+		return handleError(c, err, correlationID)
+	}
+	if status == 0 {
+		status = http.StatusOK
+	}
+	return c.JSON(status, result)
+}
+
+func (h *CollectorAgentHandlers) GetCollectorBulkOperationHandler(c echo.Context) error {
+	correlationID := middlewarePkg.GetCorrelationID(c)
+	companyID, err := h.resolveCompany(c, correlationID)
+	if err != nil {
+		return err
+	}
+	result, err := h.collectorClient.GetBulkOperation(c.Request().Context(), companyID, c.Param("id"), correlationID)
+	if err != nil {
+		h.logger.Error("Erro ao obter lote de agents",
+			zap.String("correlationId", correlationID),
+			zap.Error(err),
+		)
+		return handleError(c, err, correlationID)
+	}
+	return c.JSON(http.StatusOK, result)
+}
+
 func (h *CollectorAgentHandlers) ListCollectorAgentExecutionsHandler(c echo.Context) error {
 	correlationID := middlewarePkg.GetCorrelationID(c)
 	companyID, err := h.resolveCompany(c, correlationID)

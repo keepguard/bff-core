@@ -47,18 +47,26 @@ type PaginatedCollectorAgents struct {
 	Last          bool                      `json:"last"`
 	HasNext       bool                      `json:"hasNext"`
 	HasPrevious   bool                      `json:"hasPrevious"`
+	Summary       CollectorAgentSummary     `json:"summary"`
 }
 
 type PaginatedCollectorAgentsRaw struct {
-	Content       []CollectorAgentRaw `json:"content"`
-	Page          int                 `json:"page"`
-	Size          int                 `json:"size"`
-	TotalElements int64               `json:"totalElements"`
-	TotalPages    int                 `json:"totalPages"`
-	First         bool                `json:"first"`
-	Last          bool                `json:"last"`
-	HasNext       bool                `json:"hasNext"`
-	HasPrevious   bool                `json:"hasPrevious"`
+	Content       []CollectorAgentRaw   `json:"content"`
+	Page          int                   `json:"page"`
+	Size          int                   `json:"size"`
+	TotalElements int64                 `json:"totalElements"`
+	TotalPages    int                   `json:"totalPages"`
+	First         bool                  `json:"first"`
+	Last          bool                  `json:"last"`
+	HasNext       bool                  `json:"hasNext"`
+	HasPrevious   bool                  `json:"hasPrevious"`
+	Summary       CollectorAgentSummary `json:"summary"`
+}
+
+type CollectorAgentSummary struct {
+	Total    int64 `json:"total"`
+	Enabled  int64 `json:"enabled"`
+	Disabled int64 `json:"disabled"`
 }
 
 type CollectorAgentCreateRequest struct {
@@ -164,6 +172,7 @@ func MapPaginatedCollectorAgents(raw PaginatedCollectorAgentsRaw) PaginatedColle
 		Last:          raw.Last,
 		HasNext:       raw.HasNext,
 		HasPrevious:   raw.HasPrevious,
+		Summary:       raw.Summary,
 	}
 }
 
@@ -218,6 +227,119 @@ func MapCollectorAgentRunResult(raw CollectorAgentRunResultRaw) CollectorAgentRu
 		Status:  raw.Status,
 		AgentID: raw.AgentID,
 	}
+}
+
+type CollectorBulkFailedRaw struct {
+	ID    string `json:"id"`
+	Error string `json:"error"`
+}
+
+type CollectorBulkResultRaw struct {
+	BulkID    string                   `json:"bulk_id"`
+	Action    string                   `json:"action"`
+	Requested int                      `json:"requested"`
+	Succeeded []string                 `json:"succeeded"`
+	Failed    []CollectorBulkFailedRaw `json:"failed"`
+}
+
+type CollectorBulkFailedDTO struct {
+	ID    string `json:"id"`
+	Error string `json:"error"`
+}
+
+type CollectorBulkResultDTO struct {
+	BulkID    string                   `json:"bulkId"`
+	Action    string                   `json:"action"`
+	Requested int                      `json:"requested"`
+	Succeeded []string                 `json:"succeeded"`
+	Failed    []CollectorBulkFailedDTO `json:"failed"`
+}
+
+func MapCollectorBulkResult(raw CollectorBulkResultRaw) CollectorBulkResultDTO {
+	failed := make([]CollectorBulkFailedDTO, 0, len(raw.Failed))
+	for _, item := range raw.Failed {
+		failed = append(failed, CollectorBulkFailedDTO{ID: item.ID, Error: item.Error})
+	}
+	succeeded := raw.Succeeded
+	if succeeded == nil {
+		succeeded = []string{}
+	}
+	return CollectorBulkResultDTO{
+		BulkID:    raw.BulkID,
+		Action:    raw.Action,
+		Requested: raw.Requested,
+		Succeeded: succeeded,
+		Failed:    failed,
+	}
+}
+
+type CollectorBulkWriteRaw struct {
+	Action string   `json:"action"`
+	IDs    []string `json:"ids"`
+}
+
+type CollectorBulkCountsRaw struct {
+	Total     int `json:"total"`
+	Succeeded int `json:"succeeded"`
+	Failed    int `json:"failed"`
+}
+
+type CollectorBulkCollectionsRaw struct {
+	Pending   int `json:"pending"`
+	Running   int `json:"running"`
+	Succeeded int `json:"succeeded"`
+	Failed    int `json:"failed"`
+}
+
+type CollectorBulkProgressRaw struct {
+	ID          string                       `json:"id"`
+	Action      string                       `json:"action"`
+	Status      string                       `json:"status"`
+	Commands    CollectorBulkCountsRaw       `json:"commands"`
+	Collections *CollectorBulkCollectionsRaw `json:"collections,omitempty"`
+}
+
+type CollectorBulkCountsDTO struct {
+	Total     int `json:"total"`
+	Succeeded int `json:"succeeded"`
+	Failed    int `json:"failed"`
+}
+
+type CollectorBulkCollectionsDTO struct {
+	Pending   int `json:"pending"`
+	Running   int `json:"running"`
+	Succeeded int `json:"succeeded"`
+	Failed    int `json:"failed"`
+}
+
+type CollectorBulkProgressDTO struct {
+	ID          string                       `json:"id"`
+	Action      string                       `json:"action"`
+	Status      string                       `json:"status"`
+	Commands    CollectorBulkCountsDTO       `json:"commands"`
+	Collections *CollectorBulkCollectionsDTO `json:"collections,omitempty"`
+}
+
+func MapCollectorBulkProgress(raw CollectorBulkProgressRaw) CollectorBulkProgressDTO {
+	out := CollectorBulkProgressDTO{
+		ID:     raw.ID,
+		Action: raw.Action,
+		Status: raw.Status,
+		Commands: CollectorBulkCountsDTO{
+			Total:     raw.Commands.Total,
+			Succeeded: raw.Commands.Succeeded,
+			Failed:    raw.Commands.Failed,
+		},
+	}
+	if raw.Collections != nil {
+		out.Collections = &CollectorBulkCollectionsDTO{
+			Pending:   raw.Collections.Pending,
+			Running:   raw.Collections.Running,
+			Succeeded: raw.Collections.Succeeded,
+			Failed:    raw.Collections.Failed,
+		}
+	}
+	return out
 }
 
 type CollectorExecutionRaw struct {

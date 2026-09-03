@@ -382,3 +382,44 @@ func TestGetCollectorExecutionPayloadsHandler_FallbackCollectionResults(t *testi
 		t.Fatalf("unexpected fallback payloads: %+v", out)
 	}
 }
+
+func TestBulkCollectorAgentsHandler_RunAccepted(t *testing.T) {
+	body := `{"action":"run","ids":["a1","a2"]}`
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/core/collector/agents/bulk", strings.NewReader(body))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	req = req.WithContext(client.WithCompanyID(req.Context(), "company-1"))
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.Set("claims", &pkg.JWTClaims{Roles: []string{"ADMIN"}, TenantId: "tenant-1"})
+	h := NewCollectorAgentHandlers(&oauthStubCollector{}, &oauthStubCompany{id: "company-1"}, nil, nil, zap.NewNop())
+	if err := h.BulkCollectorAgentsHandler(c); err != nil {
+		t.Fatal(err)
+	}
+	if rec.Code != http.StatusAccepted {
+		t.Fatalf("expected 202, got %d body=%s", rec.Code, rec.Body.String())
+	}
+	var out appdto.CollectorBulkResultDTO
+	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
+		t.Fatal(err)
+	}
+	if out.Action != "run" || out.Requested != 2 || out.BulkID == "" {
+		t.Fatalf("unexpected bulk payload: %+v", out)
+	}
+}
+
+func TestGetCollectorBulkOperationHandler_OK(t *testing.T) {
+	c, rec := oauthContext(http.MethodGet, "/api/v1/core/collector/agents/bulk-operations/bulk-1", "company-1", &pkg.JWTClaims{
+		Roles:    []string{"ADMIN"},
+		TenantId: "tenant-1",
+	})
+	c.SetParamNames("id")
+	c.SetParamValues("bulk-1")
+	h := NewCollectorAgentHandlers(&oauthStubCollector{}, &oauthStubCompany{id: "company-1"}, nil, nil, zap.NewNop())
+	if err := h.GetCollectorBulkOperationHandler(c); err != nil {
+		t.Fatal(err)
+	}
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
+	}
+}

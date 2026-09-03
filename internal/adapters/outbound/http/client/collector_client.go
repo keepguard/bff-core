@@ -290,6 +290,41 @@ func (c *collectorHTTP) RunAgent(ctx context.Context, companyID, agentID, correl
 	return appdto.MapCollectorAgentRunResult(raw), nil
 }
 
+func (c *collectorHTTP) BulkAgents(ctx context.Context, companyID, correlationID string, body appdto.CollectorBulkWriteRaw) (appdto.CollectorBulkResultDTO, int, error) {
+	if c.baseURL == "" {
+		return appdto.CollectorBulkResultDTO{}, http.StatusOK, nil
+	}
+	var raw appdto.CollectorBulkResultRaw
+	resp, err := c.req(ctx, companyID, correlationID).
+		SetBody(body).
+		SetResult(&raw).
+		Post(c.agentURL("") + "/bulk")
+	if err != nil {
+		return appdto.CollectorBulkResultDTO{}, 0, MapNetworkError(err, "collector service")
+	}
+	if resp.StatusCode() != http.StatusOK && resp.StatusCode() != http.StatusAccepted {
+		return appdto.CollectorBulkResultDTO{}, resp.StatusCode(), MapHTTPError(resp.StatusCode(), resp.Body(), "collector service")
+	}
+	return appdto.MapCollectorBulkResult(raw), resp.StatusCode(), nil
+}
+
+func (c *collectorHTTP) GetBulkOperation(ctx context.Context, companyID, bulkID, correlationID string) (appdto.CollectorBulkProgressDTO, error) {
+	if c.baseURL == "" || bulkID == "" {
+		return appdto.CollectorBulkProgressDTO{}, nil
+	}
+	var raw appdto.CollectorBulkProgressRaw
+	resp, err := c.req(ctx, companyID, correlationID).
+		SetResult(&raw).
+		Get(c.baseURL + "/api/v1/collector/agents/bulk-operations/" + bulkID)
+	if err != nil {
+		return appdto.CollectorBulkProgressDTO{}, MapNetworkError(err, "collector service")
+	}
+	if resp.StatusCode() != http.StatusOK {
+		return appdto.CollectorBulkProgressDTO{}, MapHTTPError(resp.StatusCode(), resp.Body(), "collector service")
+	}
+	return appdto.MapCollectorBulkProgress(raw), nil
+}
+
 func (c *collectorHTTP) dataSourceURL(id string) string {
 	base := c.baseURL + "/api/v1/collector/data-sources"
 	if id == "" {

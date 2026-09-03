@@ -160,6 +160,29 @@ func (s *oauthStubCollector) RunAgent(_ context.Context, _, agentID, _ string) (
 	return appdto.CollectorAgentRunResultDTO{Status: "queued", AgentID: agentID}, nil
 }
 
+func (s *oauthStubCollector) BulkAgents(_ context.Context, _, _ string, body appdto.CollectorBulkWriteRaw) (appdto.CollectorBulkResultDTO, int, error) {
+	status := http.StatusOK
+	if body.Action == "run" {
+		status = http.StatusAccepted
+	}
+	return appdto.CollectorBulkResultDTO{
+		BulkID:    "bulk-1",
+		Action:    body.Action,
+		Requested: len(body.IDs),
+		Succeeded: body.IDs,
+		Failed:    []appdto.CollectorBulkFailedDTO{},
+	}, status, nil
+}
+
+func (s *oauthStubCollector) GetBulkOperation(_ context.Context, _, bulkID, _ string) (appdto.CollectorBulkProgressDTO, error) {
+	return appdto.CollectorBulkProgressDTO{
+		ID:       bulkID,
+		Action:   "run",
+		Status:   "completed",
+		Commands: appdto.CollectorBulkCountsDTO{Total: 1, Succeeded: 1},
+	}, nil
+}
+
 func (s *oauthStubCollector) ListAgentExecutions(_ context.Context, _, _, _ string, _ int) ([]appdto.CollectorExecutionRaw, error) {
 	if s.execErr != nil {
 		return nil, s.execErr
