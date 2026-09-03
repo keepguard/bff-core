@@ -485,6 +485,8 @@ func documentToPayloadItem(document appdto.KnowledgeDocumentPreviewDTO) appdto.E
 		PreviewText: document.PreviewText,
 		Metadata: map[string]any{
 			"entityHint":       document.EntityHint,
+			"dataSource":       document.DataSource,
+			"sourceKey":        document.SourceKey,
 			"collectedAt":      document.CollectedAt,
 			"status":           document.Status,
 			"previewAvailable": document.PreviewAvailable,

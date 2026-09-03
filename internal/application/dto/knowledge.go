@@ -77,6 +77,8 @@ type KnowledgeDocumentPreviewDTO struct {
 	ContentType      string `json:"contentType"`
 	CollectedAt      string `json:"collectedAt"`
 	EntityHint       string `json:"entityHint"`
+	DataSource       string `json:"dataSource"`
+	SourceKey        string `json:"sourceKey"`
 	Status           string `json:"status"`
 	PreviewText      string `json:"previewText"`
 	PreviewAvailable bool   `json:"previewAvailable"`
