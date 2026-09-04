@@ -325,6 +325,23 @@ func (c *collectorHTTP) GetBulkOperation(ctx context.Context, companyID, bulkID,
 	return appdto.MapCollectorBulkProgress(raw), nil
 }
 
+func (c *collectorHTTP) GetActiveBulkOperation(ctx context.Context, companyID, correlationID string) (appdto.CollectorBulkProgressDTO, error) {
+	if c.baseURL == "" {
+		return appdto.CollectorBulkProgressDTO{}, nil
+	}
+	var raw appdto.CollectorBulkProgressRaw
+	resp, err := c.req(ctx, companyID, correlationID).
+		SetResult(&raw).
+		Get(c.baseURL + "/api/v1/collector/agents/bulk-operations/active")
+	if err != nil {
+		return appdto.CollectorBulkProgressDTO{}, MapNetworkError(err, "collector service")
+	}
+	if resp.StatusCode() != http.StatusOK {
+		return appdto.CollectorBulkProgressDTO{}, MapHTTPError(resp.StatusCode(), resp.Body(), "collector service")
+	}
+	return appdto.MapCollectorBulkProgress(raw), nil
+}
+
 func (c *collectorHTTP) dataSourceURL(id string) string {
 	base := c.baseURL + "/api/v1/collector/data-sources"
 	if id == "" {

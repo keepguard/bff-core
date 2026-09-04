@@ -342,6 +342,25 @@ func (h *CollectorAgentHandlers) GetCollectorBulkOperationHandler(c echo.Context
 	return c.JSON(http.StatusOK, result)
 }
 
+func (h *CollectorAgentHandlers) GetCollectorActiveBulkOperationHandler(c echo.Context) error {
+	correlationID := middlewarePkg.GetCorrelationID(c)
+	companyID, err := h.resolveCompany(c, correlationID)
+	if err != nil {
+		return err
+	}
+	result, err := h.collectorClient.GetActiveBulkOperation(c.Request().Context(), companyID, correlationID)
+	if err != nil {
+		if httpErr, ok := err.(*appdto.HTTPError); !ok || httpErr.Code != http.StatusNotFound {
+			h.logger.Error("Erro ao obter lote ativo de agents",
+				zap.String("correlationId", correlationID),
+				zap.Error(err),
+			)
+		}
+		return handleError(c, err, correlationID)
+	}
+	return c.JSON(http.StatusOK, result)
+}
+
 func (h *CollectorAgentHandlers) ListCollectorAgentExecutionsHandler(c echo.Context) error {
 	correlationID := middlewarePkg.GetCorrelationID(c)
 	companyID, err := h.resolveCompany(c, correlationID)

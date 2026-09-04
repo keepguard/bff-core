@@ -423,3 +423,24 @@ func TestGetCollectorBulkOperationHandler_OK(t *testing.T) {
 		t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
 	}
 }
+
+func TestGetCollectorActiveBulkOperationHandler_OK(t *testing.T) {
+	c, rec := oauthContext(http.MethodGet, "/api/v1/core/collector/agents/bulk-operations/active", "company-1", &pkg.JWTClaims{
+		Roles:    []string{"ADMIN"},
+		TenantId: "tenant-1",
+	})
+	h := NewCollectorAgentHandlers(&oauthStubCollector{}, &oauthStubCompany{id: "company-1"}, nil, nil, zap.NewNop())
+	if err := h.GetCollectorActiveBulkOperationHandler(c); err != nil {
+		t.Fatal(err)
+	}
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
+	}
+	var out appdto.CollectorBulkProgressDTO
+	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
+		t.Fatal(err)
+	}
+	if out.ID != "bulk-active" || out.Status != "running" {
+		t.Fatalf("unexpected active bulk: %+v", out)
+	}
+}

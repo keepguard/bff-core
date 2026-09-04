@@ -29,6 +29,7 @@ type CollectorClient interface {
 	RunAgent(ctx context.Context, companyID, agentID, correlationID string) (appdto.CollectorAgentRunResultDTO, error)
 	BulkAgents(ctx context.Context, companyID, correlationID string, body appdto.CollectorBulkWriteRaw) (appdto.CollectorBulkResultDTO, int, error)
 	GetBulkOperation(ctx context.Context, companyID, bulkID, correlationID string) (appdto.CollectorBulkProgressDTO, error)
+	GetActiveBulkOperation(ctx context.Context, companyID, correlationID string) (appdto.CollectorBulkProgressDTO, error)
 	ListAgentExecutions(ctx context.Context, companyID, agentID, correlationID string, limit int) ([]appdto.CollectorExecutionRaw, error)
 	GetExecution(ctx context.Context, companyID, executionID, correlationID string) (appdto.CollectorExecutionRaw, error)
 	DeleteAgent(ctx context.Context, companyID, agentID, correlationID string) error

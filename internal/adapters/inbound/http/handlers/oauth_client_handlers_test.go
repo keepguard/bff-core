@@ -183,6 +183,15 @@ func (s *oauthStubCollector) GetBulkOperation(_ context.Context, _, bulkID, _ st
 	}, nil
 }
 
+func (s *oauthStubCollector) GetActiveBulkOperation(_ context.Context, _, _ string) (appdto.CollectorBulkProgressDTO, error) {
+	return appdto.CollectorBulkProgressDTO{
+		ID:       "bulk-active",
+		Action:   "run",
+		Status:   "running",
+		Commands: appdto.CollectorBulkCountsDTO{Total: 1, Succeeded: 0},
+	}, nil
+}
+
 func (s *oauthStubCollector) ListAgentExecutions(_ context.Context, _, _, _ string, _ int) ([]appdto.CollectorExecutionRaw, error) {
 	if s.execErr != nil {
 		return nil, s.execErr

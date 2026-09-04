@@ -165,6 +165,7 @@ func (s *serverImpl) SetupRoutes(handlers Handler) {
 	userGroup.GET("/core/collector/agents", handlers.ListCollectorAgentsHandler, collectorAdmin...)
 	userGroup.POST("/core/collector/agents", handlers.CreateCollectorAgentHandler, collectorAdmin...)
 	userGroup.POST("/core/collector/agents/bulk", handlers.BulkCollectorAgentsHandler, collectorAdmin...)
+	userGroup.GET("/core/collector/agents/bulk-operations/active", handlers.GetCollectorActiveBulkOperationHandler, collectorAdmin...)
 	userGroup.GET("/core/collector/agents/bulk-operations/:id", handlers.GetCollectorBulkOperationHandler, collectorAdmin...)
 	userGroup.GET("/core/collector/agents/:id", handlers.GetCollectorAgentHandler, collectorAdmin...)
 	userGroup.PUT("/core/collector/agents/:id", handlers.UpdateCollectorAgentHandler, collectorAdmin...)

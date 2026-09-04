@@ -44,6 +44,7 @@ type Handler interface {
 	RunCollectorAgentHandler(c echo.Context) error
 	BulkCollectorAgentsHandler(c echo.Context) error
 	GetCollectorBulkOperationHandler(c echo.Context) error
+	GetCollectorActiveBulkOperationHandler(c echo.Context) error
 	ListCollectorAgentExecutionsHandler(c echo.Context) error
 	GetCollectorExecutionPayloadsHandler(c echo.Context) error
 	ListCollectorDataSourcesHandler(c echo.Context) error
