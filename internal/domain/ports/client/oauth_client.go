@@ -41,4 +41,10 @@ type CollectorClient interface {
 	DisableDataSource(ctx context.Context, companyID, sourceID, correlationID string) (appdto.CollectorDataSourceRaw, error)
 	DeleteDataSource(ctx context.Context, companyID, sourceID, correlationID string) error
 	PropagateDataSource(ctx context.Context, companyID, sourceID, correlationID string, body appdto.PropagateDataSourceWriteRaw) (appdto.PropagateDataSourceRaw, error)
+	ListIncidents(ctx context.Context, companyID, correlationID string, query map[string]string) (appdto.PaginatedCollectorIncidentsRaw, error)
+	ListAgentIncidents(ctx context.Context, companyID, agentID, correlationID string) ([]appdto.CollectorIncidentRaw, error)
+	AcknowledgeIncident(ctx context.Context, companyID, incidentID, correlationID string) (appdto.CollectorIncidentRaw, error)
+	ResolveIncident(ctx context.Context, companyID, incidentID, correlationID string) (appdto.CollectorIncidentRaw, error)
+	GetIncidentSuggestion(ctx context.Context, companyID, incidentID, correlationID string) (appdto.CollectorIncidentSuggestionRaw, bool, error)
+	ApplyIncidentSuccessor(ctx context.Context, companyID, incidentID, correlationID string, body appdto.CollectorApplySuccessorRaw) (appdto.CollectorIncidentRaw, error)
 }

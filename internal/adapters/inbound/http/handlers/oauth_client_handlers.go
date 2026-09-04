@@ -89,15 +89,7 @@ func (h *OAuthClientHandlers) GetOAuthClientHandler(c echo.Context) error {
 		)
 		return handleError(c, err, correlationID)
 	}
-	agents, agentsLoadErr := h.loadAgents(c, companyID, correlationID)
-	resp := appdto.OAuthClientDetailResponse{
-		OAuthClientDTO: item,
-		Agents:         agents,
-	}
-	if agentsLoadErr != nil {
-		resp.AgentsLoadError = agentsLoadErr.Error()
-	}
-	return c.JSON(http.StatusOK, resp)
+	return c.JSON(http.StatusOK, item)
 }
 
 func (h *OAuthClientHandlers) CreateOAuthClientHandler(c echo.Context) error {

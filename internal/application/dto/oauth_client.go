@@ -72,6 +72,19 @@ type CollectorAgentRaw struct {
 	CreatedAt       string                     `json:"created_at"`
 	UpdatedAt       string                     `json:"updated_at"`
 	LastExecution   *CollectorLastExecutionRaw `json:"last_execution,omitempty"`
+	OpenIncident    *CollectorOpenIncidentRaw  `json:"open_incident,omitempty"`
+}
+
+type CollectorOpenIncidentRaw struct {
+	IncidentID     string `json:"incident_id"`
+	Classification string `json:"classification"`
+	Occurrences    int    `json:"occurrences"`
+}
+
+type CollectorOpenIncidentDTO struct {
+	IncidentID     string `json:"incidentId"`
+	Classification string `json:"classification"`
+	Occurrences    int    `json:"occurrences"`
 }
 
 type CollectorLastExecutionRaw struct {
@@ -95,7 +108,5 @@ type CollectorAgentDTO struct {
 
 type OAuthClientDetailResponse struct {
 	OAuthClientDTO
-	TenantID        string              `json:"tenantId,omitempty"`
-	Agents          []CollectorAgentDTO `json:"agents"`
-	AgentsLoadError string              `json:"agentsLoadError,omitempty"`
+	TenantID string `json:"tenantId,omitempty"`
 }

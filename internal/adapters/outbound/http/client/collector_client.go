@@ -44,10 +44,22 @@ func (c *collectorHTTP) agentURL(id string) string {
 }
 
 func (c *collectorHTTP) req(ctx context.Context, companyID, correlationID string) *resty.Request {
-	return c.httpClient.R().
+	r := c.httpClient.R().
 		SetContext(ctx).
 		SetHeader("X-Company-Id", companyID).
 		SetHeader("X-Correlation-ID", correlationID)
+	if userID := domainclient.UserIDFromContext(ctx); userID != "" {
+		r.SetHeader("X-User-Id", userID)
+	}
+	return r
+}
+
+func (c *collectorHTTP) incidentURL(id string) string {
+	base := c.baseURL + "/api/v1/collector/incidents"
+	if id == "" {
+		return base
+	}
+	return base + "/" + id
 }
 
 func (c *collectorHTTP) DisableAgent(ctx context.Context, companyID, agentID, correlationID string) (appdto.CollectorAgentRaw, error) {
@@ -504,6 +516,118 @@ func (c *collectorHTTP) PropagateDataSource(ctx context.Context, companyID, sour
 	}
 	if out.Previews == nil {
 		out.Previews = []appdto.PropagateAgentPreviewRaw{}
+	}
+	return out, nil
+}
+
+func (c *collectorHTTP) ListIncidents(ctx context.Context, companyID, correlationID string, query map[string]string) (appdto.PaginatedCollectorIncidentsRaw, error) {
+	if c.baseURL == "" {
+		return appdto.PaginatedCollectorIncidentsRaw{Content: []appdto.CollectorIncidentRaw{}}, nil
+	}
+	var out appdto.PaginatedCollectorIncidentsRaw
+	req := c.req(ctx, companyID, correlationID).SetResult(&out)
+	for key, value := range query {
+		if value != "" {
+			req.SetQueryParam(key, value)
+		}
+	}
+	resp, err := req.Get(c.incidentURL(""))
+	if err != nil {
+		return appdto.PaginatedCollectorIncidentsRaw{}, MapNetworkError(err, "collector service")
+	}
+	if resp.StatusCode() != 200 {
+		return appdto.PaginatedCollectorIncidentsRaw{}, MapHTTPError(resp.StatusCode(), resp.Body(), "collector service")
+	}
+	if out.Content == nil {
+		out.Content = []appdto.CollectorIncidentRaw{}
+	}
+	return out, nil
+}
+
+func (c *collectorHTTP) ListAgentIncidents(ctx context.Context, companyID, agentID, correlationID string) ([]appdto.CollectorIncidentRaw, error) {
+	if c.baseURL == "" || agentID == "" {
+		return []appdto.CollectorIncidentRaw{}, nil
+	}
+	var out []appdto.CollectorIncidentRaw
+	resp, err := c.req(ctx, companyID, correlationID).
+		SetResult(&out).
+		Get(c.agentURL(agentID) + "/incidents")
+	if err != nil {
+		return nil, MapNetworkError(err, "collector service")
+	}
+	if resp.StatusCode() != 200 {
+		return nil, MapHTTPError(resp.StatusCode(), resp.Body(), "collector service")
+	}
+	if out == nil {
+		out = []appdto.CollectorIncidentRaw{}
+	}
+	return out, nil
+}
+
+func (c *collectorHTTP) AcknowledgeIncident(ctx context.Context, companyID, incidentID, correlationID string) (appdto.CollectorIncidentRaw, error) {
+	return c.mutateIncident(ctx, companyID, incidentID, correlationID, "acknowledge")
+}
+
+func (c *collectorHTTP) ResolveIncident(ctx context.Context, companyID, incidentID, correlationID string) (appdto.CollectorIncidentRaw, error) {
+	return c.mutateIncident(ctx, companyID, incidentID, correlationID, "resolve")
+}
+
+func (c *collectorHTTP) mutateIncident(ctx context.Context, companyID, incidentID, correlationID, action string) (appdto.CollectorIncidentRaw, error) {
+	if c.baseURL == "" || incidentID == "" {
+		return appdto.CollectorIncidentRaw{}, nil
+	}
+	var out appdto.CollectorIncidentRaw
+	resp, err := c.req(ctx, companyID, correlationID).
+		SetResult(&out).
+		Post(c.incidentURL(incidentID) + "/" + action)
+	if err != nil {
+		return appdto.CollectorIncidentRaw{}, MapNetworkError(err, "collector service")
+	}
+	if resp.StatusCode() != 200 {
+		return appdto.CollectorIncidentRaw{}, MapHTTPError(resp.StatusCode(), resp.Body(), "collector service")
+	}
+	return out, nil
+}
+
+func (c *collectorHTTP) GetIncidentSuggestion(ctx context.Context, companyID, incidentID, correlationID string) (appdto.CollectorIncidentSuggestionRaw, bool, error) {
+	if c.baseURL == "" || incidentID == "" {
+		return appdto.CollectorIncidentSuggestionRaw{}, false, nil
+	}
+	var out appdto.CollectorIncidentSuggestionRaw
+	resp, err := c.req(ctx, companyID, correlationID).
+		SetResult(&out).
+		Get(c.incidentURL(incidentID) + "/suggestion")
+	if err != nil {
+		return appdto.CollectorIncidentSuggestionRaw{}, false, MapNetworkError(err, "collector service")
+	}
+	if resp.StatusCode() == 204 {
+		return appdto.CollectorIncidentSuggestionRaw{}, false, nil
+	}
+	if resp.StatusCode() != 200 {
+		return appdto.CollectorIncidentSuggestionRaw{}, false, MapHTTPError(resp.StatusCode(), resp.Body(), "collector service")
+	}
+	return out, true, nil
+}
+
+func (c *collectorHTTP) ApplyIncidentSuccessor(ctx context.Context, companyID, incidentID, correlationID string, body appdto.CollectorApplySuccessorRaw) (appdto.CollectorIncidentRaw, error) {
+	if c.baseURL == "" || incidentID == "" {
+		return appdto.CollectorIncidentRaw{}, nil
+	}
+	payload, err := json.Marshal(body)
+	if err != nil {
+		return appdto.CollectorIncidentRaw{}, err
+	}
+	var out appdto.CollectorIncidentRaw
+	resp, err := c.req(ctx, companyID, correlationID).
+		SetHeader("Content-Type", "application/json").
+		SetBody(payload).
+		SetResult(&out).
+		Post(c.incidentURL(incidentID) + "/apply-successor")
+	if err != nil {
+		return appdto.CollectorIncidentRaw{}, MapNetworkError(err, "collector service")
+	}
+	if resp.StatusCode() != 200 {
+		return appdto.CollectorIncidentRaw{}, MapHTTPError(resp.StatusCode(), resp.Body(), "collector service")
 	}
 	return out, nil
 }

@@ -36,6 +36,7 @@ type CollectorAgentDetailDTO struct {
 	CreatedAt       string                     `json:"createdAt"`
 	UpdatedAt       string                     `json:"updatedAt"`
 	LastExecution   *CollectorLastExecutionDTO `json:"lastExecution,omitempty"`
+	OpenIncident    *CollectorOpenIncidentDTO  `json:"openIncident,omitempty"`
 }
 
 type CollectorLastExecutionDTO struct {
@@ -136,6 +137,18 @@ func MapCollectorAgentRaw(raw CollectorAgentRaw) CollectorAgentDetailDTO {
 		CreatedAt:       raw.CreatedAt,
 		UpdatedAt:       raw.UpdatedAt,
 		LastExecution:   mapCollectorLastExecution(raw.LastExecution),
+		OpenIncident:    mapCollectorOpenIncident(raw.OpenIncident),
+	}
+}
+
+func mapCollectorOpenIncident(raw *CollectorOpenIncidentRaw) *CollectorOpenIncidentDTO {
+	if raw == nil || raw.IncidentID == "" {
+		return nil
+	}
+	return &CollectorOpenIncidentDTO{
+		IncidentID:     raw.IncidentID,
+		Classification: raw.Classification,
+		Occurrences:    raw.Occurrences,
 	}
 }
 
@@ -612,5 +625,145 @@ func MapPropagateDataSourceRaw(raw PropagateDataSourceRaw) PropagateDataSourceDT
 		DryRun:      raw.DryRun,
 		Previews:    previews,
 		Errors:      raw.Errors,
+	}
+}
+
+type CollectorIncidentRaw struct {
+	ID             string `json:"id"`
+	CompanyID      string `json:"company_id"`
+	AgentID        string `json:"agent_id"`
+	AgentName      string `json:"agent_name,omitempty"`
+	ExecutionID    string `json:"execution_id,omitempty"`
+	DataSourceSlug string `json:"data_source_slug"`
+	EntityHint     string `json:"entity_hint"`
+	SourceHost     string `json:"source_host"`
+	Classification string `json:"classification"`
+	HTTPStatus     int    `json:"http_status"`
+	ErrorExcerpt   string `json:"error_excerpt"`
+	Fingerprint    string `json:"fingerprint"`
+	Occurrences    int    `json:"occurrences"`
+	FirstSeenAt    string `json:"first_seen_at"`
+	LastSeenAt     string `json:"last_seen_at"`
+	Status         string `json:"status"`
+	CreatedAt      string `json:"created_at"`
+	UpdatedAt      string `json:"updated_at"`
+}
+
+type CollectorIncidentDTO struct {
+	ID             string `json:"id"`
+	CompanyID      string `json:"companyId"`
+	AgentID        string `json:"agentId"`
+	AgentName      string `json:"agentName,omitempty"`
+	ExecutionID    string `json:"executionId,omitempty"`
+	DataSourceSlug string `json:"dataSourceSlug"`
+	EntityHint     string `json:"entityHint"`
+	SourceHost     string `json:"sourceHost"`
+	Classification string `json:"classification"`
+	HTTPStatus     int    `json:"httpStatus"`
+	ErrorExcerpt   string `json:"errorExcerpt"`
+	Fingerprint    string `json:"fingerprint"`
+	Occurrences    int    `json:"occurrences"`
+	FirstSeenAt    string `json:"firstSeenAt"`
+	LastSeenAt     string `json:"lastSeenAt"`
+	Status         string `json:"status"`
+	CreatedAt      string `json:"createdAt"`
+	UpdatedAt      string `json:"updatedAt"`
+}
+
+type PaginatedCollectorIncidentsRaw struct {
+	Content       []CollectorIncidentRaw `json:"content"`
+	Page          int                    `json:"page"`
+	Size          int                    `json:"size"`
+	TotalElements int64                  `json:"totalElements"`
+	TotalPages    int                    `json:"totalPages"`
+	First         bool                   `json:"first"`
+	Last          bool                   `json:"last"`
+	HasNext       bool                   `json:"hasNext"`
+	HasPrevious   bool                   `json:"hasPrevious"`
+}
+
+type PaginatedCollectorIncidents struct {
+	Content       []CollectorIncidentDTO `json:"content"`
+	Page          int                    `json:"page"`
+	Size          int                    `json:"size"`
+	TotalElements int64                  `json:"totalElements"`
+	TotalPages    int                    `json:"totalPages"`
+	First         bool                   `json:"first"`
+	Last          bool                   `json:"last"`
+	HasNext       bool                   `json:"hasNext"`
+	HasPrevious   bool                   `json:"hasPrevious"`
+}
+
+type CollectorIncidentSuggestionRaw struct {
+	IncidentID     string          `json:"incident_id"`
+	NewHint        string          `json:"new_hint"`
+	SuggestedName  string          `json:"suggested_name,omitempty"`
+	PatchConfig    json.RawMessage `json:"patch_config"`
+	Reason         string          `json:"reason"`
+	DataSourceSlug string          `json:"data_source_slug"`
+}
+
+type CollectorIncidentSuggestionDTO struct {
+	IncidentID     string          `json:"incidentId"`
+	NewHint        string          `json:"newHint"`
+	SuggestedName  string          `json:"suggestedName,omitempty"`
+	PatchConfig    json.RawMessage `json:"patchConfig"`
+	Reason         string          `json:"reason"`
+	DataSourceSlug string          `json:"dataSourceSlug"`
+}
+
+type CollectorApplySuccessorRaw struct {
+	Confirmed bool `json:"confirmed"`
+}
+
+func MapCollectorIncidentRaw(raw CollectorIncidentRaw) CollectorIncidentDTO {
+	return CollectorIncidentDTO{
+		ID:             raw.ID,
+		CompanyID:      raw.CompanyID,
+		AgentID:        raw.AgentID,
+		AgentName:      raw.AgentName,
+		ExecutionID:    raw.ExecutionID,
+		DataSourceSlug: raw.DataSourceSlug,
+		EntityHint:     raw.EntityHint,
+		SourceHost:     raw.SourceHost,
+		Classification: raw.Classification,
+		HTTPStatus:     raw.HTTPStatus,
+		ErrorExcerpt:   raw.ErrorExcerpt,
+		Fingerprint:    raw.Fingerprint,
+		Occurrences:    raw.Occurrences,
+		FirstSeenAt:    raw.FirstSeenAt,
+		LastSeenAt:     raw.LastSeenAt,
+		Status:         raw.Status,
+		CreatedAt:      raw.CreatedAt,
+		UpdatedAt:      raw.UpdatedAt,
+	}
+}
+
+func MapPaginatedCollectorIncidents(raw PaginatedCollectorIncidentsRaw) PaginatedCollectorIncidents {
+	content := make([]CollectorIncidentDTO, 0, len(raw.Content))
+	for _, item := range raw.Content {
+		content = append(content, MapCollectorIncidentRaw(item))
+	}
+	return PaginatedCollectorIncidents{
+		Content:       content,
+		Page:          raw.Page,
+		Size:          raw.Size,
+		TotalElements: raw.TotalElements,
+		TotalPages:    raw.TotalPages,
+		First:         raw.First,
+		Last:          raw.Last,
+		HasNext:       raw.HasNext,
+		HasPrevious:   raw.HasPrevious,
+	}
+}
+
+func MapCollectorIncidentSuggestion(raw CollectorIncidentSuggestionRaw) CollectorIncidentSuggestionDTO {
+	return CollectorIncidentSuggestionDTO{
+		IncidentID:     raw.IncidentID,
+		NewHint:        raw.NewHint,
+		SuggestedName:  raw.SuggestedName,
+		PatchConfig:    raw.PatchConfig,
+		Reason:         raw.Reason,
+		DataSourceSlug: raw.DataSourceSlug,
 	}
 }

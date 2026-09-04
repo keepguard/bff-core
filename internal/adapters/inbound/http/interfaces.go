@@ -56,6 +56,12 @@ type Handler interface {
 	PropagateCollectorDataSourceHandler(c echo.Context) error
 	DeleteCollectorDataSourceHandler(c echo.Context) error
 	DeleteCollectorAgentHandler(c echo.Context) error
+	ListCollectorIncidentsHandler(c echo.Context) error
+	ListCollectorAgentIncidentsHandler(c echo.Context) error
+	AcknowledgeCollectorIncidentHandler(c echo.Context) error
+	ResolveCollectorIncidentHandler(c echo.Context) error
+	GetCollectorIncidentSuggestionHandler(c echo.Context) error
+	ApplyCollectorIncidentSuccessorHandler(c echo.Context) error
 	AskKnowledgeHandler(c echo.Context) error
 }
 

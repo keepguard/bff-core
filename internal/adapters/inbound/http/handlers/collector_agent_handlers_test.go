@@ -478,3 +478,30 @@ func TestGetCollectorActiveBulkOperationHandler_OK(t *testing.T) {
 		t.Fatalf("unexpected active bulk: %+v", out)
 	}
 }
+
+func TestListCollectorIncidentsHandler_MapsCamelCase(t *testing.T) {
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/core/collector/incidents?status=open", nil)
+	req = req.WithContext(client.WithCompanyID(req.Context(), "company-1"))
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.Set("claims", &pkg.JWTClaims{Roles: []string{"ADMIN"}, TenantId: "tenant-1"})
+	h := NewCollectorAgentHandlers(&oauthStubCollector{
+		incidents: []appdto.CollectorIncidentRaw{
+			{ID: "inc-1", AgentID: "a1", AgentName: "ARZZ3", Classification: "source_changed", Status: "open", Occurrences: 2},
+		},
+	}, &oauthStubCompany{id: "company-1"}, nil, nil, zap.NewNop())
+	if err := h.ListCollectorIncidentsHandler(c); err != nil {
+		t.Fatal(err)
+	}
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
+	}
+	var out appdto.PaginatedCollectorIncidents
+	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
+		t.Fatal(err)
+	}
+	if len(out.Content) != 1 || out.Content[0].AgentName != "ARZZ3" || out.Content[0].Classification != "source_changed" {
+		t.Fatalf("unexpected incidents: %+v", out.Content)
+	}
+}

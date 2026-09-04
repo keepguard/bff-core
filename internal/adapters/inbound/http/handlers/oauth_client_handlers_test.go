@@ -84,16 +84,20 @@ func (s *oauthStubCompany) GetByTenantId(_ context.Context, _, _ string) (compan
 }
 
 type oauthStubCollector struct {
-	agents      []appdto.CollectorAgentRaw
-	disabledIDs []string
-	listErr     error
-	getErr      error
-	executions  []appdto.CollectorExecutionRaw
-	execErr     error
-	sources     []appdto.CollectorDataSourceRaw
+	agents       []appdto.CollectorAgentRaw
+	disabledIDs  []string
+	listErr      error
+	listCalls    int
+	getErr       error
+	executions   []appdto.CollectorExecutionRaw
+	execErr      error
+	sources      []appdto.CollectorDataSourceRaw
+	incidents    []appdto.CollectorIncidentRaw
+	suggestionOK bool
 }
 
 func (s *oauthStubCollector) ListAgents(_ context.Context, _, _ string) ([]appdto.CollectorAgentRaw, error) {
+	s.listCalls++
 	if s.listErr != nil {
 		return nil, s.listErr
 	}
@@ -297,6 +301,55 @@ func (s *oauthStubCollector) PropagateDataSource(_ context.Context, _, sourceID,
 	}, nil
 }
 
+func (s *oauthStubCollector) ListIncidents(_ context.Context, _, _ string, query map[string]string) (appdto.PaginatedCollectorIncidentsRaw, error) {
+	items := s.incidents
+	if items == nil {
+		items = []appdto.CollectorIncidentRaw{}
+	}
+	if status := query["status"]; status != "" {
+		filtered := make([]appdto.CollectorIncidentRaw, 0, len(items))
+		for _, item := range items {
+			if item.Status == status {
+				filtered = append(filtered, item)
+			}
+		}
+		items = filtered
+	}
+	return appdto.PaginatedCollectorIncidentsRaw{Content: items, Size: 20, TotalElements: int64(len(items)), TotalPages: 1, First: true, Last: true}, nil
+}
+
+func (s *oauthStubCollector) ListAgentIncidents(_ context.Context, _, agentID, _ string) ([]appdto.CollectorIncidentRaw, error) {
+	out := make([]appdto.CollectorIncidentRaw, 0)
+	for _, item := range s.incidents {
+		if item.AgentID == agentID {
+			out = append(out, item)
+		}
+	}
+	return out, nil
+}
+
+func (s *oauthStubCollector) AcknowledgeIncident(_ context.Context, _, incidentID, _ string) (appdto.CollectorIncidentRaw, error) {
+	return appdto.CollectorIncidentRaw{ID: incidentID, Status: "acknowledged"}, nil
+}
+
+func (s *oauthStubCollector) ResolveIncident(_ context.Context, _, incidentID, _ string) (appdto.CollectorIncidentRaw, error) {
+	return appdto.CollectorIncidentRaw{ID: incidentID, Status: "resolved"}, nil
+}
+
+func (s *oauthStubCollector) GetIncidentSuggestion(_ context.Context, _, incidentID, _ string) (appdto.CollectorIncidentSuggestionRaw, bool, error) {
+	if s.suggestionOK {
+		return appdto.CollectorIncidentSuggestionRaw{IncidentID: incidentID, NewHint: "ARZZ4", Reason: "teste"}, true, nil
+	}
+	return appdto.CollectorIncidentSuggestionRaw{}, false, nil
+}
+
+func (s *oauthStubCollector) ApplyIncidentSuccessor(_ context.Context, _, incidentID, _ string, body appdto.CollectorApplySuccessorRaw) (appdto.CollectorIncidentRaw, error) {
+	if !body.Confirmed {
+		return appdto.CollectorIncidentRaw{}, &appdto.HTTPError{Code: http.StatusBadRequest, Message: "confirmed deve ser true"}
+	}
+	return appdto.CollectorIncidentRaw{ID: incidentID, Status: "resolved"}, nil
+}
+
 func oauthContext(method, path string, companyID string, claims *pkg.JWTClaims) (echo.Context, *httptest.ResponseRecorder) {
 	e := echo.New()
 	req := httptest.NewRequest(method, path, nil)
@@ -423,32 +476,36 @@ func TestDeleteOAuthClientHandler_DisablesEnabledAgents(t *testing.T) {
 	}
 }
 
-func TestGetOAuthClientHandler_ReturnsAgents(t *testing.T) {
+func TestGetOAuthClientHandler_ReturnsClientWithoutAgents(t *testing.T) {
 	c, rec := oauthContext(http.MethodGet, "/api/v1/core/oauth/clients/c1", "company-1", &pkg.JWTClaims{
 		Roles:    []string{"ADMIN"},
 		TenantId: "tenant-1",
 	})
 	c.SetParamNames("id")
 	c.SetParamValues("c1")
-	h := NewOAuthClientHandlers(&stubOAuthClient{}, &oauthStubCompany{id: "company-1"}, &oauthStubCollector{
+	collector := &oauthStubCollector{
 		agents: []appdto.CollectorAgentRaw{{ID: "a1", Name: "Coletor A", Enabled: true, CollectorType: "API_REST"}},
-	}, zap.NewNop())
+	}
+	h := NewOAuthClientHandlers(&stubOAuthClient{}, &oauthStubCompany{id: "company-1"}, collector, zap.NewNop())
 	if err := h.GetOAuthClientHandler(c); err != nil {
 		t.Fatal(err)
 	}
 	if rec.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
 	}
-	var body appdto.OAuthClientDetailResponse
+	var body appdto.OAuthClientDTO
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatal(err)
 	}
-	if len(body.Agents) != 1 || body.Agents[0].Name != "Coletor A" {
-		t.Fatalf("expected agent list in response, got %+v", body.Agents)
+	if body.ID != "c1" {
+		t.Fatalf("expected client id c1, got %+v", body)
+	}
+	if collector.listCalls != 0 {
+		t.Fatalf("Get OAuth client must not list collector agents, got %d calls", collector.listCalls)
 	}
 }
 
-func TestGetOAuthClientHandler_ReportsCollectorUnavailable(t *testing.T) {
+func TestGetOAuthClientHandler_IgnoresCollectorAvailability(t *testing.T) {
 	c, rec := oauthContext(http.MethodGet, "/api/v1/core/oauth/clients/c1", "company-1", &pkg.JWTClaims{
 		Roles:    []string{"ADMIN"},
 		TenantId: "tenant-1",
@@ -464,15 +521,12 @@ func TestGetOAuthClientHandler_ReportsCollectorUnavailable(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
 	}
-	var body appdto.OAuthClientDetailResponse
+	var body appdto.OAuthClientDTO
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatal(err)
 	}
-	if body.AgentsLoadError == "" {
-		t.Fatalf("expected agentsLoadError in response, got %+v", body)
-	}
-	if len(body.Agents) != 0 {
-		t.Fatalf("expected empty agents when collector fails, got %+v", body.Agents)
+	if body.ID != "c1" {
+		t.Fatalf("expected client id c1, got %+v", body)
 	}
 }
 

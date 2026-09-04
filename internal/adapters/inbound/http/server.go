@@ -162,6 +162,11 @@ func (s *serverImpl) SetupRoutes(handlers Handler) {
 		middlewarePkg.RequireAnyRole("ADMIN", "SYSTEM"),
 		rl.Limit("collector", rules.Collector),
 	}
+	collectorIncidents := []echo.MiddlewareFunc{
+		s.jwt.Middleware(),
+		middlewarePkg.RequireAnyRole("ADMIN", "MANAGER"),
+		rl.Limit("collector", rules.Collector),
+	}
 	userGroup.GET("/core/collector/agents", handlers.ListCollectorAgentsHandler, collectorAdmin...)
 	userGroup.POST("/core/collector/agents", handlers.CreateCollectorAgentHandler, collectorAdmin...)
 	userGroup.POST("/core/collector/agents/bulk", handlers.BulkCollectorAgentsHandler, collectorAdmin...)
@@ -183,6 +188,12 @@ func (s *serverImpl) SetupRoutes(handlers Handler) {
 	userGroup.POST("/core/collector/data-sources/:id/disable", handlers.DisableCollectorDataSourceHandler, collectorAdmin...)
 	userGroup.POST("/core/collector/data-sources/:id/propagate", handlers.PropagateCollectorDataSourceHandler, collectorAdmin...)
 	userGroup.DELETE("/core/collector/data-sources/:id", handlers.DeleteCollectorDataSourceHandler, collectorAdmin...)
+	userGroup.GET("/core/collector/incidents", handlers.ListCollectorIncidentsHandler, collectorIncidents...)
+	userGroup.GET("/core/collector/agents/:id/incidents", handlers.ListCollectorAgentIncidentsHandler, collectorIncidents...)
+	userGroup.POST("/core/collector/incidents/:id/acknowledge", handlers.AcknowledgeCollectorIncidentHandler, collectorIncidents...)
+	userGroup.POST("/core/collector/incidents/:id/resolve", handlers.ResolveCollectorIncidentHandler, collectorIncidents...)
+	userGroup.GET("/core/collector/incidents/:id/suggestion", handlers.GetCollectorIncidentSuggestionHandler, collectorIncidents...)
+	userGroup.POST("/core/collector/incidents/:id/apply-successor", handlers.ApplyCollectorIncidentSuccessorHandler, collectorIncidents...)
 	userGroup.DELETE("/core/collector/agents/:id", handlers.DeleteCollectorAgentHandler, collectorAdmin...)
 
 	knowledgeAdmin := []echo.MiddlewareFunc{

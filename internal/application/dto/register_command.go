@@ -18,7 +18,7 @@ type RegisterInitCommand struct {
 	UserAgent                  string
 	Geolocation                string
 	Type                       string
-	TenantId               string
+	TenantId                   string
 	CorrelationID              string
 	Context                    context.Context
 }
@@ -42,7 +42,7 @@ func NewRegisterInitCommand(
 		UserAgent:                  userAgent,
 		Geolocation:                geolocation,
 		Type:                       userType,
-		TenantId:               tenantId,
+		TenantId:                   tenantId,
 		CorrelationID:              correlationID,
 		Context:                    ctx,
 	}
@@ -178,7 +178,7 @@ func (c RegisterConfirmCommand) Validate() error {
 type RegisterResendCommand struct {
 	Email                 string
 	RegistrationSessionID string
-	TenantId          string
+	TenantId              string
 	CorrelationID         string
 	Context               context.Context
 }
@@ -187,7 +187,7 @@ func NewRegisterResendCommand(email, registrationSessionID, tenantId, correlatio
 	return RegisterResendCommand{
 		Email:                 email,
 		RegistrationSessionID: registrationSessionID,
-		TenantId:          tenantId,
+		TenantId:              tenantId,
 		CorrelationID:         correlationID,
 		Context:               ctx,
 	}
