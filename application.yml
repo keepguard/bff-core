@@ -1,4 +1,4 @@
-version: "1.0.77-SNAPSHOT"
+version: "1.0.78-SNAPSHOT"
 
 server:
   port: "8282"
@@ -42,6 +42,10 @@ services:
     retries: 1
   knowledge:
     base_url: "http://localhost:8090"
+    timeout: "60s"
+    retries: 1
+  llm:
+    base_url: "http://localhost:8650"
     timeout: "60s"
     retries: 1
 

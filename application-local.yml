@@ -46,6 +46,10 @@ services:
     base_url: "http://localhost:8090"
     timeout: "60s"
     retries: 1
+  llm:
+    base_url: "http://localhost:8650"
+    timeout: "60s"
+    retries: 1
 
 oauth:
   client_id: "bff-core"
@@ -112,6 +116,9 @@ rate_limit:
     knowledge:
       limit: 30
       window: 60s
+    llm:
+      limit: 60
+      window: 60s
     default:
       limit: 500
       window: 60s
@@ -145,6 +152,7 @@ connections_health:
     srv-token-manager: "http://localhost:8700/health"
     srv-sms-sender: "http://localhost:8610/health"
     mock-sms-gateway: "http://localhost:8089/health"
+    srv-llm-gateway: "http://localhost:8650/health"
     minio: "http://localhost:9000/minio/health/live"
     rabbitmq: "http://localhost:15672/api/health/checks/alarms"
     prometheus: "http://localhost:9095/-/healthy"

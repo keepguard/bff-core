@@ -25,6 +25,7 @@ env:
   guardianServiceUrl: "http://ms-ai-guardian:8088"
   collectorServiceUrl: "http://srv-data-collector:8630"
   knowledgeServiceUrl: "http://ms-knowledge:8090"
+  llmServiceUrl: "http://srv-llm-gateway:8650"
 
 imagePullSecrets:
   - name: ghcr-secret

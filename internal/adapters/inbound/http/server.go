@@ -203,6 +203,31 @@ func (s *serverImpl) SetupRoutes(handlers Handler) {
 	}
 	userGroup.POST("/core/knowledge/ask", handlers.AskKnowledgeHandler, knowledgeAdmin...)
 
+	llmRead := []echo.MiddlewareFunc{
+		s.jwt.Middleware(),
+		middlewarePkg.RequireLlmRead(),
+		rl.Limit("llm", rules.Llm),
+	}
+	llmWrite := []echo.MiddlewareFunc{
+		s.jwt.Middleware(),
+		middlewarePkg.RequireLlmWrite(),
+		rl.Limit("llm", rules.Llm),
+	}
+	userGroup.GET("/core/llm/providers", handlers.ListLlmProvidersHandler, llmRead...)
+	userGroup.POST("/core/llm/providers", handlers.CreateLlmProviderHandler, llmWrite...)
+	userGroup.PATCH("/core/llm/providers/:id", handlers.UpdateLlmProviderHandler, llmWrite...)
+	userGroup.POST("/core/llm/providers/:id/enable", handlers.EnableLlmProviderHandler, llmWrite...)
+	userGroup.POST("/core/llm/providers/:id/disable", handlers.DisableLlmProviderHandler, llmWrite...)
+	userGroup.POST("/core/llm/complete", handlers.CompleteLlmHandler, llmWrite...)
+	userGroup.GET("/core/llm/usage", handlers.ListLlmUsageHandler, llmRead...)
+	userGroup.GET("/core/llm/usage/:id", handlers.GetLlmUsageHandler, llmRead...)
+	userGroup.GET("/core/llm/alert-rules", handlers.ListLlmAlertRulesHandler, llmRead...)
+	userGroup.POST("/core/llm/alert-rules", handlers.CreateLlmAlertRuleHandler, llmWrite...)
+	userGroup.PATCH("/core/llm/alert-rules/:id", handlers.UpdateLlmAlertRuleHandler, llmWrite...)
+	userGroup.POST("/core/llm/alert-rules/:id/enable", handlers.EnableLlmAlertRuleHandler, llmWrite...)
+	userGroup.POST("/core/llm/alert-rules/:id/disable", handlers.DisableLlmAlertRuleHandler, llmWrite...)
+	userGroup.GET("/core/llm/alert-firings", handlers.ListLlmAlertFiringsHandler, llmRead...)
+
 	s.logger.Info("Rotas configuradas com sucesso com proteção de Rate Limit",
 		zap.String("port", s.config.Server.Port),
 	)

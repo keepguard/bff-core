@@ -46,6 +46,10 @@ services:
     base_url: "http://ms-knowledge:8090"
     timeout: "60s"
     retries: 1
+  llm:
+    base_url: "http://srv-llm-gateway:8650"
+    timeout: "60s"
+    retries: 1
 
 oauth:
   client_id: "bff-core"
@@ -111,6 +115,9 @@ rate_limit:
     knowledge:
       limit: 20
       window: 60s
+    llm:
+      limit: 40
+      window: 60s
     default:
       limit: 120
       window: 60s
@@ -139,6 +146,7 @@ connections_health:
     ms-company: "http://ms-company:8083/actuator/health/liveness"
     ms-user: "http://ms-user:8085/actuator/health/liveness"
     ms-user-consents: "http://ms-user-consents:8086/actuator/health/liveness"
+    srv-llm-gateway: "http://srv-llm-gateway:8650/health"
     srv-email-sender: "http://srv-email-sender:8601/health"
     srv-token-manager: "http://srv-token-manager:8700/health"
     srv-sms-sender: "http://srv-sms-sender:8610/health"

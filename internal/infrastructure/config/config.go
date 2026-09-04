@@ -49,6 +49,7 @@ type RateLimitRulesConfig struct {
 	Guardian          RateLimitRule `mapstructure:"guardian"`
 	Collector         RateLimitRule `mapstructure:"collector"`
 	Knowledge         RateLimitRule `mapstructure:"knowledge"`
+	Llm               RateLimitRule `mapstructure:"llm"`
 	Default           RateLimitRule `mapstructure:"default"`
 }
 
@@ -87,6 +88,7 @@ type ServicesConfig struct {
 	Guardian      ServiceConfig `mapstructure:"guardian"`
 	Collector     ServiceConfig `mapstructure:"collector"`
 	Knowledge     ServiceConfig `mapstructure:"knowledge"`
+	Llm           ServiceConfig `mapstructure:"llm"`
 }
 
 // OAuthConfig é o client de serviço do BFF (token para ms-knowledge).
@@ -245,6 +247,10 @@ func setDefaults() {
 	viper.SetDefault("services.knowledge.timeout", "60s")
 	viper.SetDefault("services.knowledge.retries", 1)
 
+	viper.SetDefault("services.llm.base_url", "http://localhost:8650")
+	viper.SetDefault("services.llm.timeout", "60s")
+	viper.SetDefault("services.llm.retries", 1)
+
 	viper.SetDefault("oauth.client_id", "bff-core")
 	viper.SetDefault("oauth.token_renew_before_sec", 600)
 
@@ -278,6 +284,8 @@ func setDefaults() {
 	viper.SetDefault("rate_limit.rules.collector.window", "60s")
 	viper.SetDefault("rate_limit.rules.knowledge.limit", 30)
 	viper.SetDefault("rate_limit.rules.knowledge.window", "60s")
+	viper.SetDefault("rate_limit.rules.llm.limit", 60)
+	viper.SetDefault("rate_limit.rules.llm.window", "60s")
 	viper.SetDefault("connections_health.snapshot_ttl", "60s")
 	viper.SetDefault("connections_health.lock_ttl", "5s")
 	viper.SetDefault("connections_health.probe_timeout", "500ms")

@@ -51,6 +51,8 @@ spec:
           value: {{ .Values.env.collectorServiceUrl | quote }}
         - name: BFF_CORE_SERVICES_KNOWLEDGE_BASE_URL
           value: {{ .Values.env.knowledgeServiceUrl | quote }}
+        - name: BFF_CORE_SERVICES_LLM_BASE_URL
+          value: {{ .Values.env.llmServiceUrl | quote }}
         - name: KNOWLEDGE_BASE_URL
           value: {{ .Values.env.knowledgeServiceUrl | quote }}
         - name: AUTH_CLIENT_SECRET_BASE

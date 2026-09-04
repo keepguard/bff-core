@@ -63,6 +63,20 @@ type Handler interface {
 	GetCollectorIncidentSuggestionHandler(c echo.Context) error
 	ApplyCollectorIncidentSuccessorHandler(c echo.Context) error
 	AskKnowledgeHandler(c echo.Context) error
+	ListLlmProvidersHandler(c echo.Context) error
+	CreateLlmProviderHandler(c echo.Context) error
+	UpdateLlmProviderHandler(c echo.Context) error
+	EnableLlmProviderHandler(c echo.Context) error
+	DisableLlmProviderHandler(c echo.Context) error
+	CompleteLlmHandler(c echo.Context) error
+	ListLlmUsageHandler(c echo.Context) error
+	GetLlmUsageHandler(c echo.Context) error
+	ListLlmAlertRulesHandler(c echo.Context) error
+	CreateLlmAlertRuleHandler(c echo.Context) error
+	UpdateLlmAlertRuleHandler(c echo.Context) error
+	EnableLlmAlertRuleHandler(c echo.Context) error
+	DisableLlmAlertRuleHandler(c echo.Context) error
+	ListLlmAlertFiringsHandler(c echo.Context) error
 }
 
 // Middleware define a interface para middlewares HTTP

@@ -104,6 +104,82 @@ func TestRequireKnowledgeRead_RejectsWithoutAuthority(t *testing.T) {
 	}
 }
 
+func TestRequireLlmRead_AllowsAuthority(t *testing.T) {
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("X-Correlation-ID", "corr-1")
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.Set("claims", &pkg.JWTClaims{Roles: []string{"MANAGER"}, Authorities: []string{"llm:read"}})
+
+	handler := RequireLlmRead()(func(c echo.Context) error {
+		return c.String(http.StatusOK, "ok")
+	})
+	if err := handler(c); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rec.Code)
+	}
+}
+
+func TestRequireLlmRead_RejectsWithoutAuthority(t *testing.T) {
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("X-Correlation-ID", "corr-1")
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.Set("claims", &pkg.JWTClaims{Roles: []string{"MANAGER"}})
+
+	handler := RequireLlmRead()(func(c echo.Context) error {
+		return c.String(http.StatusOK, "ok")
+	})
+	if err := handler(c); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("expected 403, got %d", rec.Code)
+	}
+}
+
+func TestRequireLlmWrite_AllowsAdmin(t *testing.T) {
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodPost, "/", nil)
+	req.Header.Set("X-Correlation-ID", "corr-1")
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.Set("claims", &pkg.JWTClaims{Roles: []string{"ADMIN"}})
+
+	handler := RequireLlmWrite()(func(c echo.Context) error {
+		return c.String(http.StatusOK, "ok")
+	})
+	if err := handler(c); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rec.Code)
+	}
+}
+
+func TestRequireLlmWrite_RejectsReadOnly(t *testing.T) {
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodPost, "/", nil)
+	req.Header.Set("X-Correlation-ID", "corr-1")
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.Set("claims", &pkg.JWTClaims{Roles: []string{"MANAGER"}, Authorities: []string{"llm:read"}})
+
+	handler := RequireLlmWrite()(func(c echo.Context) error {
+		return c.String(http.StatusOK, "ok")
+	})
+	if err := handler(c); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("expected 403, got %d", rec.Code)
+	}
+}
+
 func TestRequireAuditRead_RejectsWithoutAuthority(t *testing.T) {
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
