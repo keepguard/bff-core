@@ -68,7 +68,10 @@ func (h *CollectorAgentHandlers) ListCollectorAgentsHandler(c echo.Context) erro
 		return err
 	}
 	query := map[string]string{}
-	for _, key := range []string{"q", "enabled", "collector_type", "data_source_id", "page", "size", "sort", "dir"} {
+	for _, key := range []string{
+		"q", "enabled", "collector_type", "data_source_id",
+		"last_execution_status", "page", "size", "sort", "dir",
+	} {
 		if value := c.QueryParam(key); value != "" {
 			query[key] = value
 		}
@@ -78,6 +81,9 @@ func (h *CollectorAgentHandlers) ListCollectorAgentsHandler(c echo.Context) erro
 	}
 	if value := c.QueryParam("dataSourceId"); value != "" {
 		query["data_source_id"] = value
+	}
+	if value := c.QueryParam("lastExecutionStatus"); value != "" {
+		query["last_execution_status"] = value
 	}
 	if query["page"] == "" {
 		query["page"] = "0"
