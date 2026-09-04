@@ -55,22 +55,30 @@ type OAuthServiceRoleDTO struct {
 }
 
 type CollectorAgentRaw struct {
-	ID              string          `json:"id"`
-	Code            string          `json:"code"`
-	CompanyID       string          `json:"company_id"`
-	Name            string          `json:"name"`
-	Description     string          `json:"description"`
-	Context         string          `json:"context"`
-	CollectorType   string          `json:"collector_type"`
-	CollectorConfig json.RawMessage `json:"collector_config,omitempty"`
-	Prompt          string          `json:"prompt,omitempty"`
-	Schedule        json.RawMessage `json:"schedule,omitempty"`
-	Enabled         bool            `json:"enabled"`
-	DataSourceID    string          `json:"data_source_id,omitempty"`
-	DataSourceSlug  string          `json:"data_source_slug,omitempty"`
-	DataSourceName  string          `json:"data_source_name,omitempty"`
-	CreatedAt       string          `json:"created_at"`
-	UpdatedAt       string          `json:"updated_at"`
+	ID              string                     `json:"id"`
+	Code            string                     `json:"code"`
+	CompanyID       string                     `json:"company_id"`
+	Name            string                     `json:"name"`
+	Description     string                     `json:"description"`
+	Context         string                     `json:"context"`
+	CollectorType   string                     `json:"collector_type"`
+	CollectorConfig json.RawMessage            `json:"collector_config,omitempty"`
+	Prompt          string                     `json:"prompt,omitempty"`
+	Schedule        json.RawMessage            `json:"schedule,omitempty"`
+	Enabled         bool                       `json:"enabled"`
+	DataSourceID    string                     `json:"data_source_id,omitempty"`
+	DataSourceSlug  string                     `json:"data_source_slug,omitempty"`
+	DataSourceName  string                     `json:"data_source_name,omitempty"`
+	CreatedAt       string                     `json:"created_at"`
+	UpdatedAt       string                     `json:"updated_at"`
+	LastExecution   *CollectorLastExecutionRaw `json:"last_execution,omitempty"`
+}
+
+type CollectorLastExecutionRaw struct {
+	ID         string `json:"id"`
+	StartedAt  string `json:"started_at"`
+	FinishedAt string `json:"finished_at,omitempty"`
+	Status     string `json:"status"`
 }
 
 type CollectorAgentDTO struct {

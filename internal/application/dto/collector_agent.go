@@ -19,22 +19,30 @@ type CollectorScheduleRaw struct {
 }
 
 type CollectorAgentDetailDTO struct {
-	ID              string               `json:"id"`
-	Code            string               `json:"code"`
-	CompanyID       string               `json:"companyId"`
-	Name            string               `json:"name"`
-	Description     string               `json:"description"`
-	Context         string               `json:"context"`
-	CollectorType   string               `json:"collectorType"`
-	CollectorConfig json.RawMessage      `json:"collectorConfig"`
-	Prompt          string               `json:"prompt"`
-	Schedule        CollectorScheduleDTO `json:"schedule"`
-	Enabled         bool                 `json:"enabled"`
-	DataSourceID    string               `json:"dataSourceId,omitempty"`
-	DataSourceSlug  string               `json:"dataSourceSlug,omitempty"`
-	DataSourceName  string               `json:"dataSourceName,omitempty"`
-	CreatedAt       string               `json:"createdAt"`
-	UpdatedAt       string               `json:"updatedAt"`
+	ID              string                     `json:"id"`
+	Code            string                     `json:"code"`
+	CompanyID       string                     `json:"companyId"`
+	Name            string                     `json:"name"`
+	Description     string                     `json:"description"`
+	Context         string                     `json:"context"`
+	CollectorType   string                     `json:"collectorType"`
+	CollectorConfig json.RawMessage            `json:"collectorConfig"`
+	Prompt          string                     `json:"prompt"`
+	Schedule        CollectorScheduleDTO       `json:"schedule"`
+	Enabled         bool                       `json:"enabled"`
+	DataSourceID    string                     `json:"dataSourceId,omitempty"`
+	DataSourceSlug  string                     `json:"dataSourceSlug,omitempty"`
+	DataSourceName  string                     `json:"dataSourceName,omitempty"`
+	CreatedAt       string                     `json:"createdAt"`
+	UpdatedAt       string                     `json:"updatedAt"`
+	LastExecution   *CollectorLastExecutionDTO `json:"lastExecution,omitempty"`
+}
+
+type CollectorLastExecutionDTO struct {
+	ID         string `json:"id"`
+	StartedAt  string `json:"startedAt"`
+	FinishedAt string `json:"finishedAt,omitempty"`
+	Status     string `json:"status"`
 }
 
 type PaginatedCollectorAgents struct {
@@ -127,6 +135,19 @@ func MapCollectorAgentRaw(raw CollectorAgentRaw) CollectorAgentDetailDTO {
 		DataSourceName:  raw.DataSourceName,
 		CreatedAt:       raw.CreatedAt,
 		UpdatedAt:       raw.UpdatedAt,
+		LastExecution:   mapCollectorLastExecution(raw.LastExecution),
+	}
+}
+
+func mapCollectorLastExecution(raw *CollectorLastExecutionRaw) *CollectorLastExecutionDTO {
+	if raw == nil || raw.ID == "" && raw.Status == "" && raw.StartedAt == "" {
+		return nil
+	}
+	return &CollectorLastExecutionDTO{
+		ID:         raw.ID,
+		StartedAt:  raw.StartedAt,
+		FinishedAt: raw.FinishedAt,
+		Status:     raw.Status,
 	}
 }
 

@@ -48,6 +48,40 @@ func TestCreateCollectorAgentHandler_Created(t *testing.T) {
 	}
 }
 
+func TestListCollectorAgentsHandler_MapsLastExecution(t *testing.T) {
+	stub := &oauthStubCollector{
+		agents: []appdto.CollectorAgentRaw{{
+			ID:            "a1",
+			Name:          "Money Times RSS",
+			CollectorType: "API_REST",
+			Enabled:       true,
+			LastExecution: &appdto.CollectorLastExecutionRaw{
+				ID:        "exec-1",
+				StartedAt: "2026-09-04T02:10:00Z",
+				Status:    "SUCCESS",
+			},
+		}},
+	}
+	c, rec := oauthContext(http.MethodGet, "/api/v1/core/collector/agents", "company-1", &pkg.JWTClaims{
+		Roles:    []string{"ADMIN"},
+		TenantId: "tenant-1",
+	})
+	h := NewCollectorAgentHandlers(stub, &oauthStubCompany{id: "company-1"}, nil, nil, zap.NewNop())
+	if err := h.ListCollectorAgentsHandler(c); err != nil {
+		t.Fatal(err)
+	}
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
+	}
+	var out appdto.PaginatedCollectorAgents
+	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
+		t.Fatal(err)
+	}
+	if len(out.Content) != 1 || out.Content[0].LastExecution == nil || out.Content[0].LastExecution.Status != "SUCCESS" {
+		t.Fatalf("unexpected last execution: %+v", out.Content)
+	}
+}
+
 func TestDeleteCollectorAgentHandler_NoContent(t *testing.T) {
 	c, rec := oauthContext(http.MethodDelete, "/api/v1/core/collector/agents/a1", "company-1", &pkg.JWTClaims{
 		Roles:    []string{"ADMIN"},
