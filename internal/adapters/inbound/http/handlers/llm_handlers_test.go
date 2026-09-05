@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	appdto "github.com/keepguard/bff-core/internal/application/dto"
+	domainclient "github.com/keepguard/bff-core/internal/domain/ports/client"
 	"github.com/keepguard/bff-core/internal/pkg"
 	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
@@ -98,5 +99,33 @@ func TestCreateLlmProviderHandler_OK(t *testing.T) {
 	}
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("expected 201, got %d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+type capturingLlmClient struct {
+	stubLlmClient
+	gotBearer string
+}
+
+func (s *capturingLlmClient) CreateProvider(ctx context.Context, _, _ string, _ any) (json.RawMessage, error) {
+	s.gotBearer = domainclient.BearerTokenFromContext(ctx)
+	return json.RawMessage(`{"id":"p1"}`), nil
+}
+
+func TestCreateLlmProviderHandler_ForwardsInboundBearer(t *testing.T) {
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/core/llm/providers", strings.NewReader(`{"name":"openai"}`))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.Set("claims", &pkg.JWTClaims{Roles: []string{"ADMIN"}, TenantId: "tenant-1"})
+	c.Set("token", "user-jwt")
+	stub := &capturingLlmClient{}
+	h := NewLlmHandlers(stub, zap.NewNop())
+	if err := h.CreateLlmProviderHandler(c); err != nil {
+		t.Fatal(err)
+	}
+	if stub.gotBearer != "user-jwt" {
+		t.Fatalf("bearer=%q", stub.gotBearer)
 	}
 }

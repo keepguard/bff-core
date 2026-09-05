@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/go-resty/resty/v2"
@@ -31,8 +32,13 @@ func NewLlmClient(cfg *config.Config, logger *zap.Logger) domainclient.LlmClient
 	return &llmClient{httpClient: httpClient, baseURL: cfg.Services.Llm.BaseURL, logger: logger}
 }
 
-func (c *llmClient) headers(req *resty.Request, tenantID, correlationID string) *resty.Request {
-	return req.SetHeader("X-Tenant-Id", tenantID).SetHeader("X-Correlation-ID", correlationID)
+func (c *llmClient) headers(ctx context.Context, req *resty.Request, tenantID, correlationID string) *resty.Request {
+	req.SetContext(ctx)
+	req.SetHeader("X-Tenant-Id", tenantID).SetHeader("X-Correlation-ID", correlationID)
+	if token := strings.TrimSpace(domainclient.BearerTokenFromContext(ctx)); token != "" {
+		req.SetHeader("Authorization", "Bearer "+strings.TrimPrefix(token, "Bearer "))
+	}
+	return req
 }
 
 func (c *llmClient) ListProviders(ctx context.Context, tenantID, correlationID string) (json.RawMessage, error) {
@@ -56,7 +62,7 @@ func (c *llmClient) SetProviderEnabled(ctx context.Context, tenantID, correlatio
 }
 
 func (c *llmClient) Complete(ctx context.Context, tenantID, companyID, correlationID string, body any) (json.RawMessage, error) {
-	req := c.headers(c.httpClient.R().SetContext(ctx), tenantID, correlationID).
+	req := c.headers(ctx, c.httpClient.R(), tenantID, correlationID).
 		SetHeader("X-Company-Id", companyID).
 		SetBody(body)
 	resp, err := req.Post(c.baseURL + "/api/v1/llm/complete")
@@ -71,7 +77,7 @@ func (c *llmClient) Complete(ctx context.Context, tenantID, companyID, correlati
 
 func (c *llmClient) ListUsage(ctx context.Context, tenantID, correlationID string, query map[string]string) (appdto.PaginatedLlmUsageResponse, error) {
 	var out appdto.PaginatedLlmUsageResponse
-	req := c.headers(c.httpClient.R().SetContext(ctx), tenantID, correlationID).SetResult(&out)
+	req := c.headers(ctx, c.httpClient.R(), tenantID, correlationID).SetResult(&out)
 	for key, value := range query {
 		if value != "" {
 			req.SetQueryParam(key, value)
@@ -89,7 +95,7 @@ func (c *llmClient) ListUsage(ctx context.Context, tenantID, correlationID strin
 
 func (c *llmClient) GetUsage(ctx context.Context, tenantID, correlationID, id string) (appdto.LlmUsageResponse, error) {
 	var out appdto.LlmUsageResponse
-	resp, err := c.headers(c.httpClient.R().SetContext(ctx), tenantID, correlationID).
+	resp, err := c.headers(ctx, c.httpClient.R(), tenantID, correlationID).
 		SetResult(&out).
 		Get(c.baseURL + "/api/v1/llm/usage/" + id)
 	if err != nil {
@@ -126,7 +132,7 @@ func (c *llmClient) ListAlertFirings(ctx context.Context, tenantID, correlationI
 }
 
 func (c *llmClient) getRaw(ctx context.Context, tenantID, correlationID, path string, query map[string]string) (json.RawMessage, error) {
-	req := c.headers(c.httpClient.R().SetContext(ctx), tenantID, correlationID)
+	req := c.headers(ctx, c.httpClient.R(), tenantID, correlationID)
 	for key, value := range query {
 		if value != "" {
 			req.SetQueryParam(key, value)
@@ -143,7 +149,7 @@ func (c *llmClient) getRaw(ctx context.Context, tenantID, correlationID, path st
 }
 
 func (c *llmClient) sendJSON(ctx context.Context, tenantID, correlationID, method, path string, body any, want int) (json.RawMessage, error) {
-	req := c.headers(c.httpClient.R().SetContext(ctx), tenantID, correlationID)
+	req := c.headers(ctx, c.httpClient.R(), tenantID, correlationID)
 	if body != nil {
 		req.SetBody(body)
 	}

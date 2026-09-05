@@ -203,6 +203,10 @@ func (h *LlmHandlers) guard(c echo.Context) (correlationID, tenantID string, err
 			CorrelationID: correlationID,
 		})
 	}
+	if token := middlewarePkg.GetTokenFromContext(c); token != "" {
+		ctx := domainclient.WithBearerToken(c.Request().Context(), token)
+		c.SetRequest(c.Request().WithContext(ctx))
+	}
 	return correlationID, tenantID, nil
 }
 
