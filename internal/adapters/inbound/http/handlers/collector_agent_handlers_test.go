@@ -120,7 +120,7 @@ func TestCreateCollectorAgentHandler_RequiresName(t *testing.T) {
 func TestCreateCollectorAgentHandler_RejectsWithoutRole(t *testing.T) {
 	e := echo.New()
 	h := NewCollectorAgentHandlers(&oauthStubCollector{}, &oauthStubCompany{id: "company-1"}, nil, nil, zap.NewNop())
-	handler := middlewarePkg.RequireAnyRole("ADMIN", "SYSTEM")(h.CreateCollectorAgentHandler)
+	handler := middlewarePkg.RequireCollectorWrite()(h.CreateCollectorAgentHandler)
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/core/collector/agents", strings.NewReader(`{"name":"x","collectorType":"API_REST"}`))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
@@ -194,7 +194,7 @@ func TestListCollectorAgentExecutionsHandler_NotFound(t *testing.T) {
 func TestListCollectorAgentExecutionsHandler_RejectsWithoutRole(t *testing.T) {
 	e := echo.New()
 	h := NewCollectorAgentHandlers(&oauthStubCollector{}, &oauthStubCompany{id: "company-1"}, nil, nil, zap.NewNop())
-	handler := middlewarePkg.RequireAnyRole("ADMIN", "SYSTEM")(h.ListCollectorAgentExecutionsHandler)
+	handler := middlewarePkg.RequireCollectorRead()(h.ListCollectorAgentExecutionsHandler)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/core/collector/agents/a1/executions", nil)
 	rec := httptest.NewRecorder()

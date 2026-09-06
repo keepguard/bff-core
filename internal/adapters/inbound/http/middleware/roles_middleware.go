@@ -25,58 +25,22 @@ func RequireAnyRole(roles ...string) echo.MiddlewareFunc {
 	}
 }
 
-const AuthorityAuditRead = "audit:read"
-const AuthorityKnowledgeRead = "knowledge:read"
-const AuthorityLlmRead = "llm:read"
-const AuthorityLlmWrite = "llm:write"
+const (
+	AuthorityAuditRead      = "audit:read"
+	AuthorityKnowledgeRead  = "knowledge:read"
+	AuthorityLlmRead        = "llm:read"
+	AuthorityLlmWrite       = "llm:write"
+	AuthorityCollectorRead  = "collector:read"
+	AuthorityCollectorWrite = "collector:write"
+	AuthorityGuardianRead   = "guardian:read"
+	AuthorityGuardianWrite  = "guardian:write"
+	AuthorityOAuthRead      = "oauth:read"
+	AuthorityOAuthWrite     = "oauth:write"
+	AuthorityOpsRead        = "ops:read"
+)
 
-// RequireKnowledgeRead permite ADMIN, SYSTEM ou a authority knowledge:read.
-func RequireKnowledgeRead() echo.MiddlewareFunc {
-	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			correlationID := GetCorrelationID(c)
-			claims := GetClaimsFromContext(c)
-			if claims != nil && (pkg.HasAnyRole(claims.Roles, "ADMIN", "SYSTEM") || pkg.HasAuthority(claims.Authorities, AuthorityKnowledgeRead)) {
-				return next(c)
-			}
-			return c.JSON(http.StatusForbidden, pkg.ErrorResponse{
-				Error:         "FORBIDDEN",
-				Message:       "Acesso restrito a administradores ou à permissão knowledge:read",
-				CorrelationID: correlationID,
-			})
-		}
-	}
-}
-
-// RequireAuditRead permite ADMIN, SYSTEM ou a authority audit:read.
-func RequireAuditRead() echo.MiddlewareFunc {
-	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			correlationID := GetCorrelationID(c)
-			claims := GetClaimsFromContext(c)
-			if claims != nil && (pkg.HasAnyRole(claims.Roles, "ADMIN", "SYSTEM") || pkg.HasAuthority(claims.Authorities, AuthorityAuditRead)) {
-				return next(c)
-			}
-			return c.JSON(http.StatusForbidden, pkg.ErrorResponse{
-				Error:         "FORBIDDEN",
-				Message:       "Acesso restrito a administradores ou à permissão audit:read",
-				CorrelationID: correlationID,
-			})
-		}
-	}
-}
-
-// RequireLlmRead permite ADMIN, SYSTEM ou a authority llm:read.
-func RequireLlmRead() echo.MiddlewareFunc {
-	return requireLlmAuthority(AuthorityLlmRead, "Acesso restrito a administradores ou à permissão llm:read")
-}
-
-// RequireLlmWrite permite ADMIN, SYSTEM ou a authority llm:write.
-func RequireLlmWrite() echo.MiddlewareFunc {
-	return requireLlmAuthority(AuthorityLlmWrite, "Acesso restrito a administradores ou à permissão llm:write")
-}
-
-func requireLlmAuthority(authority, message string) echo.MiddlewareFunc {
+func RequireAuthority(authority string) echo.MiddlewareFunc {
+	message := "Acesso restrito a administradores ou à permissão " + authority
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			correlationID := GetCorrelationID(c)
@@ -91,4 +55,48 @@ func requireLlmAuthority(authority, message string) echo.MiddlewareFunc {
 			})
 		}
 	}
+}
+
+func RequireKnowledgeRead() echo.MiddlewareFunc {
+	return RequireAuthority(AuthorityKnowledgeRead)
+}
+
+func RequireAuditRead() echo.MiddlewareFunc {
+	return RequireAuthority(AuthorityAuditRead)
+}
+
+func RequireLlmRead() echo.MiddlewareFunc {
+	return RequireAuthority(AuthorityLlmRead)
+}
+
+func RequireLlmWrite() echo.MiddlewareFunc {
+	return RequireAuthority(AuthorityLlmWrite)
+}
+
+func RequireCollectorRead() echo.MiddlewareFunc {
+	return RequireAuthority(AuthorityCollectorRead)
+}
+
+func RequireCollectorWrite() echo.MiddlewareFunc {
+	return RequireAuthority(AuthorityCollectorWrite)
+}
+
+func RequireGuardianRead() echo.MiddlewareFunc {
+	return RequireAuthority(AuthorityGuardianRead)
+}
+
+func RequireGuardianWrite() echo.MiddlewareFunc {
+	return RequireAuthority(AuthorityGuardianWrite)
+}
+
+func RequireOAuthRead() echo.MiddlewareFunc {
+	return RequireAuthority(AuthorityOAuthRead)
+}
+
+func RequireOAuthWrite() echo.MiddlewareFunc {
+	return RequireAuthority(AuthorityOAuthWrite)
+}
+
+func RequireOpsRead() echo.MiddlewareFunc {
+	return RequireAuthority(AuthorityOpsRead)
 }

@@ -116,7 +116,7 @@ func (s *serverImpl) SetupRoutes(handlers Handler) {
 	userGroup.POST("/user-consents/accept-batch", handlers.AcceptBatchHandler, s.jwt.Middleware(), rl.Limit("consents", rules.Consents))
 	userGroup.GET("/core/connections/health", handlers.GetConnectionsHealthHandler,
 		s.jwt.Middleware(),
-		middlewarePkg.RequireAnyRole("ADMIN", "SYSTEM"),
+		middlewarePkg.RequireOpsRead(),
 		rl.Limit("connections_health", rules.ConnectionsHealth),
 	)
 	// /api/v1/core/audits usa o PathPrefix já publicado no Traefik.
@@ -131,70 +131,81 @@ func (s *serverImpl) SetupRoutes(handlers Handler) {
 	userGroup.GET("/audits", handlers.ListAuditsHandler, auditRead...)
 	userGroup.GET("/audits/:eventId", handlers.GetAuditHandler, auditRead...)
 
-	guardianAdmin := []echo.MiddlewareFunc{
+	guardianRead := []echo.MiddlewareFunc{
 		s.jwt.Middleware(),
-		middlewarePkg.RequireAnyRole("ADMIN", "SYSTEM"),
+		middlewarePkg.RequireGuardianRead(),
 		rl.Limit("guardian", rules.Guardian),
 	}
-	userGroup.GET("/core/guardian/incidents", handlers.ListGuardianIncidentsHandler, guardianAdmin...)
-	userGroup.GET("/core/guardian/incidents/:id", handlers.GetGuardianIncidentHandler, guardianAdmin...)
-	userGroup.POST("/core/guardian/incidents/:id/actions", handlers.ExecuteGuardianActionHandler, guardianAdmin...)
-	userGroup.GET("/core/guardian/alert-recipients", handlers.ListGuardianRecipientsHandler, guardianAdmin...)
-	userGroup.PUT("/core/guardian/alert-recipients", handlers.UpsertGuardianRecipientHandler, guardianAdmin...)
-	userGroup.PATCH("/core/guardian/alert-recipients/:id", handlers.PatchGuardianRecipientHandler, guardianAdmin...)
-
-	oauthAdmin := []echo.MiddlewareFunc{
+	guardianWrite := []echo.MiddlewareFunc{
 		s.jwt.Middleware(),
-		middlewarePkg.RequireAnyRole("ADMIN", "SYSTEM"),
+		middlewarePkg.RequireGuardianWrite(),
 		rl.Limit("guardian", rules.Guardian),
 	}
-	userGroup.GET("/core/oauth/clients", handlers.ListOAuthClientsHandler, oauthAdmin...)
-	userGroup.GET("/core/oauth/clients/service-roles", handlers.ListOAuthServiceRolesHandler, oauthAdmin...)
-	userGroup.GET("/core/oauth/clients/:id", handlers.GetOAuthClientHandler, oauthAdmin...)
-	userGroup.POST("/core/oauth/clients", handlers.CreateOAuthClientHandler, oauthAdmin...)
-	userGroup.PUT("/core/oauth/clients/:id", handlers.UpdateOAuthClientHandler, oauthAdmin...)
-	userGroup.POST("/core/oauth/clients/:id/block", handlers.BlockOAuthClientHandler, oauthAdmin...)
-	userGroup.POST("/core/oauth/clients/:id/unblock", handlers.UnblockOAuthClientHandler, oauthAdmin...)
-	userGroup.DELETE("/core/oauth/clients/:id", handlers.DeleteOAuthClientHandler, oauthAdmin...)
+	userGroup.GET("/core/guardian/incidents", handlers.ListGuardianIncidentsHandler, guardianRead...)
+	userGroup.GET("/core/guardian/incidents/:id", handlers.GetGuardianIncidentHandler, guardianRead...)
+	userGroup.GET("/core/guardian/alert-recipients", handlers.ListGuardianRecipientsHandler, guardianRead...)
+	userGroup.POST("/core/guardian/incidents/:id/actions", handlers.ExecuteGuardianActionHandler, guardianWrite...)
+	userGroup.PUT("/core/guardian/alert-recipients", handlers.UpsertGuardianRecipientHandler, guardianWrite...)
+	userGroup.PATCH("/core/guardian/alert-recipients/:id", handlers.PatchGuardianRecipientHandler, guardianWrite...)
 
-	collectorAdmin := []echo.MiddlewareFunc{
+	oauthRead := []echo.MiddlewareFunc{
 		s.jwt.Middleware(),
-		middlewarePkg.RequireAnyRole("ADMIN", "SYSTEM"),
+		middlewarePkg.RequireOAuthRead(),
+		rl.Limit("guardian", rules.Guardian),
+	}
+	oauthWrite := []echo.MiddlewareFunc{
+		s.jwt.Middleware(),
+		middlewarePkg.RequireOAuthWrite(),
+		rl.Limit("guardian", rules.Guardian),
+	}
+	userGroup.GET("/core/oauth/clients", handlers.ListOAuthClientsHandler, oauthRead...)
+	userGroup.GET("/core/oauth/clients/service-roles", handlers.ListOAuthServiceRolesHandler, oauthRead...)
+	userGroup.GET("/core/oauth/clients/:id", handlers.GetOAuthClientHandler, oauthRead...)
+	userGroup.POST("/core/oauth/clients", handlers.CreateOAuthClientHandler, oauthWrite...)
+	userGroup.PUT("/core/oauth/clients/:id", handlers.UpdateOAuthClientHandler, oauthWrite...)
+	userGroup.POST("/core/oauth/clients/:id/block", handlers.BlockOAuthClientHandler, oauthWrite...)
+	userGroup.POST("/core/oauth/clients/:id/unblock", handlers.UnblockOAuthClientHandler, oauthWrite...)
+	userGroup.DELETE("/core/oauth/clients/:id", handlers.DeleteOAuthClientHandler, oauthWrite...)
+
+	collectorRead := []echo.MiddlewareFunc{
+		s.jwt.Middleware(),
+		middlewarePkg.RequireCollectorRead(),
 		rl.Limit("collector", rules.Collector),
 	}
-	collectorIncidents := []echo.MiddlewareFunc{
+	collectorWrite := []echo.MiddlewareFunc{
 		s.jwt.Middleware(),
-		middlewarePkg.RequireAnyRole("ADMIN", "MANAGER"),
+		middlewarePkg.RequireCollectorWrite(),
 		rl.Limit("collector", rules.Collector),
 	}
-	userGroup.GET("/core/collector/agents", handlers.ListCollectorAgentsHandler, collectorAdmin...)
-	userGroup.POST("/core/collector/agents", handlers.CreateCollectorAgentHandler, collectorAdmin...)
-	userGroup.POST("/core/collector/agents/bulk", handlers.BulkCollectorAgentsHandler, collectorAdmin...)
-	userGroup.GET("/core/collector/agents/bulk-operations/active", handlers.GetCollectorActiveBulkOperationHandler, collectorAdmin...)
-	userGroup.GET("/core/collector/agents/bulk-operations/:id", handlers.GetCollectorBulkOperationHandler, collectorAdmin...)
-	userGroup.GET("/core/collector/agents/:id", handlers.GetCollectorAgentHandler, collectorAdmin...)
-	userGroup.PUT("/core/collector/agents/:id", handlers.UpdateCollectorAgentHandler, collectorAdmin...)
-	userGroup.POST("/core/collector/agents/:id/enable", handlers.EnableCollectorAgentHandler, collectorAdmin...)
-	userGroup.POST("/core/collector/agents/:id/disable", handlers.DisableCollectorAgentHandler, collectorAdmin...)
-	userGroup.POST("/core/collector/agents/:id/test", handlers.TestCollectorAgentHandler, collectorAdmin...)
-	userGroup.POST("/core/collector/agents/:id/run", handlers.RunCollectorAgentHandler, collectorAdmin...)
-	userGroup.GET("/core/collector/agents/:id/executions", handlers.ListCollectorAgentExecutionsHandler, collectorAdmin...)
-	userGroup.GET("/core/collector/executions/:executionId/payloads", handlers.GetCollectorExecutionPayloadsHandler, collectorAdmin...)
-	userGroup.GET("/core/collector/data-sources", handlers.ListCollectorDataSourcesHandler, collectorAdmin...)
-	userGroup.POST("/core/collector/data-sources", handlers.CreateCollectorDataSourceHandler, collectorAdmin...)
-	userGroup.GET("/core/collector/data-sources/:id", handlers.GetCollectorDataSourceHandler, collectorAdmin...)
-	userGroup.PUT("/core/collector/data-sources/:id", handlers.UpdateCollectorDataSourceHandler, collectorAdmin...)
-	userGroup.POST("/core/collector/data-sources/:id/enable", handlers.EnableCollectorDataSourceHandler, collectorAdmin...)
-	userGroup.POST("/core/collector/data-sources/:id/disable", handlers.DisableCollectorDataSourceHandler, collectorAdmin...)
-	userGroup.POST("/core/collector/data-sources/:id/propagate", handlers.PropagateCollectorDataSourceHandler, collectorAdmin...)
-	userGroup.DELETE("/core/collector/data-sources/:id", handlers.DeleteCollectorDataSourceHandler, collectorAdmin...)
-	userGroup.GET("/core/collector/incidents", handlers.ListCollectorIncidentsHandler, collectorIncidents...)
-	userGroup.GET("/core/collector/agents/:id/incidents", handlers.ListCollectorAgentIncidentsHandler, collectorIncidents...)
-	userGroup.POST("/core/collector/incidents/:id/acknowledge", handlers.AcknowledgeCollectorIncidentHandler, collectorIncidents...)
-	userGroup.POST("/core/collector/incidents/:id/resolve", handlers.ResolveCollectorIncidentHandler, collectorIncidents...)
-	userGroup.GET("/core/collector/incidents/:id/suggestion", handlers.GetCollectorIncidentSuggestionHandler, collectorIncidents...)
-	userGroup.POST("/core/collector/incidents/:id/apply-successor", handlers.ApplyCollectorIncidentSuccessorHandler, collectorIncidents...)
-	userGroup.DELETE("/core/collector/agents/:id", handlers.DeleteCollectorAgentHandler, collectorAdmin...)
+	userGroup.GET("/core/collector/agents", handlers.ListCollectorAgentsHandler, collectorRead...)
+	userGroup.GET("/core/collector/agents/bulk-operations/active", handlers.GetCollectorActiveBulkOperationHandler, collectorRead...)
+	userGroup.GET("/core/collector/agents/bulk-operations/:id", handlers.GetCollectorBulkOperationHandler, collectorRead...)
+	userGroup.GET("/core/collector/agents/:id", handlers.GetCollectorAgentHandler, collectorRead...)
+	userGroup.GET("/core/collector/agents/:id/executions", handlers.ListCollectorAgentExecutionsHandler, collectorRead...)
+	userGroup.GET("/core/collector/executions/:executionId/payloads", handlers.GetCollectorExecutionPayloadsHandler, collectorRead...)
+	userGroup.GET("/core/collector/data-sources", handlers.ListCollectorDataSourcesHandler, collectorRead...)
+	userGroup.GET("/core/collector/data-sources/:id", handlers.GetCollectorDataSourceHandler, collectorRead...)
+	userGroup.GET("/core/collector/incidents", handlers.ListCollectorIncidentsHandler, collectorRead...)
+	userGroup.GET("/core/collector/agents/:id/incidents", handlers.ListCollectorAgentIncidentsHandler, collectorRead...)
+	userGroup.GET("/core/collector/incidents/:id/suggestion", handlers.GetCollectorIncidentSuggestionHandler, collectorRead...)
+
+	userGroup.POST("/core/collector/agents", handlers.CreateCollectorAgentHandler, collectorWrite...)
+	userGroup.POST("/core/collector/agents/bulk", handlers.BulkCollectorAgentsHandler, collectorWrite...)
+	userGroup.PUT("/core/collector/agents/:id", handlers.UpdateCollectorAgentHandler, collectorWrite...)
+	userGroup.POST("/core/collector/agents/:id/enable", handlers.EnableCollectorAgentHandler, collectorWrite...)
+	userGroup.POST("/core/collector/agents/:id/disable", handlers.DisableCollectorAgentHandler, collectorWrite...)
+	userGroup.POST("/core/collector/agents/:id/test", handlers.TestCollectorAgentHandler, collectorWrite...)
+	userGroup.POST("/core/collector/agents/:id/run", handlers.RunCollectorAgentHandler, collectorWrite...)
+	userGroup.DELETE("/core/collector/agents/:id", handlers.DeleteCollectorAgentHandler, collectorWrite...)
+	userGroup.POST("/core/collector/data-sources", handlers.CreateCollectorDataSourceHandler, collectorWrite...)
+	userGroup.PUT("/core/collector/data-sources/:id", handlers.UpdateCollectorDataSourceHandler, collectorWrite...)
+	userGroup.POST("/core/collector/data-sources/:id/enable", handlers.EnableCollectorDataSourceHandler, collectorWrite...)
+	userGroup.POST("/core/collector/data-sources/:id/disable", handlers.DisableCollectorDataSourceHandler, collectorWrite...)
+	userGroup.POST("/core/collector/data-sources/:id/propagate", handlers.PropagateCollectorDataSourceHandler, collectorWrite...)
+	userGroup.DELETE("/core/collector/data-sources/:id", handlers.DeleteCollectorDataSourceHandler, collectorWrite...)
+	userGroup.POST("/core/collector/incidents/:id/acknowledge", handlers.AcknowledgeCollectorIncidentHandler, collectorWrite...)
+	userGroup.POST("/core/collector/incidents/:id/resolve", handlers.ResolveCollectorIncidentHandler, collectorWrite...)
+	userGroup.POST("/core/collector/incidents/:id/apply-successor", handlers.ApplyCollectorIncidentSuccessorHandler, collectorWrite...)
 
 	knowledgeAdmin := []echo.MiddlewareFunc{
 		s.jwt.Middleware(),
