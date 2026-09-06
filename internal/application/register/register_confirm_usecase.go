@@ -269,7 +269,8 @@ func (uc *registerConfirmUseCaseImpl) buildRegisterConfirmSaga() saga.InMemorySa
 					return uc.userConsentClient.DeleteAllByUserId(ctx, user.ID, command.TenantId, command.CorrelationID)
 				},
 				MaxRetries: 1, // Sem retry - delegado ao decorator se necessário
-				Timeout:    5 * time.Second,
+				// accept-all no ms-user-consents costuma levar ~4s+; 5s gerava falso timeout e retries sem sessão Redis
+				Timeout: 30 * time.Second,
 			},
 			// Step 7: Fazer Login (gera token, sem compensação)
 			{
@@ -297,7 +298,7 @@ func (uc *registerConfirmUseCaseImpl) buildRegisterConfirmSaga() saga.InMemorySa
 				},
 				Compensate: nil, // token expira naturalmente
 				MaxRetries: 1,   // Sem retry - delegado ao decorator se necessário
-				Timeout:    5 * time.Second,
+				Timeout:    15 * time.Second,
 			},
 		},
 	}
