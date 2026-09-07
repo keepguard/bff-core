@@ -63,6 +63,9 @@ spec:
         - name: KEEPGUARD_VALIDATION_MODERATION_ENABLED
           value: "false"
         ports:
-        - containerPort: {{ .Values.service.port }}
+        - name: http
+          containerPort: {{ .Values.service.port }}
+        - name: metrics
+          containerPort: {{ .Values.service.metricsPort }}
         resources:
           {{- toYaml .Values.resources | nindent 10 }}

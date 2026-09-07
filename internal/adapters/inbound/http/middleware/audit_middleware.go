@@ -7,7 +7,9 @@ import (
 	"strings"
 	"time"
 
+	client "github.com/keepguard/bff-core/internal/application/port"
 	auditport "github.com/keepguard/bff-core/internal/domain/ports/audit"
+	"github.com/keepguard/bff-core/internal/pkg"
 	"github.com/labstack/echo/v4"
 )
 
@@ -25,17 +27,19 @@ func AuditMiddleware(publisher auditport.EventPublisher, sourceService string) e
 			if shouldSkipAudit(c.Request().Method, path) {
 				return err
 			}
-			if domainCoveredByMS(path) {
+			status := c.Response().Status
+			denied := status == http.StatusForbidden || status == http.StatusUnauthorized
+			if !privilegedAuditRead(path) && domainCoveredByMS(path) && !denied {
 				return err
 			}
-			status := c.Response().Status
 			outcome := "SUCCESS"
 			if status >= 400 {
 				outcome = "FAILURE"
 			}
-			if status == http.StatusForbidden || status == http.StatusUnauthorized {
+			if denied {
 				outcome = "DENIED"
 			}
+			codeUser, tenantID, companyID, deviceID := auditIdentity(c)
 			event := auditport.Event{
 				EventID:       newAuditUUID(),
 				OccurredAt:    time.Now().UTC().Format(time.RFC3339),
@@ -43,17 +47,26 @@ func AuditMiddleware(publisher auditport.EventPublisher, sourceService string) e
 				SourceService: sourceService,
 				CorrelationID: GetCorrelationID(c),
 				RequestID:     c.Response().Header().Get(echo.HeaderXRequestID),
-				TenantID:      c.Request().Header.Get("X-Tenant-Id"),
-				CompanyID:     c.Request().Header.Get("X-Company-Id"),
+				TenantID:      tenantID,
+				CompanyID:     companyID,
 				Actor: auditport.Actor{
-					Type:     actorType(c.Request().Header.Get("X-User-ID")),
-					CodeUser: c.Request().Header.Get("X-User-ID"),
+					Type:     actorType(codeUser),
+					CodeUser: codeUser,
 					ClientIP: c.RealIP(),
+					DeviceID: deviceID,
 				},
 				Action:   mapAuditAction(c.Request().Method, path),
 				Resource: auditport.Resource{Type: "HTTP", ID: path},
 				Outcome:  outcome,
 				Metadata: map[string]any{"method": c.Request().Method, "status": status},
+			}
+			if strings.Contains(path, "/core/audits") || strings.HasSuffix(path, "/audits") || strings.Contains(path, "/audits/") {
+				event.Action = "AUDIT_READ"
+				event.Resource = auditport.Resource{Type: "AUDIT_EVENT", ID: strings.TrimSpace(c.Param("eventId"))}
+			}
+			if strings.Contains(path, "/oauth/clients/") && c.Request().Method == http.MethodGet {
+				event.Action = "OAUTH_CLIENT_READ"
+				event.Resource = auditport.Resource{Type: "OAUTH_CLIENT", ID: strings.TrimSpace(c.Param("id"))}
 			}
 			publisher.Publish(c.Request().Context(), event)
 			return err
@@ -65,7 +78,20 @@ func shouldSkipAudit(method, path string) bool {
 	if path == "/health" || strings.HasPrefix(path, "/swagger") || path == "/metrics" {
 		return true
 	}
-	if method == http.MethodGet || method == http.MethodOptions || method == http.MethodHead {
+	if method == http.MethodOptions || method == http.MethodHead {
+		return true
+	}
+	if method == http.MethodGet {
+		return !privilegedAuditRead(path)
+	}
+	return false
+}
+
+func privilegedAuditRead(path string) bool {
+	if strings.Contains(path, "/core/audits") || path == "/api/v1/audits" || strings.HasPrefix(path, "/api/v1/audits/") {
+		return true
+	}
+	if strings.Contains(path, "/core/oauth/clients/") && !strings.Contains(path, "/service-roles") {
 		return true
 	}
 	return false
@@ -80,6 +106,16 @@ func domainCoveredByMS(path string) bool {
 	case strings.Contains(path, "/register/resend"):
 		return true
 	case strings.Contains(path, "/user-consents/accept"):
+		return true
+	case strings.Contains(path, "/core/collector"):
+		return true
+	case strings.Contains(path, "/core/oauth"):
+		return true
+	case strings.Contains(path, "/core/guardian"):
+		return true
+	case strings.Contains(path, "/core/knowledge/ask"):
+		return true
+	case strings.Contains(path, "/core/llm"):
 		return true
 	default:
 		return false
@@ -96,9 +132,49 @@ func mapAuditAction(method, path string) string {
 		return "REGISTER_RESEND"
 	case strings.Contains(path, "/user-consents/accept"):
 		return "ACCEPT_CONSENTS"
+	case strings.Contains(path, "/core/audits") || strings.Contains(path, "/audits"):
+		return "AUDIT_READ"
 	default:
 		return method + "_" + strings.Trim(path, "/")
 	}
+}
+
+func auditIdentity(c echo.Context) (codeUser, tenantID, companyID, deviceID string) {
+	claims := GetClaimsFromContext(c)
+	if claims == nil {
+		authHeader := c.Request().Header.Get("Authorization")
+		if strings.HasPrefix(authHeader, "Bearer ") {
+			claims, _ = pkg.ExtractAllClaims(authHeader)
+		}
+	}
+	if claims != nil {
+		codeUser = firstNonBlank(claims.CodeUser, claims.Sub, claims.UserID)
+		tenantID = strings.TrimSpace(claims.TenantId)
+		deviceID = strings.TrimSpace(claims.DeviceID)
+	}
+	if codeUser == "" {
+		codeUser = strings.TrimSpace(GetUserIDFromContext(c))
+	}
+	if tenantID == "" {
+		tenantID = ResolveTenantId(c, claims)
+	}
+	companyID = client.CompanyIDFromContext(c.Request().Context())
+	if companyID == "" {
+		companyID = strings.TrimSpace(c.Request().Header.Get("X-Company-Id"))
+	}
+	if deviceID == "" {
+		deviceID = strings.TrimSpace(c.Request().Header.Get("X-Device-Id"))
+	}
+	return codeUser, tenantID, companyID, deviceID
+}
+
+func firstNonBlank(values ...string) string {
+	for _, v := range values {
+		if strings.TrimSpace(v) != "" {
+			return strings.TrimSpace(v)
+		}
+	}
+	return ""
 }
 
 func actorType(codeUser string) string {
