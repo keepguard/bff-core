@@ -10,11 +10,16 @@ import (
 
 	companyDto "github.com/keepguard/bff-core/internal/adapters/outbound/http/dto/company"
 	appdto "github.com/keepguard/bff-core/internal/application/dto"
-	"github.com/keepguard/bff-core/internal/domain/ports/client"
+	appoauth "github.com/keepguard/bff-core/internal/application/oauth"
+	client "github.com/keepguard/bff-core/internal/application/port"
 	"github.com/keepguard/bff-core/internal/pkg"
 	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
 )
+
+func testOAuthHandlers(oauthClient client.OAuthClientClient, company client.CompanyClient, collector client.CollectorClient, _ *zap.Logger) *OAuthClientHandlers {
+	return NewOAuthClientHandlers(appoauth.NewOAuthPort(oauthClient, company, collector, zap.NewNop()), zap.NewNop())
+}
 
 type stubOAuthClient struct {
 	blocked   bool
@@ -370,7 +375,7 @@ func TestListOAuthClientsHandler_UsesCompanyFromJWTContext(t *testing.T) {
 		Roles:    []string{"ADMIN"},
 		TenantId: "tenant-1",
 	})
-	h := NewOAuthClientHandlers(&stubOAuthClient{}, &oauthStubCompany{id: "company-1"}, &oauthStubCollector{}, zap.NewNop())
+	h := testOAuthHandlers(&stubOAuthClient{}, &oauthStubCompany{id: "company-1"}, &oauthStubCollector{}, zap.NewNop())
 	if err := h.ListOAuthClientsHandler(c); err != nil {
 		t.Fatal(err)
 	}
@@ -384,7 +389,7 @@ func TestListOAuthClientsHandler_ResolvesCompanyFromJWTWhenContextEmpty(t *testi
 		Roles:    []string{"ADMIN"},
 		TenantId: "tenant-1",
 	})
-	h := NewOAuthClientHandlers(&stubOAuthClient{}, &oauthStubCompany{id: "company-from-jwt"}, &oauthStubCollector{}, zap.NewNop())
+	h := testOAuthHandlers(&stubOAuthClient{}, &oauthStubCompany{id: "company-from-jwt"}, &oauthStubCollector{}, zap.NewNop())
 	if err := h.ListOAuthClientsHandler(c); err != nil {
 		t.Fatal(err)
 	}
@@ -395,7 +400,7 @@ func TestListOAuthClientsHandler_ResolvesCompanyFromJWTWhenContextEmpty(t *testi
 
 func TestListOAuthClientsHandler_RequiresJWTTenant(t *testing.T) {
 	c, rec := oauthContext(http.MethodGet, "/api/v1/core/oauth/clients", "", &pkg.JWTClaims{Roles: []string{"ADMIN"}})
-	h := NewOAuthClientHandlers(&stubOAuthClient{}, &oauthStubCompany{id: "company-1"}, &oauthStubCollector{}, zap.NewNop())
+	h := testOAuthHandlers(&stubOAuthClient{}, &oauthStubCompany{id: "company-1"}, &oauthStubCollector{}, zap.NewNop())
 	if err := h.ListOAuthClientsHandler(c); err != nil {
 		t.Fatal(err)
 	}
@@ -415,7 +420,7 @@ func TestBlockOAuthClientHandler_DisablesEnabledAgents(t *testing.T) {
 		{ID: "a1", Name: "Coletor A", Enabled: true, CollectorType: "API_REST"},
 		{ID: "a2", Name: "Coletor B", Enabled: false, CollectorType: "HTML_SCRAPER"},
 	}}
-	h := NewOAuthClientHandlers(&stubOAuthClient{}, &oauthStubCompany{id: "company-1"}, collector, zap.NewNop())
+	h := testOAuthHandlers(&stubOAuthClient{}, &oauthStubCompany{id: "company-1"}, collector, zap.NewNop())
 	if err := h.BlockOAuthClientHandler(c); err != nil {
 		t.Fatal(err)
 	}
@@ -437,7 +442,7 @@ func TestUnblockOAuthClientHandler_DoesNotDisableAgents(t *testing.T) {
 	collector := &oauthStubCollector{agents: []appdto.CollectorAgentRaw{
 		{ID: "a1", Name: "Coletor A", Enabled: true},
 	}}
-	h := NewOAuthClientHandlers(&stubOAuthClient{}, &oauthStubCompany{id: "company-1"}, collector, zap.NewNop())
+	h := testOAuthHandlers(&stubOAuthClient{}, &oauthStubCompany{id: "company-1"}, collector, zap.NewNop())
 	if err := h.UnblockOAuthClientHandler(c); err != nil {
 		t.Fatal(err)
 	}
@@ -461,7 +466,7 @@ func TestDeleteOAuthClientHandler_DisablesEnabledAgents(t *testing.T) {
 		{ID: "a3", Enabled: true},
 	}}
 	oauth := &stubOAuthClient{}
-	h := NewOAuthClientHandlers(oauth, &oauthStubCompany{id: "company-1"}, collector, zap.NewNop())
+	h := testOAuthHandlers(oauth, &oauthStubCompany{id: "company-1"}, collector, zap.NewNop())
 	if err := h.DeleteOAuthClientHandler(c); err != nil {
 		t.Fatal(err)
 	}
@@ -486,7 +491,7 @@ func TestGetOAuthClientHandler_ReturnsClientWithoutAgents(t *testing.T) {
 	collector := &oauthStubCollector{
 		agents: []appdto.CollectorAgentRaw{{ID: "a1", Name: "Coletor A", Enabled: true, CollectorType: "API_REST"}},
 	}
-	h := NewOAuthClientHandlers(&stubOAuthClient{}, &oauthStubCompany{id: "company-1"}, collector, zap.NewNop())
+	h := testOAuthHandlers(&stubOAuthClient{}, &oauthStubCompany{id: "company-1"}, collector, zap.NewNop())
 	if err := h.GetOAuthClientHandler(c); err != nil {
 		t.Fatal(err)
 	}
@@ -512,7 +517,7 @@ func TestGetOAuthClientHandler_IgnoresCollectorAvailability(t *testing.T) {
 	})
 	c.SetParamNames("id")
 	c.SetParamValues("c1")
-	h := NewOAuthClientHandlers(&stubOAuthClient{}, &oauthStubCompany{id: "company-1"}, &oauthStubCollector{
+	h := testOAuthHandlers(&stubOAuthClient{}, &oauthStubCompany{id: "company-1"}, &oauthStubCollector{
 		listErr: echo.NewHTTPError(http.StatusBadGateway, "collector down"),
 	}, zap.NewNop())
 	if err := h.GetOAuthClientHandler(c); err != nil {
@@ -535,7 +540,7 @@ func TestListOAuthServiceRolesHandler_ReturnsCatalog(t *testing.T) {
 		Roles:    []string{"ADMIN"},
 		TenantId: "tenant-1",
 	})
-	h := NewOAuthClientHandlers(&stubOAuthClient{}, &oauthStubCompany{id: "company-1"}, &oauthStubCollector{}, zap.NewNop())
+	h := testOAuthHandlers(&stubOAuthClient{}, &oauthStubCompany{id: "company-1"}, &oauthStubCollector{}, zap.NewNop())
 	if err := h.ListOAuthServiceRolesHandler(c); err != nil {
 		t.Fatal(err)
 	}
@@ -560,7 +565,7 @@ func TestCreateOAuthClientHandler_RequiresRoleID(t *testing.T) {
 	c := e.NewContext(req, rec)
 	c.Set("claims", &pkg.JWTClaims{Roles: []string{"ADMIN"}, TenantId: "tenant-1"})
 	c.Set("token", "jwt-token")
-	h := NewOAuthClientHandlers(&stubOAuthClient{}, &oauthStubCompany{id: "company-1"}, &oauthStubCollector{}, zap.NewNop())
+	h := testOAuthHandlers(&stubOAuthClient{}, &oauthStubCompany{id: "company-1"}, &oauthStubCollector{}, zap.NewNop())
 	if err := h.CreateOAuthClientHandler(c); err != nil {
 		t.Fatal(err)
 	}
@@ -583,7 +588,7 @@ func TestUpdateOAuthClientHandler_RequiresRoleID(t *testing.T) {
 	c.SetParamValues("c1")
 	c.Set("claims", &pkg.JWTClaims{Roles: []string{"ADMIN"}, TenantId: "tenant-1"})
 	c.Set("token", "jwt-token")
-	h := NewOAuthClientHandlers(&stubOAuthClient{}, &oauthStubCompany{id: "company-1"}, &oauthStubCollector{}, zap.NewNop())
+	h := testOAuthHandlers(&stubOAuthClient{}, &oauthStubCompany{id: "company-1"}, &oauthStubCollector{}, zap.NewNop())
 	if err := h.UpdateOAuthClientHandler(c); err != nil {
 		t.Fatal(err)
 	}
@@ -609,7 +614,7 @@ func TestUpdateOAuthClientHandler_ValidBodyDoesNotDisableAgents(t *testing.T) {
 	collector := &oauthStubCollector{agents: []appdto.CollectorAgentRaw{
 		{ID: "a1", Name: "Coletor A", Enabled: true},
 	}}
-	h := NewOAuthClientHandlers(&stubOAuthClient{}, &oauthStubCompany{id: "company-1"}, collector, zap.NewNop())
+	h := testOAuthHandlers(&stubOAuthClient{}, &oauthStubCompany{id: "company-1"}, collector, zap.NewNop())
 	if err := h.UpdateOAuthClientHandler(c); err != nil {
 		t.Fatal(err)
 	}

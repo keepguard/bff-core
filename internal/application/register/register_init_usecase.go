@@ -1,13 +1,12 @@
 package register
 
 import (
+	"context"
 	"fmt"
 
-	"github.com/keepguard/bff-core/internal/adapters/inbound/http/dto"
-	userDto "github.com/keepguard/bff-core/internal/adapters/outbound/http/dto/user"
 	appdto "github.com/keepguard/bff-core/internal/application/dto"
+	client "github.com/keepguard/bff-core/internal/application/port"
 	"github.com/keepguard/bff-core/internal/domain/enums"
-	"github.com/keepguard/bff-core/internal/domain/ports/client"
 	"github.com/keepguard/bff-core/internal/domain/ports/messaging"
 	"go.uber.org/zap"
 )
@@ -42,16 +41,16 @@ func NewRegisterInitUseCase(
 }
 
 // Execute executa o caso de uso de inicialização de registro
-func (uc *registerInitUseCaseImpl) Execute(command appdto.RegisterInitCommand) (dto.RegisterInitResponseDTO, error) {
+func (uc *registerInitUseCaseImpl) Execute(ctx context.Context, command appdto.RegisterInitCommand) (appdto.RegisterInitViewDTO, error) {
 
 	// Passo 1: Verificar se a empresa existe consultando o Company Service
-	company, err := uc.companyClient.GetByTenantId(command.Context, command.TenantId, command.CorrelationID)
+	company, err := uc.companyClient.GetByTenantId(ctx, command.TenantId, command.CorrelationID)
 	if err != nil {
-		return dto.RegisterInitResponseDTO{}, err
+		return appdto.RegisterInitViewDTO{}, err
 	}
 
 	// Passo 2: Criar requisição de registro
-	registerRequest := userDto.MSUserRegisterInitRequestDTO{
+	registerRequest := appdto.MSUserRegisterInitRequestDTO{
 		CompanyID:                  company.ID,
 		Email:                      command.Email,
 		NameFull:                   command.NameFull,
@@ -66,9 +65,9 @@ func (uc *registerInitUseCaseImpl) Execute(command appdto.RegisterInitCommand) (
 	}
 
 	// Passo 3: Inicializar registro no User Service
-	registerResponse, err := uc.userClient.InitRegister(client.WithCompanyID(command.Context, company.ID), registerRequest, command.TenantId, command.CorrelationID)
+	registerResponse, err := uc.userClient.InitRegister(client.WithCompanyID(ctx, company.ID), registerRequest, command.TenantId, command.CorrelationID)
 	if err != nil {
-		return dto.RegisterInitResponseDTO{}, err
+		return appdto.RegisterInitViewDTO{}, err
 	}
 
 	// Passo 4: Preparar variáveis para o template
@@ -123,7 +122,7 @@ func (uc *registerInitUseCaseImpl) Execute(command appdto.RegisterInitCommand) (
 						CodeUser:          registerResponse.RegistrationSessionID,
 						Variables:         emailVars,
 					}
-					_ = uc.messagePublisher.PublishMessage(command.Context, emailReq)
+					_ = uc.messagePublisher.PublishMessage(ctx, emailReq)
 					emailSent = true
 				}
 			case "SMS":
@@ -149,7 +148,7 @@ func (uc *registerInitUseCaseImpl) Execute(command appdto.RegisterInitCommand) (
 						CodeUser:          registerResponse.RegistrationSessionID,
 						Variables:         smsVars,
 					}
-					_ = uc.messagePublisher.PublishMessage(command.Context, smsReq)
+					_ = uc.messagePublisher.PublishMessage(ctx, smsReq)
 					smsSent = true
 				}
 			case "WHATSAPP":
@@ -175,7 +174,7 @@ func (uc *registerInitUseCaseImpl) Execute(command appdto.RegisterInitCommand) (
 						CodeUser:          registerResponse.RegistrationSessionID,
 						Variables:         whatsVars,
 					}
-					_ = uc.messagePublisher.PublishMessage(command.Context, whatsReq)
+					_ = uc.messagePublisher.PublishMessage(ctx, whatsReq)
 				}
 			}
 		}
@@ -193,11 +192,11 @@ func (uc *registerInitUseCaseImpl) Execute(command appdto.RegisterInitCommand) (
 			CodeUser:          registerResponse.RegistrationSessionID,
 			Variables:         interfaceVariables,
 		}
-		_ = uc.messagePublisher.PublishMessage(command.Context, messageReq)
+		_ = uc.messagePublisher.PublishMessage(ctx, messageReq)
 	}
 
 	// Passo 7: Retornar resposta com canais exigidos
-	response := dto.RegisterInitResponseDTO{
+	response := appdto.RegisterInitViewDTO{
 		RegistrationSessionID: registerResponse.RegistrationSessionID,
 		Email:                 registerResponse.Email,
 		Phone:                 command.Phone,

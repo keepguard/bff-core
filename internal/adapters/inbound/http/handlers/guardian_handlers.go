@@ -3,26 +3,27 @@ package handlers
 import (
 	"net/http"
 
+	inboundDto "github.com/keepguard/bff-core/internal/adapters/inbound/http/dto"
+	"github.com/keepguard/bff-core/internal/adapters/inbound/http/mapper"
 	middlewarePkg "github.com/keepguard/bff-core/internal/adapters/inbound/http/middleware"
-	appdto "github.com/keepguard/bff-core/internal/application/dto"
-	"github.com/keepguard/bff-core/internal/domain/ports/client"
+	"github.com/keepguard/bff-core/internal/application/guardian"
 	"github.com/keepguard/bff-core/internal/pkg"
 	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
 )
 
 type GuardianHandlers struct {
-	guardianClient client.GuardianClient
-	logger         *zap.Logger
+	guardian guardian.GuardianPort
+	logger   *zap.Logger
 }
 
-func NewGuardianHandlers(guardianClient client.GuardianClient, logger *zap.Logger) *GuardianHandlers {
-	return &GuardianHandlers{guardianClient: guardianClient, logger: logger}
+func NewGuardianHandlers(guardianPort guardian.GuardianPort, logger *zap.Logger) *GuardianHandlers {
+	return &GuardianHandlers{guardian: guardianPort, logger: logger}
 }
 
 func (h *GuardianHandlers) ListGuardianIncidentsHandler(c echo.Context) error {
 	correlationID := middlewarePkg.GetCorrelationID(c)
-	if h.guardianClient == nil {
+	if h.guardian == nil {
 		return unavailable(c, correlationID)
 	}
 	tenantID, errResp := requireTenant(c, correlationID)
@@ -38,7 +39,11 @@ func (h *GuardianHandlers) ListGuardianIncidentsHandler(c echo.Context) error {
 			query[key] = value
 		}
 	}
-	result, err := h.guardianClient.ListIncidents(c.Request().Context(), tenantID, correlationID, query)
+	result, err := h.guardian.ListIncidents(c.Request().Context(), guardian.ListIncidentsQuery{
+		TenantID:      tenantID,
+		CorrelationID: correlationID,
+		Filters:       query,
+	})
 	if err != nil {
 		h.logger.Error("Erro ao listar incidentes do Guardian", zap.String("correlationId", correlationID), zap.Error(err))
 		return handleError(c, err, correlationID)
@@ -48,14 +53,18 @@ func (h *GuardianHandlers) ListGuardianIncidentsHandler(c echo.Context) error {
 
 func (h *GuardianHandlers) GetGuardianIncidentHandler(c echo.Context) error {
 	correlationID := middlewarePkg.GetCorrelationID(c)
-	if h.guardianClient == nil {
+	if h.guardian == nil {
 		return unavailable(c, correlationID)
 	}
 	tenantID, errResp := requireTenant(c, correlationID)
 	if errResp != nil {
 		return errResp
 	}
-	result, err := h.guardianClient.GetIncident(c.Request().Context(), tenantID, correlationID, c.Param("id"))
+	result, err := h.guardian.GetIncident(c.Request().Context(), guardian.GetIncidentQuery{
+		TenantID:      tenantID,
+		CorrelationID: correlationID,
+		ID:            c.Param("id"),
+	})
 	if err != nil {
 		h.logger.Error("Erro ao buscar incidente do Guardian", zap.String("correlationId", correlationID), zap.Error(err))
 		return handleError(c, err, correlationID)
@@ -65,14 +74,14 @@ func (h *GuardianHandlers) GetGuardianIncidentHandler(c echo.Context) error {
 
 func (h *GuardianHandlers) ExecuteGuardianActionHandler(c echo.Context) error {
 	correlationID := middlewarePkg.GetCorrelationID(c)
-	if h.guardianClient == nil {
+	if h.guardian == nil {
 		return unavailable(c, correlationID)
 	}
 	tenantID, errResp := requireTenant(c, correlationID)
 	if errResp != nil {
 		return errResp
 	}
-	var body appdto.GuardianExecuteActionRequest
+	var body inboundDto.GuardianExecuteActionRequestDTO
 	if err := c.Bind(&body); err != nil {
 		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
 			Error: "BAD_REQUEST", Message: "Payload inválido", CorrelationID: correlationID,
@@ -88,7 +97,15 @@ func (h *GuardianHandlers) ExecuteGuardianActionHandler(c echo.Context) error {
 			role = claims.Roles[0]
 		}
 	}
-	result, err := h.guardianClient.ExecuteAction(c.Request().Context(), tenantID, correlationID, userID, email, role, c.Param("id"), body)
+	result, err := h.guardian.ExecuteAction(c.Request().Context(), guardian.ExecuteActionCommand{
+		TenantID:      tenantID,
+		CorrelationID: correlationID,
+		UserID:        userID,
+		UserEmail:     email,
+		UserRole:      role,
+		ID:            c.Param("id"),
+		Body:          mapper.ToGuardianExecuteActionRequest(body),
+	})
 	if err != nil {
 		h.logger.Error("Erro ao executar ação do Guardian", zap.String("correlationId", correlationID), zap.Error(err))
 		return handleError(c, err, correlationID)
@@ -98,14 +115,17 @@ func (h *GuardianHandlers) ExecuteGuardianActionHandler(c echo.Context) error {
 
 func (h *GuardianHandlers) ListGuardianRecipientsHandler(c echo.Context) error {
 	correlationID := middlewarePkg.GetCorrelationID(c)
-	if h.guardianClient == nil {
+	if h.guardian == nil {
 		return unavailable(c, correlationID)
 	}
 	tenantID, errResp := requireTenant(c, correlationID)
 	if errResp != nil {
 		return errResp
 	}
-	result, err := h.guardianClient.ListRecipients(c.Request().Context(), tenantID, correlationID)
+	result, err := h.guardian.ListRecipients(c.Request().Context(), guardian.ListRecipientsQuery{
+		TenantID:      tenantID,
+		CorrelationID: correlationID,
+	})
 	if err != nil {
 		return handleError(c, err, correlationID)
 	}
@@ -114,20 +134,24 @@ func (h *GuardianHandlers) ListGuardianRecipientsHandler(c echo.Context) error {
 
 func (h *GuardianHandlers) UpsertGuardianRecipientHandler(c echo.Context) error {
 	correlationID := middlewarePkg.GetCorrelationID(c)
-	if h.guardianClient == nil {
+	if h.guardian == nil {
 		return unavailable(c, correlationID)
 	}
 	tenantID, errResp := requireTenant(c, correlationID)
 	if errResp != nil {
 		return errResp
 	}
-	var body appdto.GuardianRecipientUpsertRequest
+	var body inboundDto.GuardianRecipientUpsertRequestDTO
 	if err := c.Bind(&body); err != nil {
 		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
 			Error: "BAD_REQUEST", Message: "Payload inválido", CorrelationID: correlationID,
 		})
 	}
-	result, err := h.guardianClient.UpsertRecipient(c.Request().Context(), tenantID, correlationID, body)
+	result, err := h.guardian.UpsertRecipient(c.Request().Context(), guardian.UpsertRecipientCommand{
+		TenantID:      tenantID,
+		CorrelationID: correlationID,
+		Body:          mapper.ToGuardianRecipientUpsertRequest(body),
+	})
 	if err != nil {
 		return handleError(c, err, correlationID)
 	}
@@ -136,20 +160,25 @@ func (h *GuardianHandlers) UpsertGuardianRecipientHandler(c echo.Context) error 
 
 func (h *GuardianHandlers) PatchGuardianRecipientHandler(c echo.Context) error {
 	correlationID := middlewarePkg.GetCorrelationID(c)
-	if h.guardianClient == nil {
+	if h.guardian == nil {
 		return unavailable(c, correlationID)
 	}
 	tenantID, errResp := requireTenant(c, correlationID)
 	if errResp != nil {
 		return errResp
 	}
-	var body appdto.GuardianRecipientUpsertRequest
+	var body inboundDto.GuardianRecipientUpsertRequestDTO
 	if err := c.Bind(&body); err != nil {
 		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
 			Error: "BAD_REQUEST", Message: "Payload inválido", CorrelationID: correlationID,
 		})
 	}
-	result, err := h.guardianClient.PatchRecipient(c.Request().Context(), tenantID, correlationID, c.Param("id"), body)
+	result, err := h.guardian.PatchRecipient(c.Request().Context(), guardian.PatchRecipientCommand{
+		TenantID:      tenantID,
+		CorrelationID: correlationID,
+		ID:            c.Param("id"),
+		Body:          mapper.ToGuardianRecipientUpsertRequest(body),
+	})
 	if err != nil {
 		return handleError(c, err, correlationID)
 	}

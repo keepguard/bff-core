@@ -33,9 +33,9 @@ func TestCircuitBreakerDecorator_GetByTenantId_Success(t *testing.T) {
 	decorator := NewCircuitBreakerDecorator(mockClient, cbManager, "test-company").(*circuitBreakerDecorator)
 
 	expectedResponse := companyDto.MSCompanyResponseDTO{
-		ID:   "123",
+		ID:          "123",
 		CodeCompany: "TEST123",
-		Name: "Test Company",
+		Name:        "Test Company",
 	}
 
 	mockClient.On("GetByTenantId", mock.Anything, "test-app", "corr-123").Return(expectedResponse, nil).Once()

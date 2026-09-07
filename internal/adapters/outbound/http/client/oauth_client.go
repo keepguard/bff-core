@@ -8,7 +8,7 @@ import (
 
 	"github.com/go-resty/resty/v2"
 	appdto "github.com/keepguard/bff-core/internal/application/dto"
-	domainclient "github.com/keepguard/bff-core/internal/domain/ports/client"
+	domainclient "github.com/keepguard/bff-core/internal/application/port"
 	"github.com/keepguard/bff-core/internal/infrastructure/config"
 	"go.uber.org/zap"
 )

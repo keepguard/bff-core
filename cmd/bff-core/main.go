@@ -21,14 +21,32 @@ import (
 	handlersPkg "github.com/keepguard/bff-core/internal/adapters/inbound/http/handlers"
 	middlewarePkg "github.com/keepguard/bff-core/internal/adapters/inbound/http/middleware"
 	httpclient "github.com/keepguard/bff-core/internal/adapters/outbound/http/client"
+	auditdecorator "github.com/keepguard/bff-core/internal/adapters/outbound/http/decorator/audit"
+	collectordecorator "github.com/keepguard/bff-core/internal/adapters/outbound/http/decorator/collector"
 	communicationdecorator "github.com/keepguard/bff-core/internal/adapters/outbound/http/decorator/communication"
 	companydecorator "github.com/keepguard/bff-core/internal/adapters/outbound/http/decorator/company"
+	consentdecorator "github.com/keepguard/bff-core/internal/adapters/outbound/http/decorator/consent"
+	consentdocdecorator "github.com/keepguard/bff-core/internal/adapters/outbound/http/decorator/consentdocument"
+	guardiandecorator "github.com/keepguard/bff-core/internal/adapters/outbound/http/decorator/guardian"
+	knowledgedecorator "github.com/keepguard/bff-core/internal/adapters/outbound/http/decorator/knowledge"
+	llmdecorator "github.com/keepguard/bff-core/internal/adapters/outbound/http/decorator/llmgateway"
+	oauthdecorator "github.com/keepguard/bff-core/internal/adapters/outbound/http/decorator/oauthclient"
+	tokendecorator "github.com/keepguard/bff-core/internal/adapters/outbound/http/decorator/servicetoken"
 	userdecorator "github.com/keepguard/bff-core/internal/adapters/outbound/http/decorator/user"
 	auditPublisher "github.com/keepguard/bff-core/internal/adapters/outbound/messaging/audit"
 	messagingDecorator "github.com/keepguard/bff-core/internal/adapters/outbound/messaging/decorator"
 	rabbitmqPublisher "github.com/keepguard/bff-core/internal/adapters/outbound/messaging/rabbitmq"
+	"github.com/keepguard/bff-core/internal/application/audit"
+	"github.com/keepguard/bff-core/internal/application/collector"
 	"github.com/keepguard/bff-core/internal/application/connections"
+	"github.com/keepguard/bff-core/internal/application/consent"
+	"github.com/keepguard/bff-core/internal/application/consentdocument"
+	"github.com/keepguard/bff-core/internal/application/guardian"
+	appknowledge "github.com/keepguard/bff-core/internal/application/knowledge"
+	appllm "github.com/keepguard/bff-core/internal/application/llm"
+	appoauth "github.com/keepguard/bff-core/internal/application/oauth"
 	"github.com/keepguard/bff-core/internal/application/register"
+	appuser "github.com/keepguard/bff-core/internal/application/user"
 	"github.com/keepguard/bff-core/internal/infrastructure/cache"
 	"github.com/keepguard/bff-core/internal/infrastructure/config"
 	"github.com/keepguard/bff-core/internal/infrastructure/logger"
@@ -221,8 +239,8 @@ func main() {
 	// =============================================================================
 	// INICIALIZAÇÃO DO USER CONSENT CLIENT E CONSENT DOCUMENT CLIENT
 	// =============================================================================
-	userConsentClient := httpclient.NewUserConsentClient(cfg, zapLogger)
-	consentDocumentClient := httpclient.NewConsentDocumentClient(cfg, zapLogger)
+	userConsentClient := consentdecorator.New(httpclient.NewUserConsentClient(cfg, zapLogger), zapLogger, metricsInstance, "ms-user-consents")
+	consentDocumentClient := consentdocdecorator.New(httpclient.NewConsentDocumentClient(cfg, zapLogger), zapLogger, metricsInstance, "ms-user-consents")
 
 	// =============================================================================
 	// INICIALIZAÇÃO DO MESSAGE PUBLISHER COM DECORATORS
@@ -294,27 +312,37 @@ func main() {
 		registerInitUseCase,
 		registerConfirmUseCase,
 		registerResendUseCase,
-		consentDocumentClient,
 		zapLogger,
 	)
-	userHandlers := handlersPkg.NewUserHandlers(userClient, companyClient, zapLogger)
-	consentHandlers := handlersPkg.NewConsentHandlers(userConsentClient, zapLogger)
+	userHandlers := handlersPkg.NewUserHandlers(appuser.NewUserPort(userClient, companyClient), zapLogger)
+	consentHandlers := handlersPkg.NewConsentHandlers(
+		consent.NewConsentPort(userConsentClient),
+		consentdocument.NewConsentDocumentPort(consentDocumentClient),
+		zapLogger,
+	)
 
 	connectionsService := connections.NewService(cfg.ConnectionsHealth, connections.NewStore(redisClient), zapLogger)
 	connectionsHandlers := handlersPkg.NewConnectionsHandlers(connectionsService, zapLogger)
-	auditClient := httpclient.NewAuditClient(cfg, zapLogger)
-	auditHandlers := handlersPkg.NewAuditHandlers(auditClient, zapLogger)
-	guardianClient := httpclient.NewGuardianClient(cfg, zapLogger)
-	guardianHandlers := handlersPkg.NewGuardianHandlers(guardianClient, zapLogger)
-	oauthClientHTTP := httpclient.NewOAuthClientHTTP(cfg, zapLogger)
-	collectorClient := httpclient.NewCollectorClient(cfg, zapLogger)
-	oauthClientHandlers := handlersPkg.NewOAuthClientHandlers(oauthClientHTTP, companyClient, collectorClient, zapLogger)
-	knowledgeClient := httpclient.NewKnowledgeClient(cfg, zapLogger)
-	serviceTokenClient := httpclient.NewBffOAuthTokenClient(cfg, zapLogger)
-	collectorAgentHandlers := handlersPkg.NewCollectorAgentHandlers(collectorClient, companyClient, knowledgeClient, serviceTokenClient, zapLogger)
-	knowledgeHandlers := handlersPkg.NewKnowledgeHandlers(knowledgeClient, collectorClient, companyClient, serviceTokenClient, zapLogger)
-	llmClient := httpclient.NewLlmClient(cfg, zapLogger)
-	llmHandlers := handlersPkg.NewLlmHandlers(llmClient, zapLogger)
+	auditClient := auditdecorator.New(httpclient.NewAuditClient(cfg, zapLogger), zapLogger, metricsInstance, "srv-audit")
+	auditHandlers := handlersPkg.NewAuditHandlers(audit.NewAuditPort(auditClient), zapLogger)
+	guardianClient := guardiandecorator.New(httpclient.NewGuardianClient(cfg, zapLogger), zapLogger, metricsInstance, "ms-ai-guardian")
+	guardianHandlers := handlersPkg.NewGuardianHandlers(guardian.NewGuardianPort(guardianClient), zapLogger)
+	oauthClientHTTP := oauthdecorator.New(httpclient.NewOAuthClientHTTP(cfg, zapLogger), zapLogger, metricsInstance, "ms-auth")
+	collectorClient := collectordecorator.New(httpclient.NewCollectorClient(cfg, zapLogger), zapLogger, metricsInstance, "srv-collector")
+	knowledgeClient := knowledgedecorator.New(httpclient.NewKnowledgeClient(cfg, zapLogger), zapLogger, metricsInstance, "srv-knowledge")
+	serviceTokenClient := tokendecorator.New(httpclient.NewBffOAuthTokenClient(cfg, zapLogger), zapLogger, metricsInstance, "ms-auth")
+	oauthClientHandlers := handlersPkg.NewOAuthClientHandlers(
+		appoauth.NewOAuthPort(oauthClientHTTP, companyClient, collectorClient, zapLogger),
+		zapLogger,
+	)
+	collectorPort := collector.NewCollectorPort(collectorClient, companyClient, knowledgeClient, serviceTokenClient, zapLogger)
+	collectorAgentHandlers := handlersPkg.NewCollectorAgentHandlers(collectorPort, zapLogger)
+	knowledgeHandlers := handlersPkg.NewKnowledgeHandlers(
+		appknowledge.NewKnowledgePort(knowledgeClient, collectorClient, companyClient, serviceTokenClient, zapLogger),
+		zapLogger,
+	)
+	llmClient := llmdecorator.New(httpclient.NewLlmClient(cfg, zapLogger), zapLogger, metricsInstance, "srv-llm-gateway")
+	llmHandlers := handlersPkg.NewLlmHandlers(appllm.NewLlmPort(llmClient), zapLogger)
 	httpHandlers := handlersPkg.NewCombinedHandlers(registerHandlers, userHandlers, consentHandlers, connectionsHandlers, auditHandlers, guardianHandlers, oauthClientHandlers, collectorAgentHandlers, knowledgeHandlers, llmHandlers)
 
 	rateLimiterMiddleware := middlewarePkg.NewRateLimiterMiddleware(redisClient, cfg.RateLimit, zapLogger, metricsInstance)

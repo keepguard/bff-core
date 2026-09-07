@@ -1,19 +1,18 @@
 package register
 
 import (
+	"context"
 	"fmt"
 
-	"github.com/keepguard/bff-core/internal/adapters/inbound/http/dto"
-	userDto "github.com/keepguard/bff-core/internal/adapters/outbound/http/dto/user"
 	appdto "github.com/keepguard/bff-core/internal/application/dto"
+	client "github.com/keepguard/bff-core/internal/application/port"
 	"github.com/keepguard/bff-core/internal/domain/enums"
-	"github.com/keepguard/bff-core/internal/domain/ports/client"
 	"github.com/keepguard/bff-core/internal/domain/ports/messaging"
 	"go.uber.org/zap"
 )
 
 type RegisterResendUseCase interface {
-	Execute(command appdto.RegisterResendCommand) (dto.RegisterResendResponseDTO, error)
+	Execute(ctx context.Context, command appdto.RegisterResendCommand) (appdto.RegisterResendViewDTO, error)
 }
 
 type registerResendUseCaseImpl struct {
@@ -40,26 +39,26 @@ func NewRegisterResendUseCase(
 	}
 }
 
-func (uc *registerResendUseCaseImpl) Execute(command appdto.RegisterResendCommand) (dto.RegisterResendResponseDTO, error) {
+func (uc *registerResendUseCaseImpl) Execute(ctx context.Context, command appdto.RegisterResendCommand) (appdto.RegisterResendViewDTO, error) {
 	uc.logger.Info("Reenviando token de registro",
 		zap.String("email", command.Email),
 		zap.String("correlation_id", command.CorrelationID))
 
 	// Passo 1: Buscar informações da empresa
-	company, err := uc.companyClient.GetByTenantId(command.Context, command.TenantId, command.CorrelationID)
+	company, err := uc.companyClient.GetByTenantId(ctx, command.TenantId, command.CorrelationID)
 	if err != nil {
-		return dto.RegisterResendResponseDTO{}, err
+		return appdto.RegisterResendViewDTO{}, err
 	}
 
 	// Passo 2: Chamar ms-user para incrementar contador e validar sessão
-	req := userDto.MSUserRegisterResendRequestDTO{
+	req := appdto.MSUserRegisterResendRequestDTO{
 		Email:                 command.Email,
 		RegistrationSessionID: command.RegistrationSessionID,
 	}
 
-	resp, err := uc.userClient.ResendRegisterToken(client.WithCompanyID(command.Context, company.ID), req, command.TenantId, command.CorrelationID)
+	resp, err := uc.userClient.ResendRegisterToken(client.WithCompanyID(ctx, company.ID), req, command.TenantId, command.CorrelationID)
 	if err != nil {
-		return dto.RegisterResendResponseDTO{}, err
+		return appdto.RegisterResendViewDTO{}, err
 	}
 
 	// Passo 3: Preparar variáveis para o template (mesmas do register_init)
@@ -89,7 +88,7 @@ func (uc *registerResendUseCaseImpl) Execute(command appdto.RegisterResendComman
 		Variables:         interfaceVariables,
 	}
 
-	err = uc.messagePublisher.PublishMessage(command.Context, messageReq)
+	err = uc.messagePublisher.PublishMessage(ctx, messageReq)
 	if err != nil {
 		// Não falha o reenvio se o email não for enviado
 		uc.logger.Error("Erro ao enviar email de reenvio de token",
@@ -101,7 +100,7 @@ func (uc *registerResendUseCaseImpl) Execute(command appdto.RegisterResendComman
 	}
 
 	// Passo 5: Retornar resposta
-	return dto.RegisterResendResponseDTO{
+	return appdto.RegisterResendViewDTO{
 		Message:                 resp.Message,
 		ResendAttemptsRemaining: resp.ResendAttemptsRemaining,
 		ExpiresIn:               resp.ExpiresIn,

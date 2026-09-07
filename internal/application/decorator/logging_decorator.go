@@ -1,42 +1,31 @@
 package decorator
 
 import (
+	"context"
 	"time"
 
-	"github.com/keepguard/bff-core/internal/adapters/inbound/http/dto"
 	appdto "github.com/keepguard/bff-core/internal/application/dto"
+	"github.com/keepguard/bff-core/internal/application/register"
 	"go.uber.org/zap"
 )
 
-// RegisterInitUseCase interface para o use case de inicialização de registro
-type RegisterInitUseCase interface {
-	Execute(command appdto.RegisterInitCommand) (dto.RegisterInitResponseDTO, error)
-}
-
-// RegisterConfirmUseCase interface para o use case de confirmação de registro
-type RegisterConfirmUseCase interface {
-	Execute(command appdto.RegisterConfirmCommand) (dto.RegisterConfirmResponseDTO, error)
-}
-
-// registerInitLoggingDecorator implementa logging para RegisterInitUseCase
 type registerInitLoggingDecorator struct {
-	inner  RegisterInitUseCase
+	inner  register.RegisterInitUseCase
 	logger *zap.Logger
 }
 
 // NewRegisterInitLoggingDecorator cria um decorator de logging para RegisterInitUseCase
 func NewRegisterInitLoggingDecorator(
-	inner RegisterInitUseCase,
+	inner register.RegisterInitUseCase,
 	logger *zap.Logger,
-) RegisterInitUseCase {
+) register.RegisterInitUseCase {
 	return &registerInitLoggingDecorator{
 		inner:  inner,
 		logger: logger,
 	}
 }
 
-// Execute implementa Execute com logging
-func (d *registerInitLoggingDecorator) Execute(command appdto.RegisterInitCommand) (dto.RegisterInitResponseDTO, error) {
+func (d *registerInitLoggingDecorator) Execute(ctx context.Context, command appdto.RegisterInitCommand) (appdto.RegisterInitViewDTO, error) {
 	start := time.Now()
 
 	d.logger.Info("Iniciando caso de uso",
@@ -48,7 +37,7 @@ func (d *registerInitLoggingDecorator) Execute(command appdto.RegisterInitComman
 		zap.String("type", command.Type),
 	)
 
-	response, err := d.inner.Execute(command)
+	response, err := d.inner.Execute(ctx, command)
 	duration := time.Since(start)
 
 	if err != nil {
@@ -78,25 +67,23 @@ func (d *registerInitLoggingDecorator) Execute(command appdto.RegisterInitComman
 	return response, nil
 }
 
-// registerConfirmLoggingDecorator implementa logging para RegisterConfirmUseCase
 type registerConfirmLoggingDecorator struct {
-	inner  RegisterConfirmUseCase
+	inner  register.RegisterConfirmUseCase
 	logger *zap.Logger
 }
 
 // NewRegisterConfirmLoggingDecorator cria um decorator de logging para RegisterConfirmUseCase
 func NewRegisterConfirmLoggingDecorator(
-	inner RegisterConfirmUseCase,
+	inner register.RegisterConfirmUseCase,
 	logger *zap.Logger,
-) RegisterConfirmUseCase {
+) register.RegisterConfirmUseCase {
 	return &registerConfirmLoggingDecorator{
 		inner:  inner,
 		logger: logger,
 	}
 }
 
-// Execute implementa Execute com logging
-func (d *registerConfirmLoggingDecorator) Execute(command appdto.RegisterConfirmCommand) (dto.RegisterConfirmResponseDTO, error) {
+func (d *registerConfirmLoggingDecorator) Execute(ctx context.Context, command appdto.RegisterConfirmCommand) (appdto.RegisterConfirmViewDTO, error) {
 	start := time.Now()
 
 	d.logger.Info("Iniciando caso de uso",
@@ -108,7 +95,7 @@ func (d *registerConfirmLoggingDecorator) Execute(command appdto.RegisterConfirm
 		zap.String("registrationSessionId", command.RegistrationSessionId),
 	)
 
-	response, err := d.inner.Execute(command)
+	response, err := d.inner.Execute(ctx, command)
 	duration := time.Since(start)
 
 	if err != nil {

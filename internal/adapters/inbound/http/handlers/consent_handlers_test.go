@@ -8,7 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	userConsentDto "github.com/keepguard/bff-core/internal/adapters/outbound/http/dto/user_consent"
+	appdto "github.com/keepguard/bff-core/internal/application/dto"
 	"github.com/keepguard/bff-core/internal/pkg"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
@@ -16,45 +16,27 @@ import (
 	"go.uber.org/zap"
 )
 
-type mockConsentClient struct {
+type mockConsentPort struct {
 	mock.Mock
 }
 
-func (m *mockConsentClient) Accept(ctx context.Context, req userConsentDto.UserConsentAcceptRequestDTO, token, tenantId, correlationID string) (userConsentDto.UserConsentResponseDTO, error) {
-	panic("not used")
+func (m *mockConsentPort) AcceptBatch(ctx context.Context, cmd appdto.AcceptBatchConsentCommand) (appdto.UserConsentAcceptAllViewDTO, error) {
+	args := m.Called(ctx, cmd)
+	return args.Get(0).(appdto.UserConsentAcceptAllViewDTO), args.Error(1)
 }
 
-func (m *mockConsentClient) FindByID(ctx context.Context, id, token, tenantId, correlationID string) (userConsentDto.UserConsentResponseDTO, error) {
-	panic("not used")
+type mockConsentDocumentPort struct {
+	mock.Mock
 }
 
-func (m *mockConsentClient) FindByUserID(ctx context.Context, userID, token, tenantId, correlationID string) ([]userConsentDto.UserConsentResponseDTO, error) {
-	panic("not used")
+func (m *mockConsentDocumentPort) ListPublished(ctx context.Context, query appdto.ListPublishedConsentsQuery) ([]appdto.ConsentDocumentViewDTO, error) {
+	args := m.Called(ctx, query)
+	return args.Get(0).([]appdto.ConsentDocumentViewDTO), args.Error(1)
 }
 
-func (m *mockConsentClient) FindByUserIDAndConsentDocumentID(ctx context.Context, userID, consentDocumentID, token, tenantId, correlationID string) ([]userConsentDto.UserConsentResponseDTO, error) {
-	panic("not used")
-}
-
-func (m *mockConsentClient) FindLatestByUserIDAndConsentDocumentID(ctx context.Context, userID, consentDocumentID, token, tenantId, correlationID string) (userConsentDto.UserConsentResponseDTO, error) {
-	panic("not used")
-}
-
-func (m *mockConsentClient) HasAccepted(ctx context.Context, userID, consentDocumentID string, version int, token, tenantId, correlationID string) (bool, error) {
-	panic("not used")
-}
-
-func (m *mockConsentClient) AcceptAll(ctx context.Context, req userConsentDto.UserConsentAcceptAllRequestDTO, tenantId, correlationID string) (userConsentDto.UserConsentAcceptAllResponseDTO, error) {
-	panic("not used")
-}
-
-func (m *mockConsentClient) AcceptBatch(ctx context.Context, req userConsentDto.UserConsentAcceptBatchRequestDTO, token, tenantId, correlationID string) (userConsentDto.UserConsentAcceptAllResponseDTO, error) {
-	args := m.Called(ctx, req, token, tenantId, correlationID)
-	return args.Get(0).(userConsentDto.UserConsentAcceptAllResponseDTO), args.Error(1)
-}
-
-func (m *mockConsentClient) DeleteAllByUserId(ctx context.Context, userID, tenantId, correlationID string) error {
-	panic("not used")
+func (m *mockConsentDocumentPort) GetLatestByType(ctx context.Context, query appdto.GetLatestConsentQuery) (appdto.ConsentDocumentViewDTO, error) {
+	args := m.Called(ctx, query)
+	return args.Get(0).(appdto.ConsentDocumentViewDTO), args.Error(1)
 }
 
 func TestAcceptBatchHandler_Success(t *testing.T) {
@@ -75,25 +57,26 @@ func TestAcceptBatchHandler_Success(t *testing.T) {
 	c.Set("token", "jwt-token")
 	c.Set("claims", &pkg.JWTClaims{Sub: "user-sub-1"})
 
-	mockClient := new(mockConsentClient)
-	mockClient.On("AcceptBatch", mock.Anything, mock.MatchedBy(func(req userConsentDto.UserConsentAcceptBatchRequestDTO) bool {
-		return req.UserID == "user-sub-1" &&
-			req.Email == "rafael@exemplo.com" &&
-			req.ClientIP == "189.45.12.8" &&
-			len(req.Consents) == 1 &&
-			req.Consents[0].DocumentID == "doc-1"
-	}), "jwt-token", "tenant-1", "corr-1").
-		Return(userConsentDto.UserConsentAcceptAllResponseDTO{TotalAccepted: 1}, nil)
+	consents := new(mockConsentPort)
+	consents.On("AcceptBatch", mock.Anything, mock.MatchedBy(func(cmd appdto.AcceptBatchConsentCommand) bool {
+		return cmd.UserID == "user-sub-1" &&
+			cmd.Email == "rafael@exemplo.com" &&
+			cmd.ClientIP == "189.45.12.8" &&
+			cmd.Token == "jwt-token" &&
+			cmd.TenantID == "tenant-1" &&
+			len(cmd.Consents) == 1 &&
+			cmd.Consents[0].DocumentID == "doc-1"
+	})).Return(appdto.UserConsentAcceptAllViewDTO{TotalAccepted: 1}, nil)
 
-	h := NewConsentHandlers(mockClient, zap.NewNop())
+	h := NewConsentHandlers(consents, new(mockConsentDocumentPort), zap.NewNop())
 	err := h.AcceptBatchHandler(c)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusCreated, rec.Code)
 
-	var resp userConsentDto.UserConsentAcceptAllResponseDTO
+	var resp appdto.UserConsentAcceptAllViewDTO
 	assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
 	assert.Equal(t, 1, resp.TotalAccepted)
-	mockClient.AssertExpectations(t)
+	consents.AssertExpectations(t)
 }
 
 func TestAcceptBatchHandler_UnauthorizedWithoutUser(t *testing.T) {
@@ -105,7 +88,7 @@ func TestAcceptBatchHandler_UnauthorizedWithoutUser(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 
-	h := NewConsentHandlers(new(mockConsentClient), zap.NewNop())
+	h := NewConsentHandlers(new(mockConsentPort), new(mockConsentDocumentPort), zap.NewNop())
 	err := h.AcceptBatchHandler(c)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusUnauthorized, rec.Code)
@@ -123,7 +106,7 @@ func TestAcceptBatchHandler_RejectsEmptyConsents(t *testing.T) {
 	c.Set("token", "jwt-token")
 	c.Set("claims", &pkg.JWTClaims{Sub: "user-sub-1"})
 
-	h := NewConsentHandlers(new(mockConsentClient), zap.NewNop())
+	h := NewConsentHandlers(new(mockConsentPort), new(mockConsentDocumentPort), zap.NewNop())
 	err := h.AcceptBatchHandler(c)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
@@ -141,7 +124,7 @@ func TestAcceptBatchHandler_RejectsMissingEmail(t *testing.T) {
 	c.Set("token", "jwt-token")
 	c.Set("claims", &pkg.JWTClaims{Sub: "user-sub-1"})
 
-	h := NewConsentHandlers(new(mockConsentClient), zap.NewNop())
+	h := NewConsentHandlers(new(mockConsentPort), new(mockConsentDocumentPort), zap.NewNop())
 	err := h.AcceptBatchHandler(c)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusBadRequest, rec.Code)

@@ -3,11 +3,12 @@ package client
 import (
 	"context"
 	"fmt"
+	appdto "github.com/keepguard/bff-core/internal/application/dto"
 	"time"
 
 	"github.com/go-resty/resty/v2"
 	communicationDto "github.com/keepguard/bff-core/internal/adapters/outbound/http/dto/communication"
-	"github.com/keepguard/bff-core/internal/domain/ports/client"
+	client "github.com/keepguard/bff-core/internal/application/port"
 	"github.com/keepguard/bff-core/internal/infrastructure/config"
 	"go.uber.org/zap"
 )
@@ -34,7 +35,7 @@ func NewCommunicationClient(config *config.Config, logger *zap.Logger) client.Co
 }
 
 // SendNotification envia uma notificação
-func (c *communicationClient) SendNotification(ctx context.Context, req client.SendNotificationRequestDTO, tenantId, correlationID string) error {
+func (c *communicationClient) SendNotification(ctx context.Context, req appdto.SendNotificationRequestDTO, tenantId, correlationID string) error {
 	url := fmt.Sprintf("%s/api/v1/notifications/send", c.config.Services.Communication.BaseURL)
 
 	resp, err := c.httpClient.R().

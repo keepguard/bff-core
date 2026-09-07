@@ -5,8 +5,8 @@ import (
 	"net/http"
 
 	middlewarePkg "github.com/keepguard/bff-core/internal/adapters/inbound/http/middleware"
+	client "github.com/keepguard/bff-core/internal/application/port"
 	auditport "github.com/keepguard/bff-core/internal/domain/ports/audit"
-	"github.com/keepguard/bff-core/internal/domain/ports/client"
 	"github.com/keepguard/bff-core/internal/infrastructure/config"
 	"github.com/keepguard/bff-core/internal/infrastructure/logger"
 	"github.com/keepguard/bff-core/internal/infrastructure/metrics"
@@ -119,8 +119,9 @@ func (s *serverImpl) SetupRoutes(handlers Handler) {
 		middlewarePkg.RequireOpsRead(),
 		rl.Limit("connections_health", rules.ConnectionsHealth),
 	)
-	// /api/v1/core/audits usa o PathPrefix já publicado no Traefik.
-	// /api/v1/audits permanece para o IngressRoute atualizado.
+	// /api/v1/core/audits é o path canônico (Traefik PathPrefix).
+	// GET /api/v1/audits é legado: mesmo handler, mantido para o IngressRoute atual.
+	// Depreciado no swagger; remoção exige front + Traefik (fora desta onda).
 	auditRead := []echo.MiddlewareFunc{
 		s.jwt.Middleware(),
 		middlewarePkg.RequireAuditRead(),
@@ -151,6 +152,7 @@ func (s *serverImpl) SetupRoutes(handlers Handler) {
 	oauthRead := []echo.MiddlewareFunc{
 		s.jwt.Middleware(),
 		middlewarePkg.RequireOAuthRead(),
+		// Sem regra oauth em cfg.RateLimit: mantém o teto numérico de guardian e a chave Redis/métrica atuais.
 		rl.Limit("guardian", rules.Guardian),
 	}
 	oauthWrite := []echo.MiddlewareFunc{

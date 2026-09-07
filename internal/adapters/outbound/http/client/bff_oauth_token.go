@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	domainclient "github.com/keepguard/bff-core/internal/domain/ports/client"
+	domainclient "github.com/keepguard/bff-core/internal/application/port"
 	"github.com/keepguard/bff-core/internal/infrastructure/config"
 	"github.com/keepguard/bff-core/internal/infrastructure/oauthsecret"
 	"go.uber.org/zap"

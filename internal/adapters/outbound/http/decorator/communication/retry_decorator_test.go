@@ -7,7 +7,6 @@ import (
 	"time"
 
 	appdto "github.com/keepguard/bff-core/internal/application/dto"
-	portsclient "github.com/keepguard/bff-core/internal/domain/ports/client"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -38,7 +37,7 @@ func TestRetryDecorator_SendNotification_Success(t *testing.T) {
 
 	decorator := NewRetryDecorator(mockInner, config)
 
-	req := portsclient.SendNotificationRequestDTO{
+	req := appdto.SendNotificationRequestDTO{
 		UserID:       "user-123",
 		TemplateType: "WELCOME_EMAIL",
 		Channel:      "email",
@@ -69,7 +68,7 @@ func TestRetryDecorator_SendNotification_RetryableError_Success(t *testing.T) {
 
 	decorator := NewRetryDecorator(mockInner, config)
 
-	req := portsclient.SendNotificationRequestDTO{
+	req := appdto.SendNotificationRequestDTO{
 		UserID:       "user-123",
 		TemplateType: "WELCOME_EMAIL",
 		Channel:      "email",
@@ -107,7 +106,7 @@ func TestRetryDecorator_SendNotification_NonRetryableError(t *testing.T) {
 
 	decorator := NewRetryDecorator(mockInner, config)
 
-	req := portsclient.SendNotificationRequestDTO{
+	req := appdto.SendNotificationRequestDTO{
 		UserID:       "user-123",
 		TemplateType: "INVALID_TEMPLATE",
 		Channel:      "email",
@@ -145,7 +144,7 @@ func TestRetryDecorator_SendNotification_MaxAttemptsExceeded(t *testing.T) {
 
 	decorator := NewRetryDecorator(mockInner, config)
 
-	req := portsclient.SendNotificationRequestDTO{
+	req := appdto.SendNotificationRequestDTO{
 		UserID:       "user-123",
 		TemplateType: "WELCOME_EMAIL",
 		Channel:      "email",
@@ -183,7 +182,7 @@ func TestRetryDecorator_SendNotification_ContextCancelled(t *testing.T) {
 
 	decorator := NewRetryDecorator(mockInner, config)
 
-	req := portsclient.SendNotificationRequestDTO{
+	req := appdto.SendNotificationRequestDTO{
 		UserID:       "user-123",
 		TemplateType: "WELCOME_EMAIL",
 		Channel:      "email",

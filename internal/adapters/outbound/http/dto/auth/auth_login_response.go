@@ -1,7 +1,5 @@
 package dto
 
-// AuthLoginResponseDTO representa a resposta de login do ms-auth
-type AuthLoginResponseDTO struct {
-	Token     string `json:"token"`
-	ExpiresIn int64  `json:"expiresIn"`
-}
+import appdto "github.com/keepguard/bff-core/internal/application/dto"
+
+type AuthLoginResponseDTO = appdto.AuthLoginResponseDTO

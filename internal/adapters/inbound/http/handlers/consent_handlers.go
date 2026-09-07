@@ -6,29 +6,31 @@ import (
 	"strings"
 	"time"
 
+	inboundDto "github.com/keepguard/bff-core/internal/adapters/inbound/http/dto"
+	"github.com/keepguard/bff-core/internal/adapters/inbound/http/mapper"
 	middlewarePkg "github.com/keepguard/bff-core/internal/adapters/inbound/http/middleware"
-	userConsentDto "github.com/keepguard/bff-core/internal/adapters/outbound/http/dto/user_consent"
-	"github.com/keepguard/bff-core/internal/domain/ports/client"
+	"github.com/keepguard/bff-core/internal/application/consent"
+	"github.com/keepguard/bff-core/internal/application/consentdocument"
+	appdto "github.com/keepguard/bff-core/internal/application/dto"
 	"github.com/keepguard/bff-core/internal/pkg"
 	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
 )
 
-// ConsentHandlers handlers autenticados de consentimento LGPD.
 type ConsentHandlers struct {
-	userConsentClient client.UserConsentClient
-	logger            *zap.Logger
+	consents  consent.ConsentPort
+	documents consentdocument.ConsentDocumentPort
+	logger    *zap.Logger
 }
 
-// NewConsentHandlers cria ConsentHandlers.
-func NewConsentHandlers(userConsentClient client.UserConsentClient, logger *zap.Logger) *ConsentHandlers {
+func NewConsentHandlers(consents consent.ConsentPort, documents consentdocument.ConsentDocumentPort, logger *zap.Logger) *ConsentHandlers {
 	return &ConsentHandlers{
-		userConsentClient: userConsentClient,
-		logger:            logger,
+		consents:  consents,
+		documents: documents,
+		logger:    logger,
 	}
 }
 
-// AcceptBatchHandler registra o aceite seletivo em lote (modal de termos).
 func (h *ConsentHandlers) AcceptBatchHandler(c echo.Context) error {
 	correlationID := middlewarePkg.GetCorrelationID(c)
 	tenantId := middlewarePkg.GetTenantId(c)
@@ -43,7 +45,7 @@ func (h *ConsentHandlers) AcceptBatchHandler(c echo.Context) error {
 		})
 	}
 
-	var req userConsentDto.UserConsentAcceptBatchRequestDTO
+	var req inboundDto.UserConsentAcceptBatchRequestDTO
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
 			Error:         "INVALID_REQUEST",
@@ -52,7 +54,6 @@ func (h *ConsentHandlers) AcceptBatchHandler(c echo.Context) error {
 		})
 	}
 
-	req.UserID = codeUser
 	if strings.TrimSpace(req.Email) == "" {
 		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
 			Error:         "INVALID_REQUEST",
@@ -70,20 +71,23 @@ func (h *ConsentHandlers) AcceptBatchHandler(c echo.Context) error {
 	if req.AcceptedAt.IsZero() {
 		req.AcceptedAt = time.Now().UTC()
 	}
-	if req.Geolocation == "" {
+	geolocation := req.Geolocation
+	if geolocation == "" {
 		if loc := c.Request().Header.Get("X-Public-Location"); loc != "" {
 			decoded, err := url.QueryUnescape(loc)
 			if err == nil {
-				req.Geolocation = decoded
+				geolocation = decoded
 			} else {
-				req.Geolocation = loc
+				geolocation = loc
 			}
 		}
 	}
-	req.ClientIP = firstNonEmpty(c.Request().Header.Get("X-Public-IP"), c.RealIP())
-	req.UserAgent = c.Request().UserAgent()
+	clientIP := firstNonEmpty(c.Request().Header.Get("X-Public-IP"), c.RealIP())
+	userAgent := c.Request().UserAgent()
 
-	result, err := h.userConsentClient.AcceptBatch(c.Request().Context(), req, token, tenantId, correlationID)
+	result, err := h.consents.AcceptBatch(c.Request().Context(), mapper.ToAcceptBatchCommand(
+		req, codeUser, token, tenantId, correlationID, clientIP, userAgent, geolocation,
+	))
 	if err != nil {
 		h.logger.Error("Erro ao registrar aceite em lote",
 			zap.String("correlationId", correlationID),
@@ -94,6 +98,83 @@ func (h *ConsentHandlers) AcceptBatchHandler(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusCreated, result)
+}
+
+func (h *ConsentHandlers) GetPublishedConsentsHandler(c echo.Context) error {
+	correlationID := middlewarePkg.GetCorrelationID(c)
+
+	tenantId := middlewarePkg.GetTenantId(c)
+	if tenantId == "" {
+		h.logger.Warn("X-Tenant-Id ausente", zap.String("correlationId", correlationID))
+		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
+			Error:         "MISSING_HEADER",
+			Message:       "Header X-Tenant-Id é obrigatório",
+			CorrelationID: correlationID,
+		})
+	}
+
+	docs, err := h.documents.ListPublished(c.Request().Context(), appdto.ListPublishedConsentsQuery{
+		TenantID:      tenantId,
+		CorrelationID: correlationID,
+	})
+	if err != nil {
+		h.logger.Error("Erro ao buscar documentos publicados",
+			zap.String("correlationId", correlationID),
+			zap.String("tenantId", tenantId),
+			zap.Error(err),
+		)
+		return c.JSON(http.StatusInternalServerError, pkg.ErrorResponse{
+			Error:         "INTERNAL_SERVER_ERROR",
+			Message:       "Erro ao buscar documentos de consentimento",
+			CorrelationID: correlationID,
+		})
+	}
+
+	return c.JSON(http.StatusOK, docs)
+}
+
+func (h *ConsentHandlers) GetLatestByTypeHandler(c echo.Context) error {
+	correlationID := middlewarePkg.GetCorrelationID(c)
+
+	tenantId := middlewarePkg.GetTenantId(c)
+	if tenantId == "" {
+		h.logger.Warn("X-Tenant-Id ausente", zap.String("correlationId", correlationID))
+		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
+			Error:         "MISSING_HEADER",
+			Message:       "Header X-Tenant-Id é obrigatório",
+			CorrelationID: correlationID,
+		})
+	}
+
+	consentType := c.Param("type")
+	if consentType == "" {
+		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
+			Error:         "INVALID_PARAM",
+			Message:       "Parâmetro type é obrigatório",
+			CorrelationID: correlationID,
+		})
+	}
+
+	doc, err := h.documents.GetLatestByType(c.Request().Context(), appdto.GetLatestConsentQuery{
+		TenantID:      tenantId,
+		CorrelationID: correlationID,
+		ConsentType:   consentType,
+	})
+	if err != nil {
+		h.logger.Error("Erro ao buscar documento por tipo",
+			zap.String("type", consentType),
+			zap.String("correlationId", correlationID),
+			zap.String("tenantId", tenantId),
+			zap.Error(err),
+		)
+		return c.JSON(http.StatusInternalServerError, pkg.ErrorResponse{
+			Error:         "INTERNAL_SERVER_ERROR",
+			Message:       "Erro ao buscar documento de consentimento",
+			CorrelationID: correlationID,
+		})
+	}
+
+	return c.JSON(http.StatusOK, doc)
 }
 
 func firstNonEmpty(values ...string) string {

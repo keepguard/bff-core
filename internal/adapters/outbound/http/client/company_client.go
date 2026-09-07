@@ -9,7 +9,7 @@ import (
 
 	"github.com/go-resty/resty/v2"
 	companyDto "github.com/keepguard/bff-core/internal/adapters/outbound/http/dto/company"
-	"github.com/keepguard/bff-core/internal/domain/ports/client"
+	client "github.com/keepguard/bff-core/internal/application/port"
 	"github.com/keepguard/bff-core/internal/infrastructure/config"
 	"go.uber.org/zap"
 )

@@ -7,36 +7,37 @@ import (
 	"testing"
 
 	appdto "github.com/keepguard/bff-core/internal/application/dto"
+	"github.com/keepguard/bff-core/internal/application/guardian"
 	"github.com/keepguard/bff-core/internal/pkg"
 	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
 )
 
-type stubGuardianClient struct {
+type stubGuardianPort struct {
 	page appdto.PaginatedGuardianIncidents
 }
 
-func (s *stubGuardianClient) ListIncidents(_ context.Context, _, _ string, _ map[string]string) (appdto.PaginatedGuardianIncidents, error) {
+func (s *stubGuardianPort) ListIncidents(_ context.Context, _ guardian.ListIncidentsQuery) (appdto.PaginatedGuardianIncidents, error) {
 	return s.page, nil
 }
 
-func (s *stubGuardianClient) GetIncident(_ context.Context, _, _, _ string) (map[string]any, error) {
+func (s *stubGuardianPort) GetIncident(_ context.Context, _ guardian.GetIncidentQuery) (map[string]any, error) {
 	return map[string]any{"id": "1"}, nil
 }
 
-func (s *stubGuardianClient) ExecuteAction(_ context.Context, _, _, _, _, _, _ string, _ appdto.GuardianExecuteActionRequest) (map[string]any, error) {
+func (s *stubGuardianPort) ExecuteAction(_ context.Context, _ guardian.ExecuteActionCommand) (map[string]any, error) {
 	return map[string]any{"outcome": "SUCCESS"}, nil
 }
 
-func (s *stubGuardianClient) ListRecipients(_ context.Context, _, _ string) ([]map[string]any, error) {
+func (s *stubGuardianPort) ListRecipients(_ context.Context, _ guardian.ListRecipientsQuery) ([]map[string]any, error) {
 	return []map[string]any{}, nil
 }
 
-func (s *stubGuardianClient) UpsertRecipient(_ context.Context, _, _ string, _ appdto.GuardianRecipientUpsertRequest) (map[string]any, error) {
+func (s *stubGuardianPort) UpsertRecipient(_ context.Context, _ guardian.UpsertRecipientCommand) (map[string]any, error) {
 	return map[string]any{"email": "a@b.c"}, nil
 }
 
-func (s *stubGuardianClient) PatchRecipient(_ context.Context, _, _, _ string, _ appdto.GuardianRecipientUpsertRequest) (map[string]any, error) {
+func (s *stubGuardianPort) PatchRecipient(_ context.Context, _ guardian.PatchRecipientCommand) (map[string]any, error) {
 	return map[string]any{"enabled": false}, nil
 }
 
@@ -46,7 +47,7 @@ func TestListGuardianIncidentsHandler_RequiresTenant(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	c.Set("claims", &pkg.JWTClaims{Roles: []string{"ADMIN"}})
-	h := NewGuardianHandlers(&stubGuardianClient{}, zap.NewNop())
+	h := NewGuardianHandlers(&stubGuardianPort{}, zap.NewNop())
 	if err := h.ListGuardianIncidentsHandler(c); err != nil {
 		t.Fatal(err)
 	}
@@ -61,7 +62,7 @@ func TestListGuardianIncidentsHandler_OK(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	c.Set("claims", &pkg.JWTClaims{Roles: []string{"ADMIN"}, TenantId: "tenant-1"})
-	h := NewGuardianHandlers(&stubGuardianClient{page: appdto.PaginatedGuardianIncidents{Size: 20}}, zap.NewNop())
+	h := NewGuardianHandlers(&stubGuardianPort{page: appdto.PaginatedGuardianIncidents{Size: 20}}, zap.NewNop())
 	if err := h.ListGuardianIncidentsHandler(c); err != nil {
 		t.Fatal(err)
 	}

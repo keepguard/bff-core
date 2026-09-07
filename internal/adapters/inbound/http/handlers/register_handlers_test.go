@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -22,9 +23,9 @@ type MockRegisterInitUseCase struct {
 	mock.Mock
 }
 
-func (m *MockRegisterInitUseCase) Execute(command appdto.RegisterInitCommand) (dto.RegisterInitResponseDTO, error) {
-	args := m.Called(command)
-	return args.Get(0).(dto.RegisterInitResponseDTO), args.Error(1)
+func (m *MockRegisterInitUseCase) Execute(ctx context.Context, command appdto.RegisterInitCommand) (appdto.RegisterInitViewDTO, error) {
+	args := m.Called(ctx, command)
+	return args.Get(0).(appdto.RegisterInitViewDTO), args.Error(1)
 }
 
 // MockRegisterConfirmUseCase para teste
@@ -32,9 +33,9 @@ type MockRegisterConfirmUseCase struct {
 	mock.Mock
 }
 
-func (m *MockRegisterConfirmUseCase) Execute(command appdto.RegisterConfirmCommand) (dto.RegisterConfirmResponseDTO, error) {
-	args := m.Called(command)
-	return args.Get(0).(dto.RegisterConfirmResponseDTO), args.Error(1)
+func (m *MockRegisterConfirmUseCase) Execute(ctx context.Context, command appdto.RegisterConfirmCommand) (appdto.RegisterConfirmViewDTO, error) {
+	args := m.Called(ctx, command)
+	return args.Get(0).(appdto.RegisterConfirmViewDTO), args.Error(1)
 }
 
 // MockRegisterResendUseCase para teste
@@ -42,9 +43,9 @@ type MockRegisterResendUseCase struct {
 	mock.Mock
 }
 
-func (m *MockRegisterResendUseCase) Execute(command appdto.RegisterResendCommand) (dto.RegisterResendResponseDTO, error) {
-	args := m.Called(command)
-	return args.Get(0).(dto.RegisterResendResponseDTO), args.Error(1)
+func (m *MockRegisterResendUseCase) Execute(ctx context.Context, command appdto.RegisterResendCommand) (appdto.RegisterResendViewDTO, error) {
+	args := m.Called(ctx, command)
+	return args.Get(0).(appdto.RegisterResendViewDTO), args.Error(1)
 }
 
 func TestNewRegisterHandlers(t *testing.T) {
@@ -55,7 +56,7 @@ func TestNewRegisterHandlers(t *testing.T) {
 	logger := zap.NewNop()
 
 	// Act
-	handlers := NewRegisterHandlers(mockInitUseCase, mockConfirmUseCase, mockResendUseCase, nil, logger)
+	handlers := NewRegisterHandlers(mockInitUseCase, mockConfirmUseCase, mockResendUseCase, logger)
 
 	// Assert
 	assert.NotNil(t, handlers)
@@ -69,17 +70,17 @@ func TestRegisterHandlers_InitRegisterHandler_Success(t *testing.T) {
 	mockResendUseCase := &MockRegisterResendUseCase{}
 	logger, _ := zap.NewDevelopment()
 
-	handlers := NewRegisterHandlers(mockInitUseCase, mockConfirmUseCase, mockResendUseCase, nil, logger)
+	handlers := NewRegisterHandlers(mockInitUseCase, mockConfirmUseCase, mockResendUseCase, logger)
 
 	// Mock response
-	expectedResponse := dto.RegisterInitResponseDTO{
+	expectedResponse := appdto.RegisterInitViewDTO{
 		RegistrationSessionID: "session-123",
 		Email:                 "test@example.com",
 		ExpiresIn:             1800,
 	}
 
 	// Setup mock
-	mockInitUseCase.On("Execute", mock.Anything).Return(expectedResponse, nil)
+	mockInitUseCase.On("Execute", mock.Anything, mock.Anything).Return(expectedResponse, nil)
 
 	// Create request
 	requestBody := dto.RegisterInitRequestDTO{
@@ -128,9 +129,9 @@ func TestRegisterHandlers_InitRegisterHandler_MissingCorrelationID(t *testing.T)
 	mockConfirmUseCase := &MockRegisterConfirmUseCase{}
 	mockResendUseCase := &MockRegisterResendUseCase{}
 	logger, _ := zap.NewDevelopment()
-	handlers := NewRegisterHandlers(mockInitUseCase, mockConfirmUseCase, mockResendUseCase, nil, logger)
+	handlers := NewRegisterHandlers(mockInitUseCase, mockConfirmUseCase, mockResendUseCase, logger)
 
-	mockInitUseCase.On("Execute", mock.Anything).Return(dto.RegisterInitResponseDTO{
+	mockInitUseCase.On("Execute", mock.Anything, mock.Anything).Return(appdto.RegisterInitViewDTO{
 		RegistrationSessionID: "session-123",
 		Email:                 "test@example.com",
 		ExpiresIn:             1800,
@@ -163,7 +164,7 @@ func TestRegisterHandlers_InitRegisterHandler_MissingCorrelationID(t *testing.T)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusCreated, rec.Code)
 	assert.NotEmpty(t, rec.Header().Get("X-Correlation-ID"))
-	mockInitUseCase.AssertCalled(t, "Execute", mock.Anything)
+	mockInitUseCase.AssertCalled(t, "Execute", mock.Anything, mock.Anything)
 }
 
 func TestRegisterHandlers_InitRegisterHandler_MissingTenantId(t *testing.T) {
@@ -173,7 +174,7 @@ func TestRegisterHandlers_InitRegisterHandler_MissingTenantId(t *testing.T) {
 	mockResendUseCase := &MockRegisterResendUseCase{}
 	logger, _ := zap.NewDevelopment()
 
-	handlers := NewRegisterHandlers(mockInitUseCase, mockConfirmUseCase, mockResendUseCase, nil, logger)
+	handlers := NewRegisterHandlers(mockInitUseCase, mockConfirmUseCase, mockResendUseCase, logger)
 
 	// Create request without X-Tenant-Id
 	requestBody := dto.RegisterInitRequestDTO{
@@ -220,7 +221,7 @@ func TestRegisterHandlers_InitRegisterHandler_InvalidJSON(t *testing.T) {
 	mockResendUseCase := &MockRegisterResendUseCase{}
 	logger, _ := zap.NewDevelopment()
 
-	handlers := NewRegisterHandlers(mockInitUseCase, mockConfirmUseCase, mockResendUseCase, nil, logger)
+	handlers := NewRegisterHandlers(mockInitUseCase, mockConfirmUseCase, mockResendUseCase, logger)
 
 	// Create request with invalid JSON
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/register/init", bytes.NewBuffer([]byte("invalid json")))
@@ -254,10 +255,10 @@ func TestRegisterHandlers_InitRegisterHandler_UseCaseError(t *testing.T) {
 	mockResendUseCase := &MockRegisterResendUseCase{}
 	logger, _ := zap.NewDevelopment()
 
-	handlers := NewRegisterHandlers(mockInitUseCase, mockConfirmUseCase, mockResendUseCase, nil, logger)
+	handlers := NewRegisterHandlers(mockInitUseCase, mockConfirmUseCase, mockResendUseCase, logger)
 
 	// Setup mock to return error
-	mockInitUseCase.On("Execute", mock.Anything).Return(dto.RegisterInitResponseDTO{}, errors.New("email already exists"))
+	mockInitUseCase.On("Execute", mock.Anything, mock.Anything).Return(appdto.RegisterInitViewDTO{}, errors.New("email already exists"))
 
 	// Create request
 	requestBody := dto.RegisterInitRequestDTO{
@@ -306,16 +307,16 @@ func TestRegisterHandlers_ConfirmRegisterHandler_Success(t *testing.T) {
 	mockResendUseCase := &MockRegisterResendUseCase{}
 	logger, _ := zap.NewDevelopment()
 
-	handlers := NewRegisterHandlers(mockInitUseCase, mockConfirmUseCase, mockResendUseCase, nil, logger)
+	handlers := NewRegisterHandlers(mockInitUseCase, mockConfirmUseCase, mockResendUseCase, logger)
 
 	// Mock response
-	expectedResponse := dto.RegisterConfirmResponseDTO{
+	expectedResponse := appdto.RegisterConfirmViewDTO{
 		Token:          "jwt-token-123",
 		TokenExpiresIn: 3600,
 	}
 
 	// Setup mock
-	mockConfirmUseCase.On("Execute", mock.Anything).Return(expectedResponse, nil)
+	mockConfirmUseCase.On("Execute", mock.Anything, mock.Anything).Return(expectedResponse, nil)
 
 	// Create request
 	requestBody := dto.RegisterConfirmRequestDTO{
@@ -355,9 +356,9 @@ func TestRegisterHandlers_ConfirmRegisterHandler_MissingCorrelationID(t *testing
 	mockConfirmUseCase := &MockRegisterConfirmUseCase{}
 	mockResendUseCase := &MockRegisterResendUseCase{}
 	logger, _ := zap.NewDevelopment()
-	handlers := NewRegisterHandlers(mockInitUseCase, mockConfirmUseCase, mockResendUseCase, nil, logger)
+	handlers := NewRegisterHandlers(mockInitUseCase, mockConfirmUseCase, mockResendUseCase, logger)
 
-	mockConfirmUseCase.On("Execute", mock.Anything).Return(dto.RegisterConfirmResponseDTO{
+	mockConfirmUseCase.On("Execute", mock.Anything, mock.Anything).Return(appdto.RegisterConfirmViewDTO{
 		Token:          "jwt-token-123",
 		TokenExpiresIn: 3600,
 	}, nil)
@@ -381,7 +382,7 @@ func TestRegisterHandlers_ConfirmRegisterHandler_MissingCorrelationID(t *testing
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.NotEmpty(t, rec.Header().Get("X-Correlation-ID"))
-	mockConfirmUseCase.AssertCalled(t, "Execute", mock.Anything)
+	mockConfirmUseCase.AssertCalled(t, "Execute", mock.Anything, mock.Anything)
 }
 
 func TestRegisterHandlers_ConfirmRegisterHandler_UseCaseError(t *testing.T) {
@@ -391,10 +392,10 @@ func TestRegisterHandlers_ConfirmRegisterHandler_UseCaseError(t *testing.T) {
 	mockResendUseCase := &MockRegisterResendUseCase{}
 	logger, _ := zap.NewDevelopment()
 
-	handlers := NewRegisterHandlers(mockInitUseCase, mockConfirmUseCase, mockResendUseCase, nil, logger)
+	handlers := NewRegisterHandlers(mockInitUseCase, mockConfirmUseCase, mockResendUseCase, logger)
 
 	// Setup mock to return error
-	mockConfirmUseCase.On("Execute", mock.Anything).Return(dto.RegisterConfirmResponseDTO{}, errors.New("invalid token"))
+	mockConfirmUseCase.On("Execute", mock.Anything, mock.Anything).Return(appdto.RegisterConfirmViewDTO{}, errors.New("invalid token"))
 
 	// Create request
 	requestBody := dto.RegisterConfirmRequestDTO{
@@ -435,7 +436,7 @@ func TestRegisterHandlers_VerifyCommandValidation(t *testing.T) {
 	mockResendUseCase := &MockRegisterResendUseCase{}
 	logger, _ := zap.NewDevelopment()
 
-	handlers := NewRegisterHandlers(mockInitUseCase, mockConfirmUseCase, mockResendUseCase, nil, logger)
+	handlers := NewRegisterHandlers(mockInitUseCase, mockConfirmUseCase, mockResendUseCase, logger)
 
 	// Test with missing required fields
 	requestBody := dto.RegisterInitRequestDTO{

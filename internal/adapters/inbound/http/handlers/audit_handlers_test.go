@@ -6,21 +6,22 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/keepguard/bff-core/internal/application/audit"
 	appdto "github.com/keepguard/bff-core/internal/application/dto"
 	"github.com/keepguard/bff-core/internal/pkg"
 	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
 )
 
-type stubAuditClient struct {
+type stubAuditPort struct {
 	page appdto.PaginatedAuditResponse
 }
 
-func (s *stubAuditClient) List(_ context.Context, _, _ string, _ map[string]string) (appdto.PaginatedAuditResponse, error) {
+func (s *stubAuditPort) List(_ context.Context, _ audit.ListAuditsQuery) (appdto.PaginatedAuditResponse, error) {
 	return s.page, nil
 }
 
-func (s *stubAuditClient) GetByID(_ context.Context, _, _, _ string) (appdto.AuditDetailResponse, error) {
+func (s *stubAuditPort) Get(_ context.Context, _ audit.GetAuditQuery) (appdto.AuditDetailResponse, error) {
 	return appdto.AuditDetailResponse{}, nil
 }
 
@@ -30,7 +31,7 @@ func TestListAuditsHandler_RequiresTenant(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	c.Set("claims", &pkg.JWTClaims{Roles: []string{"ADMIN"}})
-	h := NewAuditHandlers(&stubAuditClient{}, zap.NewNop())
+	h := NewAuditHandlers(&stubAuditPort{}, zap.NewNop())
 	if err := h.ListAuditsHandler(c); err != nil {
 		t.Fatal(err)
 	}
@@ -45,7 +46,7 @@ func TestListAuditsHandler_OK(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	c.Set("claims", &pkg.JWTClaims{Roles: []string{"ADMIN"}, TenantId: "tenant-1"})
-	h := NewAuditHandlers(&stubAuditClient{page: appdto.PaginatedAuditResponse{Content: []appdto.AuditEventResponse{}, Size: 20}}, zap.NewNop())
+	h := NewAuditHandlers(&stubAuditPort{page: appdto.PaginatedAuditResponse{Content: []appdto.AuditEventResponse{}, Size: 20}}, zap.NewNop())
 	if err := h.ListAuditsHandler(c); err != nil {
 		t.Fatal(err)
 	}

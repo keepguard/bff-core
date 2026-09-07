@@ -7,7 +7,7 @@ import (
 
 	"github.com/sony/gobreaker"
 	communicationDto "github.com/keepguard/bff-core/internal/adapters/outbound/http/dto/communication"
-	"github.com/keepguard/bff-core/internal/domain/ports/client"
+	client "github.com/keepguard/bff-core/internal/application/port"
 	"github.com/keepguard/bff-core/internal/domain/ports/messaging"
 	"github.com/keepguard/bff-core/internal/infrastructure/resilience"
 	"go.uber.org/zap"

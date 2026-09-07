@@ -26,9 +26,9 @@ func TestRetryDecorator_GetByTenantId_Success(t *testing.T) {
 	decorator := NewRetryDecorator(mockClient, config).(*retryDecorator)
 
 	expectedResponse := companyDto.MSCompanyResponseDTO{
-		ID:   "123",
+		ID:          "123",
 		CodeCompany: "TEST123",
-		Name: "Test Company",
+		Name:        "Test Company",
 	}
 
 	mockClient.On("GetByTenantId", mock.Anything, "test-app", "corr-123").Return(expectedResponse, nil).Once()
@@ -56,9 +56,9 @@ func TestRetryDecorator_GetByTenantId_RetryableError_Success(t *testing.T) {
 	decorator := NewRetryDecorator(mockClient, config).(*retryDecorator)
 
 	expectedResponse := companyDto.MSCompanyResponseDTO{
-		ID:   "123",
+		ID:          "123",
 		CodeCompany: "TEST123",
-		Name: "Test Company",
+		Name:        "Test Company",
 	}
 
 	retryableError := &appdto.HTTPError{

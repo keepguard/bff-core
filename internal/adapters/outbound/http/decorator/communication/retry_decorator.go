@@ -9,7 +9,7 @@ import (
 
 	communicationDto "github.com/keepguard/bff-core/internal/adapters/outbound/http/dto/communication"
 	appdto "github.com/keepguard/bff-core/internal/application/dto"
-	portsclient "github.com/keepguard/bff-core/internal/domain/ports/client"
+	portsclient "github.com/keepguard/bff-core/internal/application/port"
 )
 
 // RetryConfig configuração para retry
@@ -132,7 +132,7 @@ func (d *retryDecorator) retry(ctx context.Context, operation func() error) erro
 }
 
 // SendNotification implementa SendNotification com retry
-func (d *retryDecorator) SendNotification(ctx context.Context, req portsclient.SendNotificationRequestDTO, tenantId, correlationID string) error {
+func (d *retryDecorator) SendNotification(ctx context.Context, req appdto.SendNotificationRequestDTO, tenantId, correlationID string) error {
 	return d.retry(ctx, func() error {
 		return d.inner.SendNotification(ctx, req, tenantId, correlationID)
 	})

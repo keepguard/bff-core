@@ -9,7 +9,7 @@ import (
 
 	companyDto "github.com/keepguard/bff-core/internal/adapters/outbound/http/dto/company"
 	appdto "github.com/keepguard/bff-core/internal/application/dto"
-	portsclient "github.com/keepguard/bff-core/internal/domain/ports/client"
+	portsclient "github.com/keepguard/bff-core/internal/application/port"
 )
 
 // RetryConfig configuração para retry
@@ -59,11 +59,11 @@ func (d *retryDecorator) isRetryableError(err error) bool {
 		// Retry APENAS para erros 5xx (infraestrutura)
 		switch httpErr.Code {
 		case http.StatusTooManyRequests, // 429
-			http.StatusRequestTimeout,     // 408
+			http.StatusRequestTimeout,      // 408
 			http.StatusInternalServerError, // 500
-			http.StatusBadGateway,         // 502
-			http.StatusServiceUnavailable, // 503
-			http.StatusGatewayTimeout:     // 504
+			http.StatusBadGateway,          // 502
+			http.StatusServiceUnavailable,  // 503
+			http.StatusGatewayTimeout:      // 504
 			return true
 		}
 		// NUNCA retry para 4xx (erros de negócio/validação)

@@ -10,7 +10,7 @@ import (
 	"github.com/go-resty/resty/v2"
 	consentDocumentDto "github.com/keepguard/bff-core/internal/adapters/outbound/http/dto/consent_document"
 	appdto "github.com/keepguard/bff-core/internal/application/dto"
-	"github.com/keepguard/bff-core/internal/domain/ports/client"
+	client "github.com/keepguard/bff-core/internal/application/port"
 	"github.com/keepguard/bff-core/internal/infrastructure/config"
 	"go.uber.org/zap"
 )

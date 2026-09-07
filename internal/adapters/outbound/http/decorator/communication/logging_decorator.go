@@ -2,10 +2,11 @@ package communication
 
 import (
 	"context"
+	appdto "github.com/keepguard/bff-core/internal/application/dto"
 	"time"
 
 	communicationDto "github.com/keepguard/bff-core/internal/adapters/outbound/http/dto/communication"
-	portsclient "github.com/keepguard/bff-core/internal/domain/ports/client"
+	portsclient "github.com/keepguard/bff-core/internal/application/port"
 	"go.uber.org/zap"
 )
 
@@ -30,7 +31,7 @@ func NewCommunicationLoggingDecorator(
 }
 
 // SendNotification implementa SendNotification com logging
-func (d *communicationLoggingDecorator) SendNotification(ctx context.Context, req portsclient.SendNotificationRequestDTO, tenantId, correlationID string) error {
+func (d *communicationLoggingDecorator) SendNotification(ctx context.Context, req appdto.SendNotificationRequestDTO, tenantId, correlationID string) error {
 	start := time.Now()
 
 	d.logger.Info("Iniciando requisição",

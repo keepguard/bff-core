@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	companyDto "github.com/keepguard/bff-core/internal/adapters/outbound/http/dto/company"
-	portsclient "github.com/keepguard/bff-core/internal/domain/ports/client"
+	portsclient "github.com/keepguard/bff-core/internal/application/port"
 	"github.com/keepguard/bff-core/internal/infrastructure/metrics"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"

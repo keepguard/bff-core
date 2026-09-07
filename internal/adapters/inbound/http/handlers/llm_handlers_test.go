@@ -9,7 +9,8 @@ import (
 	"testing"
 
 	appdto "github.com/keepguard/bff-core/internal/application/dto"
-	domainclient "github.com/keepguard/bff-core/internal/domain/ports/client"
+	appllm "github.com/keepguard/bff-core/internal/application/llm"
+	domainclient "github.com/keepguard/bff-core/internal/application/port"
 	"github.com/keepguard/bff-core/internal/pkg"
 	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
@@ -62,7 +63,7 @@ func TestListLlmUsageHandler_RequiresTenant(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	c.Set("claims", &pkg.JWTClaims{Roles: []string{"ADMIN"}})
-	h := NewLlmHandlers(&stubLlmClient{}, zap.NewNop())
+	h := NewLlmHandlers(appllm.NewLlmPort(&stubLlmClient{}), zap.NewNop())
 	if err := h.ListLlmUsageHandler(c); err != nil {
 		t.Fatal(err)
 	}
@@ -77,7 +78,7 @@ func TestListLlmUsageHandler_OK(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	c.Set("claims", &pkg.JWTClaims{Roles: []string{"ADMIN"}, TenantId: "tenant-1"})
-	h := NewLlmHandlers(&stubLlmClient{usage: appdto.PaginatedLlmUsageResponse{Content: []appdto.LlmUsageResponse{}, Size: 20}}, zap.NewNop())
+	h := NewLlmHandlers(appllm.NewLlmPort(&stubLlmClient{usage: appdto.PaginatedLlmUsageResponse{Content: []appdto.LlmUsageResponse{}, Size: 20}}), zap.NewNop())
 	if err := h.ListLlmUsageHandler(c); err != nil {
 		t.Fatal(err)
 	}
@@ -93,7 +94,7 @@ func TestCreateLlmProviderHandler_OK(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	c.Set("claims", &pkg.JWTClaims{Roles: []string{"ADMIN"}, TenantId: "tenant-1"})
-	h := NewLlmHandlers(&stubLlmClient{}, zap.NewNop())
+	h := NewLlmHandlers(appllm.NewLlmPort(&stubLlmClient{}), zap.NewNop())
 	if err := h.CreateLlmProviderHandler(c); err != nil {
 		t.Fatal(err)
 	}
@@ -121,7 +122,7 @@ func TestCreateLlmProviderHandler_ForwardsInboundBearer(t *testing.T) {
 	c.Set("claims", &pkg.JWTClaims{Roles: []string{"ADMIN"}, TenantId: "tenant-1"})
 	c.Set("token", "user-jwt")
 	stub := &capturingLlmClient{}
-	h := NewLlmHandlers(stub, zap.NewNop())
+	h := NewLlmHandlers(appllm.NewLlmPort(stub), zap.NewNop())
 	if err := h.CreateLlmProviderHandler(c); err != nil {
 		t.Fatal(err)
 	}

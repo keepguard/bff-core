@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	portsclient "github.com/keepguard/bff-core/internal/domain/ports/client"
+	appdto "github.com/keepguard/bff-core/internal/application/dto"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest/observer"
@@ -35,7 +35,7 @@ func TestCommunicationLoggingDecorator_SendNotification_Success(t *testing.T) {
 	decorator := NewCommunicationLoggingDecorator(mockInner, logger, serviceName)
 
 	ctx := context.Background()
-	req := portsclient.SendNotificationRequestDTO{
+	req := appdto.SendNotificationRequestDTO{
 		UserID:       "user-123",
 		TemplateType: "WELCOME_EMAIL",
 		Channel:      "email",
@@ -71,7 +71,7 @@ func TestCommunicationLoggingDecorator_SendNotification_Error(t *testing.T) {
 	decorator := NewCommunicationLoggingDecorator(mockInner, logger, serviceName)
 
 	ctx := context.Background()
-	req := portsclient.SendNotificationRequestDTO{
+	req := appdto.SendNotificationRequestDTO{
 		UserID:       "user-123",
 		TemplateType: "INVALID_TEMPLATE",
 		Channel:      "email",

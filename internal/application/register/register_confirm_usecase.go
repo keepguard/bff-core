@@ -5,14 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/keepguard/bff-core/internal/adapters/inbound/http/dto"
-	authDto "github.com/keepguard/bff-core/internal/adapters/outbound/http/dto/auth"
-	companyDto "github.com/keepguard/bff-core/internal/adapters/outbound/http/dto/company"
-	userDto "github.com/keepguard/bff-core/internal/adapters/outbound/http/dto/user"
-	userConsentDto "github.com/keepguard/bff-core/internal/adapters/outbound/http/dto/user_consent"
 	appdto "github.com/keepguard/bff-core/internal/application/dto"
+	client "github.com/keepguard/bff-core/internal/application/port"
 	"github.com/keepguard/bff-core/internal/domain/enums"
-	"github.com/keepguard/bff-core/internal/domain/ports/client"
 	"github.com/keepguard/bff-core/internal/domain/ports/messaging"
 	"github.com/keepguard/bff-core/internal/domain/saga"
 	"go.uber.org/zap"
@@ -53,7 +48,7 @@ func NewRegisterConfirmUseCase(
 }
 
 // Execute executa o caso de uso de confirmação de registro usando SAGA em memória
-func (uc *registerConfirmUseCaseImpl) Execute(command appdto.RegisterConfirmCommand) (dto.RegisterConfirmResponseDTO, error) {
+func (uc *registerConfirmUseCaseImpl) Execute(ctx context.Context, command appdto.RegisterConfirmCommand) (appdto.RegisterConfirmViewDTO, error) {
 	uc.logger.Info("Iniciando confirmação de registro com SAGA",
 		zap.String("email", command.Email),
 		zap.String("correlation_id", command.CorrelationID))
@@ -66,29 +61,29 @@ func (uc *registerConfirmUseCaseImpl) Execute(command appdto.RegisterConfirmComm
 	// Construir e executar SAGA
 	registerSaga := uc.buildRegisterConfirmSaga()
 
-	err := uc.sagaExecutor.Execute(command.Context, registerSaga, sagaData)
+	err := uc.sagaExecutor.Execute(ctx, registerSaga, sagaData)
 	if err != nil {
 		uc.logger.Error("SAGA de registro falhou",
 			zap.String("email", command.Email),
 			zap.String("correlation_id", command.CorrelationID),
 			zap.Error(err))
-		return dto.RegisterConfirmResponseDTO{}, err
+		return appdto.RegisterConfirmViewDTO{}, err
 	}
 
 	// Extrair resultado do login do sagaData
-	loginResponse, ok := sagaData["loginResponse"].(authDto.AuthLoginResponseDTO)
+	loginResponse, ok := sagaData["loginResponse"].(appdto.AuthLoginResponseDTO)
 	if !ok {
-		return dto.RegisterConfirmResponseDTO{}, fmt.Errorf("resposta de login não encontrada no SAGA")
+		return appdto.RegisterConfirmViewDTO{}, fmt.Errorf("resposta de login não encontrada no SAGA")
 	}
 
 	// Enviar email de boas-vindas APENAS se SAGA completou com sucesso
-	uc.sendWelcomeEmail(command.Context, sagaData, command.TenantId, command.CorrelationID)
+	uc.sendWelcomeEmail(ctx, sagaData, command.TenantId, command.CorrelationID)
 
 	uc.logger.Info("Registro confirmado com sucesso via SAGA",
 		zap.String("email", command.Email),
 		zap.String("correlation_id", command.CorrelationID))
 
-	return dto.RegisterConfirmResponseDTO{
+	return appdto.RegisterConfirmViewDTO{
 		Token:          loginResponse.Token,
 		TokenExpiresIn: loginResponse.ExpiresIn,
 	}, nil
@@ -104,7 +99,7 @@ func (uc *registerConfirmUseCaseImpl) buildRegisterConfirmSaga() saga.InMemorySa
 				Name: "ValidateCompany",
 				Execute: func(ctx context.Context, data map[string]interface{}) error {
 					command := data["command"].(appdto.RegisterConfirmCommand)
-					if company, ok := data["company"].(companyDto.MSCompanyResponseDTO); ok {
+					if company, ok := data["company"].(appdto.MSCompanyResponseDTO); ok {
 						ctx = client.WithCompanyID(ctx, company.ID)
 					}
 					company, err := uc.companyClient.GetByTenantId(ctx, command.TenantId, command.CorrelationID)
@@ -123,10 +118,10 @@ func (uc *registerConfirmUseCaseImpl) buildRegisterConfirmSaga() saga.InMemorySa
 				Name: "ConfirmRegisterSession",
 				Execute: func(ctx context.Context, data map[string]interface{}) error {
 					command := data["command"].(appdto.RegisterConfirmCommand)
-					if company, ok := data["company"].(companyDto.MSCompanyResponseDTO); ok {
+					if company, ok := data["company"].(appdto.MSCompanyResponseDTO); ok {
 						ctx = client.WithCompanyID(ctx, company.ID)
 					}
-					confirmRequest := userDto.MSUserRegisterConfirmRequestDTO{
+					confirmRequest := appdto.MSUserRegisterConfirmRequestDTO{
 						Email:                 command.Email,
 						RegistrationSessionID: command.RegistrationSessionId,
 						Token:                 command.Token,
@@ -150,13 +145,13 @@ func (uc *registerConfirmUseCaseImpl) buildRegisterConfirmSaga() saga.InMemorySa
 				Name: "CreateUser",
 				Execute: func(ctx context.Context, data map[string]interface{}) error {
 					command := data["command"].(appdto.RegisterConfirmCommand)
-					if company, ok := data["company"].(companyDto.MSCompanyResponseDTO); ok {
+					if company, ok := data["company"].(appdto.MSCompanyResponseDTO); ok {
 						ctx = client.WithCompanyID(ctx, company.ID)
 					}
-					company := data["company"].(companyDto.MSCompanyResponseDTO)
-					confirmResponse := data["confirmResponse"].(userDto.MSUserRegisterConfirmResponseDTO)
+					company := data["company"].(appdto.MSCompanyResponseDTO)
+					confirmResponse := data["confirmResponse"].(appdto.MSUserRegisterConfirmResponseDTO)
 
-					userRequest := userDto.MSUserCreateRequestDTO{
+					userRequest := appdto.MSUserCreateRequestDTO{
 						CompanyID:       company.ID,
 						Type:            confirmResponse.Type,
 						Email:           confirmResponse.Email,
@@ -164,7 +159,7 @@ func (uc *registerConfirmUseCaseImpl) buildRegisterConfirmSaga() saga.InMemorySa
 						PreferredLocale: "pt-BR",
 						Timezone:        "America/Sao_Paulo",
 						Status:          "ACTIVE",
-						PersonProfile: &userDto.PersonProfileDTO{
+						PersonProfile: &appdto.PersonProfileDTO{
 							FullName:  confirmResponse.NameFull,
 							KYCLevel:  "BASIC",
 							KYCStatus: "NOT_STARTED",
@@ -180,7 +175,7 @@ func (uc *registerConfirmUseCaseImpl) buildRegisterConfirmSaga() saga.InMemorySa
 				},
 				Compensate: func(ctx context.Context, data map[string]interface{}) error {
 					command := data["command"].(appdto.RegisterConfirmCommand)
-					user := data["user"].(userDto.MSUserResponseDTO)
+					user := data["user"].(appdto.MSUserResponseDTO)
 					return uc.userClient.DeleteUser(ctx, user.ID, command.TenantId, command.CorrelationID)
 				},
 				MaxRetries: 1, // Sem retry - delegado ao decorator se necessário
@@ -191,12 +186,12 @@ func (uc *registerConfirmUseCaseImpl) buildRegisterConfirmSaga() saga.InMemorySa
 				Name: "CreateUserNotify",
 				Execute: func(ctx context.Context, data map[string]interface{}) error {
 					command := data["command"].(appdto.RegisterConfirmCommand)
-					if company, ok := data["company"].(companyDto.MSCompanyResponseDTO); ok {
+					if company, ok := data["company"].(appdto.MSCompanyResponseDTO); ok {
 						ctx = client.WithCompanyID(ctx, company.ID)
 					}
-					user := data["user"].(userDto.MSUserResponseDTO)
+					user := data["user"].(appdto.MSUserResponseDTO)
 
-					notifyRequest := userDto.MSUserNotifyCreateRequestDTO{
+					notifyRequest := appdto.MSUserNotifyCreateRequestDTO{
 						UserID:          user.ID,
 						EmailEnabled:    true,
 						SmsEnabled:      true,
@@ -215,14 +210,14 @@ func (uc *registerConfirmUseCaseImpl) buildRegisterConfirmSaga() saga.InMemorySa
 				Name: "CreateAuthUser",
 				Execute: func(ctx context.Context, data map[string]interface{}) error {
 					command := data["command"].(appdto.RegisterConfirmCommand)
-					if company, ok := data["company"].(companyDto.MSCompanyResponseDTO); ok {
+					if company, ok := data["company"].(appdto.MSCompanyResponseDTO); ok {
 						ctx = client.WithCompanyID(ctx, company.ID)
 					}
-					company := data["company"].(companyDto.MSCompanyResponseDTO)
-					confirmResponse := data["confirmResponse"].(userDto.MSUserRegisterConfirmResponseDTO)
-					user := data["user"].(userDto.MSUserResponseDTO)
+					company := data["company"].(appdto.MSCompanyResponseDTO)
+					confirmResponse := data["confirmResponse"].(appdto.MSUserRegisterConfirmResponseDTO)
+					user := data["user"].(appdto.MSUserResponseDTO)
 
-					authUserRequest := authDto.AuthUserCreateRequestDTO{
+					authUserRequest := appdto.AuthUserCreateRequestDTO{
 						Username:       user.Email,
 						Email:          user.Email,
 						Password:       confirmResponse.PasswordHash,
@@ -237,7 +232,7 @@ func (uc *registerConfirmUseCaseImpl) buildRegisterConfirmSaga() saga.InMemorySa
 				},
 				Compensate: func(ctx context.Context, data map[string]interface{}) error {
 					command := data["command"].(appdto.RegisterConfirmCommand)
-					user := data["user"].(userDto.MSUserResponseDTO)
+					user := data["user"].(appdto.MSUserResponseDTO)
 					return uc.authClient.HardDeleteUser(ctx, user.ID, command.TenantId, command.CorrelationID)
 				},
 				MaxRetries: 1, // Sem retry - delegado ao decorator se necessário
@@ -248,13 +243,13 @@ func (uc *registerConfirmUseCaseImpl) buildRegisterConfirmSaga() saga.InMemorySa
 				Name: "AcceptConsents",
 				Execute: func(ctx context.Context, data map[string]interface{}) error {
 					command := data["command"].(appdto.RegisterConfirmCommand)
-					if company, ok := data["company"].(companyDto.MSCompanyResponseDTO); ok {
+					if company, ok := data["company"].(appdto.MSCompanyResponseDTO); ok {
 						ctx = client.WithCompanyID(ctx, company.ID)
 					}
-					confirmResponse := data["confirmResponse"].(userDto.MSUserRegisterConfirmResponseDTO)
-					user := data["user"].(userDto.MSUserResponseDTO)
+					confirmResponse := data["confirmResponse"].(appdto.MSUserRegisterConfirmResponseDTO)
+					user := data["user"].(appdto.MSUserResponseDTO)
 
-					acceptAllRequest := userConsentDto.UserConsentAcceptAllRequestDTO{
+					acceptAllRequest := appdto.UserConsentAcceptAllRequestDTO{
 						UserID:      user.ID,
 						Email:       user.Email,
 						AcceptedAt:  time.Now(),
@@ -265,7 +260,7 @@ func (uc *registerConfirmUseCaseImpl) buildRegisterConfirmSaga() saga.InMemorySa
 				},
 				Compensate: func(ctx context.Context, data map[string]interface{}) error {
 					command := data["command"].(appdto.RegisterConfirmCommand)
-					user := data["user"].(userDto.MSUserResponseDTO)
+					user := data["user"].(appdto.MSUserResponseDTO)
 					return uc.userConsentClient.DeleteAllByUserId(ctx, user.ID, command.TenantId, command.CorrelationID)
 				},
 				MaxRetries: 1, // Sem retry - delegado ao decorator se necessário
@@ -277,13 +272,13 @@ func (uc *registerConfirmUseCaseImpl) buildRegisterConfirmSaga() saga.InMemorySa
 				Name: "ExecuteLogin",
 				Execute: func(ctx context.Context, data map[string]interface{}) error {
 					command := data["command"].(appdto.RegisterConfirmCommand)
-					if company, ok := data["company"].(companyDto.MSCompanyResponseDTO); ok {
+					if company, ok := data["company"].(appdto.MSCompanyResponseDTO); ok {
 						ctx = client.WithCompanyID(ctx, company.ID)
 					}
-					confirmResponse := data["confirmResponse"].(userDto.MSUserRegisterConfirmResponseDTO)
-					user := data["user"].(userDto.MSUserResponseDTO)
+					confirmResponse := data["confirmResponse"].(appdto.MSUserRegisterConfirmResponseDTO)
+					user := data["user"].(appdto.MSUserResponseDTO)
 
-					registerLoginRequest := authDto.AuthRegisterLoginRequestDTO{
+					registerLoginRequest := appdto.AuthRegisterLoginRequestDTO{
 						Username:     user.Email,
 						PasswordHash: confirmResponse.PasswordHash,
 						TenantId:     command.TenantId,
@@ -306,9 +301,9 @@ func (uc *registerConfirmUseCaseImpl) buildRegisterConfirmSaga() saga.InMemorySa
 
 // sendWelcomeEmail envia email de boas-vindas (fora do SAGA)
 func (uc *registerConfirmUseCaseImpl) sendWelcomeEmail(ctx context.Context, sagaData map[string]interface{}, tenantId, correlationID string) {
-	company := sagaData["company"].(companyDto.MSCompanyResponseDTO)
-	user := sagaData["user"].(userDto.MSUserResponseDTO)
-	confirmResponse := sagaData["confirmResponse"].(userDto.MSUserRegisterConfirmResponseDTO)
+	company := sagaData["company"].(appdto.MSCompanyResponseDTO)
+	user := sagaData["user"].(appdto.MSUserResponseDTO)
+	confirmResponse := sagaData["confirmResponse"].(appdto.MSUserRegisterConfirmResponseDTO)
 
 	variables := map[string]string{
 		"userName": confirmResponse.NameFull,

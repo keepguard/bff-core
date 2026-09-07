@@ -7,7 +7,7 @@ import (
 
 	communicationDto "github.com/keepguard/bff-core/internal/adapters/outbound/http/dto/communication"
 	appdto "github.com/keepguard/bff-core/internal/application/dto"
-	portsclient "github.com/keepguard/bff-core/internal/domain/ports/client"
+	portsclient "github.com/keepguard/bff-core/internal/application/port"
 	"github.com/keepguard/bff-core/internal/infrastructure/metrics"
 )
 
@@ -45,7 +45,7 @@ func (d *communicationMetricsDecorator) getStatusCodeFromError(err error) int {
 }
 
 // SendNotification implementa SendNotification com métricas
-func (d *communicationMetricsDecorator) SendNotification(ctx context.Context, req portsclient.SendNotificationRequestDTO, tenantId, correlationID string) error {
+func (d *communicationMetricsDecorator) SendNotification(ctx context.Context, req appdto.SendNotificationRequestDTO, tenantId, correlationID string) error {
 	start := time.Now()
 
 	err := d.inner.SendNotification(ctx, req, tenantId, correlationID)

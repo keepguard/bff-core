@@ -5,7 +5,7 @@ import (
 	"time"
 
 	companyDto "github.com/keepguard/bff-core/internal/adapters/outbound/http/dto/company"
-	portsclient "github.com/keepguard/bff-core/internal/domain/ports/client"
+	portsclient "github.com/keepguard/bff-core/internal/application/port"
 	"go.uber.org/zap"
 )
 

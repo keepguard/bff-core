@@ -1,9 +1,5 @@
 package dto
 
-// GenerateResetTokenMSRequestDTO representa a requisição de geração de token de reset para o ms-auth
-type GenerateResetTokenMSRequestDTO struct {
-	CodeUser          string `json:"codeUser"`
-	MessageType       string `json:"messageType"`
-	CommunicationType string `json:"communicationType"`
-	TemplateType      string `json:"templateType"`
-}
+import appdto "github.com/keepguard/bff-core/internal/application/dto"
+
+type GenerateResetTokenMSRequestDTO = appdto.GenerateResetTokenMSRequestDTO

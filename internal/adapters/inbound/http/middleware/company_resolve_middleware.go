@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/keepguard/bff-core/internal/domain/ports/client"
+	client "github.com/keepguard/bff-core/internal/application/port"
 	"github.com/keepguard/bff-core/internal/pkg"
 	"github.com/labstack/echo/v4"
 )

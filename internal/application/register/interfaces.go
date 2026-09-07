@@ -1,16 +1,17 @@
 package register
 
 import (
-	"github.com/keepguard/bff-core/internal/adapters/inbound/http/dto"
+	"context"
+
 	appdto "github.com/keepguard/bff-core/internal/application/dto"
 )
 
 // RegisterInitUseCase define o caso de uso de inicialização de registro
 type RegisterInitUseCase interface {
-	Execute(command appdto.RegisterInitCommand) (dto.RegisterInitResponseDTO, error)
+	Execute(ctx context.Context, command appdto.RegisterInitCommand) (appdto.RegisterInitViewDTO, error)
 }
 
 // RegisterConfirmUseCase define o caso de uso de confirmação de registro
 type RegisterConfirmUseCase interface {
-	Execute(command appdto.RegisterConfirmCommand) (dto.RegisterConfirmResponseDTO, error)
+	Execute(ctx context.Context, command appdto.RegisterConfirmCommand) (appdto.RegisterConfirmViewDTO, error)
 }

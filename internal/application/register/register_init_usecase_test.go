@@ -68,7 +68,6 @@ func TestRegisterInitUseCase_Execute_Success(t *testing.T) {
 	mockMessagePublisher.On("PublishMessage", mock.Anything, mock.Anything).Return(nil)
 
 	command := appdto.RegisterInitCommand{
-		Context:                    context.Background(),
 		NameFull:                   "Test User",
 		Email:                      "test@example.com",
 		Password:                   "password123",
@@ -84,7 +83,7 @@ func TestRegisterInitUseCase_Execute_Success(t *testing.T) {
 	}
 
 	// Act
-	result, err := useCase.Execute(command)
+	result, err := useCase.Execute(context.Background(), command)
 
 	// Assert
 	assert.NoError(t, err)
@@ -120,7 +119,6 @@ func TestRegisterInitUseCase_Execute_CompanyNotFound(t *testing.T) {
 	mockCompanyClient.On("GetByTenantId", mock.Anything, "test-app", "corr-123").Return(companyDto.MSCompanyResponseDTO{}, errors.New("company not found"))
 
 	command := appdto.RegisterInitCommand{
-		Context:                    context.Background(),
 		NameFull:                   "Test User",
 		Email:                      "test@example.com",
 		Password:                   "password123",
@@ -136,7 +134,7 @@ func TestRegisterInitUseCase_Execute_CompanyNotFound(t *testing.T) {
 	}
 
 	// Act
-	result, err := useCase.Execute(command)
+	result, err := useCase.Execute(context.Background(), command)
 
 	// Assert
 	assert.Error(t, err)
@@ -179,7 +177,6 @@ func TestRegisterInitUseCase_Execute_InitRegisterFailed(t *testing.T) {
 	mockUserClient.On("InitRegister", mock.Anything, mock.Anything, "test-app", "corr-123").Return(userDto.MSUserRegisterInitResponseDTO{}, errors.New("email already exists"))
 
 	command := appdto.RegisterInitCommand{
-		Context:                    context.Background(),
 		NameFull:                   "Test User",
 		Email:                      "test@example.com",
 		Password:                   "password123",
@@ -195,7 +192,7 @@ func TestRegisterInitUseCase_Execute_InitRegisterFailed(t *testing.T) {
 	}
 
 	// Act
-	result, err := useCase.Execute(command)
+	result, err := useCase.Execute(context.Background(), command)
 
 	// Assert
 	assert.Error(t, err)
@@ -246,7 +243,6 @@ func TestRegisterInitUseCase_Execute_CommunicationFailed_StillSuccess(t *testing
 	mockMessagePublisher.On("PublishMessage", mock.Anything, mock.Anything).Return(errors.New("email service unavailable"))
 
 	command := appdto.RegisterInitCommand{
-		Context:                    context.Background(),
 		NameFull:                   "Test User",
 		Email:                      "test@example.com",
 		Password:                   "password123",
@@ -262,7 +258,7 @@ func TestRegisterInitUseCase_Execute_CommunicationFailed_StillSuccess(t *testing
 	}
 
 	// Act
-	result, err := useCase.Execute(command)
+	result, err := useCase.Execute(context.Background(), command)
 
 	// Assert
 	assert.NoError(t, err) // Should not fail even if email fails
@@ -343,7 +339,6 @@ func TestRegisterInitUseCase_Execute_VerifyRequestData(t *testing.T) {
 	})).Return(nil)
 
 	command := appdto.RegisterInitCommand{
-		Context:                    context.Background(),
 		NameFull:                   "Test User",
 		Email:                      "test@example.com",
 		Password:                   "password123",
@@ -359,7 +354,7 @@ func TestRegisterInitUseCase_Execute_VerifyRequestData(t *testing.T) {
 	}
 
 	// Act
-	result, err := useCase.Execute(command)
+	result, err := useCase.Execute(context.Background(), command)
 
 	// Assert
 	assert.NoError(t, err)

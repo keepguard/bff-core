@@ -1,7 +1,6 @@
 package dto
 
 import (
-	"context"
 	"fmt"
 )
 
@@ -20,7 +19,6 @@ type RegisterInitCommand struct {
 	Type                       string
 	TenantId                   string
 	CorrelationID              string
-	Context                    context.Context
 }
 
 // NewRegisterInitCommand cria um novo comando de inicialização de registro
@@ -28,7 +26,6 @@ func NewRegisterInitCommand(
 	nameFull, email, password, confirmPassword, phone string,
 	hasAcceptedTermsAndPrivacy, acceptedMarketing bool,
 	ipAddress, userAgent, geolocation, userType, tenantId, correlationID string,
-	ctx context.Context,
 ) RegisterInitCommand {
 	return RegisterInitCommand{
 		NameFull:                   nameFull,
@@ -44,7 +41,6 @@ func NewRegisterInitCommand(
 		Type:                       userType,
 		TenantId:                   tenantId,
 		CorrelationID:              correlationID,
-		Context:                    ctx,
 	}
 }
 
@@ -100,13 +96,11 @@ type RegisterConfirmCommand struct {
 	TenantId              string
 	ClientId              string
 	CorrelationID         string
-	Context               context.Context
 }
 
 // NewRegisterConfirmCommand cria um novo comando de confirmação de registro
 func NewRegisterConfirmCommand(
 	email, registrationSessionId, token, tenantId, correlationID, clientId string,
-	ctx context.Context,
 ) RegisterConfirmCommand {
 	return RegisterConfirmCommand{
 		Email:                 email,
@@ -116,14 +110,12 @@ func NewRegisterConfirmCommand(
 		TenantId:              tenantId,
 		ClientId:              clientId,
 		CorrelationID:         correlationID,
-		Context:               ctx,
 	}
 }
 
 // NewMultiChannelRegisterConfirmCommand cria comando completo de confirmação multicanal
 func NewMultiChannelRegisterConfirmCommand(
 	email, registrationSessionId, token, emailToken, smsToken, whatsAppToken, tenantId, correlationID, clientId string,
-	ctx context.Context,
 ) RegisterConfirmCommand {
 	if emailToken == "" && token != "" {
 		emailToken = token
@@ -141,7 +133,6 @@ func NewMultiChannelRegisterConfirmCommand(
 		TenantId:              tenantId,
 		ClientId:              clientId,
 		CorrelationID:         correlationID,
-		Context:               ctx,
 	}
 }
 
@@ -180,16 +171,14 @@ type RegisterResendCommand struct {
 	RegistrationSessionID string
 	TenantId              string
 	CorrelationID         string
-	Context               context.Context
 }
 
-func NewRegisterResendCommand(email, registrationSessionID, tenantId, correlationID string, ctx context.Context) RegisterResendCommand {
+func NewRegisterResendCommand(email, registrationSessionID, tenantId, correlationID string) RegisterResendCommand {
 	return RegisterResendCommand{
 		Email:                 email,
 		RegistrationSessionID: registrationSessionID,
 		TenantId:              tenantId,
 		CorrelationID:         correlationID,
-		Context:               ctx,
 	}
 }
 

@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	httpclient "github.com/keepguard/bff-core/internal/adapters/outbound/http/client"
-	domainclient "github.com/keepguard/bff-core/internal/domain/ports/client"
+	domainclient "github.com/keepguard/bff-core/internal/application/port"
 	"github.com/keepguard/bff-core/internal/infrastructure/config"
 	"go.uber.org/zap"
 )

@@ -4,7 +4,7 @@ import (
 	"context"
 
 	companyDto "github.com/keepguard/bff-core/internal/adapters/outbound/http/dto/company"
-	portsclient "github.com/keepguard/bff-core/internal/domain/ports/client"
+	portsclient "github.com/keepguard/bff-core/internal/application/port"
 	"github.com/keepguard/bff-core/internal/infrastructure/resilience"
 )
 

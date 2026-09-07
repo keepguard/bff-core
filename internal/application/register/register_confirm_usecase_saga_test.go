@@ -11,7 +11,6 @@ import (
 	userDto "github.com/keepguard/bff-core/internal/adapters/outbound/http/dto/user"
 	userConsentDto "github.com/keepguard/bff-core/internal/adapters/outbound/http/dto/user_consent"
 	appdto "github.com/keepguard/bff-core/internal/application/dto"
-	"github.com/keepguard/bff-core/internal/domain/ports/client"
 	"github.com/keepguard/bff-core/internal/domain/saga"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -159,7 +158,7 @@ func (m *MockCommunicationClient) SendMessage(ctx context.Context, req communica
 	return args.Get(0).(communicationDto.SendMessageResponseDTO), args.Error(1)
 }
 
-func (m *MockCommunicationClient) SendNotification(ctx context.Context, req client.SendNotificationRequestDTO, tenantId, correlationID string) error {
+func (m *MockCommunicationClient) SendNotification(ctx context.Context, req appdto.SendNotificationRequestDTO, tenantId, correlationID string) error {
 	args := m.Called(ctx, req, tenantId, correlationID)
 	return args.Error(0)
 }
@@ -254,7 +253,6 @@ func TestRegisterConfirmUseCase_SAGASuccess(t *testing.T) {
 	mockMessagePublisher.On("PublishMessage", mock.Anything, mock.Anything).Return(nil)
 
 	command := appdto.RegisterConfirmCommand{
-		Context:               context.Background(),
 		Email:                 "test@example.com",
 		RegistrationSessionId: "session-123",
 		Token:                 "token-123",
@@ -263,7 +261,7 @@ func TestRegisterConfirmUseCase_SAGASuccess(t *testing.T) {
 	}
 
 	// Act
-	result, err := useCase.Execute(command)
+	result, err := useCase.Execute(context.Background(), command)
 
 	// Assert
 	assert.NoError(t, err)
@@ -354,7 +352,6 @@ func TestRegisterConfirmUseCase_SAGAFailureWithCompensation(t *testing.T) {
 	mockUserClient.On("DeleteUser", mock.Anything, "user-123", "test-app", "corr-123").Return(nil)
 
 	command := appdto.RegisterConfirmCommand{
-		Context:               context.Background(),
 		Email:                 "test@example.com",
 		RegistrationSessionId: "session-123",
 		Token:                 "token-123",
@@ -363,7 +360,7 @@ func TestRegisterConfirmUseCase_SAGAFailureWithCompensation(t *testing.T) {
 	}
 
 	// Act
-	result, err := useCase.Execute(command)
+	result, err := useCase.Execute(context.Background(), command)
 
 	// Assert
 	assert.Error(t, err)
@@ -442,7 +439,6 @@ func TestRegisterConfirmUseCase_SAGATimeout(t *testing.T) {
 	mockUserClient.On("DeleteUser", mock.Anything, "user-123", "test-app", "corr-123").Return(nil)
 
 	command := appdto.RegisterConfirmCommand{
-		Context:               context.Background(),
 		Email:                 "test@example.com",
 		RegistrationSessionId: "session-123",
 		Token:                 "token-123",
@@ -451,7 +447,7 @@ func TestRegisterConfirmUseCase_SAGATimeout(t *testing.T) {
 	}
 
 	// Act
-	result, err := useCase.Execute(command)
+	result, err := useCase.Execute(context.Background(), command)
 
 	// Assert
 	assert.Error(t, err)

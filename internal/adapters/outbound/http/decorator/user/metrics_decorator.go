@@ -8,7 +8,7 @@ import (
 	authDto "github.com/keepguard/bff-core/internal/adapters/outbound/http/dto/auth"
 	userDto "github.com/keepguard/bff-core/internal/adapters/outbound/http/dto/user"
 	appdto "github.com/keepguard/bff-core/internal/application/dto"
-	portsclient "github.com/keepguard/bff-core/internal/domain/ports/client"
+	portsclient "github.com/keepguard/bff-core/internal/application/port"
 	"github.com/keepguard/bff-core/internal/infrastructure/metrics"
 )
 

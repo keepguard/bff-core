@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	appdto "github.com/keepguard/bff-core/internal/application/dto"
-	portsclient "github.com/keepguard/bff-core/internal/domain/ports/client"
 	"github.com/keepguard/bff-core/internal/infrastructure/metrics"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -47,7 +46,7 @@ func TestCommunicationMetricsDecorator_SendNotification_Success(t *testing.T) {
 
 	decorator := NewCommunicationMetricsDecorator(mockInner, metricsInstance, serviceName)
 
-	req := portsclient.SendNotificationRequestDTO{
+	req := appdto.SendNotificationRequestDTO{
 		UserID:       "user-123",
 		TemplateType: "WELCOME_EMAIL",
 		Channel:      "email",
@@ -73,7 +72,7 @@ func TestCommunicationMetricsDecorator_SendNotification_Error(t *testing.T) {
 
 	decorator := NewCommunicationMetricsDecorator(mockInner, metricsInstance, serviceName)
 
-	req := portsclient.SendNotificationRequestDTO{
+	req := appdto.SendNotificationRequestDTO{
 		UserID:       "user-123",
 		TemplateType: "INVALID_TEMPLATE",
 		Channel:      "email",

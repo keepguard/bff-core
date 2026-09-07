@@ -6,7 +6,7 @@ import (
 
 	authDto "github.com/keepguard/bff-core/internal/adapters/outbound/http/dto/auth"
 	userDto "github.com/keepguard/bff-core/internal/adapters/outbound/http/dto/user"
-	portsclient "github.com/keepguard/bff-core/internal/domain/ports/client"
+	portsclient "github.com/keepguard/bff-core/internal/application/port"
 	"go.uber.org/zap"
 )
 

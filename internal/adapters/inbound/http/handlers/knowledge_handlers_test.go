@@ -12,11 +12,22 @@ import (
 
 	middlewarePkg "github.com/keepguard/bff-core/internal/adapters/inbound/http/middleware"
 	appdto "github.com/keepguard/bff-core/internal/application/dto"
-	"github.com/keepguard/bff-core/internal/domain/ports/client"
+	appknowledge "github.com/keepguard/bff-core/internal/application/knowledge"
+	client "github.com/keepguard/bff-core/internal/application/port"
 	"github.com/keepguard/bff-core/internal/pkg"
 	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
 )
+
+func testKnowledgeHandlers(
+	k client.KnowledgeClient,
+	col client.CollectorClient,
+	co client.CompanyClient,
+	tok client.ServiceTokenClient,
+	_ *zap.Logger,
+) *KnowledgeHandlers {
+	return NewKnowledgeHandlers(appknowledge.NewKnowledgePort(k, col, co, tok, zap.NewNop()), zap.NewNop())
+}
 
 type stubKnowledgeClient struct {
 	last       appdto.KnowledgeAskRequest
@@ -109,7 +120,7 @@ func TestAskKnowledgeHandler_FillsSourceHints(t *testing.T) {
 		{ID: "a1", Name: "Health snapshot", Context: "ops", Prompt: "dica da fonte ops"},
 		{ID: "a2", Name: "Juridico", Context: "juridico", Prompt: "dica juridica"},
 	}}
-	h := NewKnowledgeHandlers(knowledge, collector, &oauthStubCompany{id: "company-1"}, &stubServiceToken{}, zap.NewNop())
+	h := testKnowledgeHandlers(knowledge, collector, &oauthStubCompany{id: "company-1"}, &stubServiceToken{}, zap.NewNop())
 	if err := h.AskKnowledgeHandler(c); err != nil {
 		t.Fatal(err)
 	}
@@ -136,7 +147,7 @@ func TestAskKnowledgeHandler_FillsSourceHints(t *testing.T) {
 
 func TestAskKnowledgeHandler_RejectsWithoutRole(t *testing.T) {
 	e := echo.New()
-	h := NewKnowledgeHandlers(&stubKnowledgeClient{}, &oauthStubCollector{}, &oauthStubCompany{id: "company-1"}, &stubServiceToken{}, zap.NewNop())
+	h := testKnowledgeHandlers(&stubKnowledgeClient{}, &oauthStubCollector{}, &oauthStubCompany{id: "company-1"}, &stubServiceToken{}, zap.NewNop())
 	handler := middlewarePkg.RequireKnowledgeRead()(h.AskKnowledgeHandler)
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/core/knowledge/ask", strings.NewReader(`{"question":"saude"}`))
@@ -155,7 +166,7 @@ func TestAskKnowledgeHandler_RejectsWithoutRole(t *testing.T) {
 func TestAskKnowledgeHandler_AllowsKnowledgeReadAuthority(t *testing.T) {
 	e := echo.New()
 	knowledge := &stubKnowledgeClient{}
-	h := NewKnowledgeHandlers(knowledge, &oauthStubCollector{}, &oauthStubCompany{id: "company-1"}, &stubServiceToken{}, zap.NewNop())
+	h := testKnowledgeHandlers(knowledge, &oauthStubCollector{}, &oauthStubCompany{id: "company-1"}, &stubServiceToken{}, zap.NewNop())
 	handler := middlewarePkg.RequireKnowledgeRead()(h.AskKnowledgeHandler)
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/core/knowledge/ask", strings.NewReader(`{"question":"saude"}`))
@@ -196,7 +207,7 @@ func TestAskKnowledgeHandler_FreshnessFailedFromLastExecution(t *testing.T) {
 			ErrorMessage: "timeout no target",
 		}},
 	}
-	h := NewKnowledgeHandlers(knowledge, collector, &oauthStubCompany{id: "company-1"}, &stubServiceToken{}, zap.NewNop())
+	h := testKnowledgeHandlers(knowledge, collector, &oauthStubCompany{id: "company-1"}, &stubServiceToken{}, zap.NewNop())
 	if err := h.AskKnowledgeHandler(c); err != nil {
 		t.Fatal(err)
 	}
@@ -234,7 +245,7 @@ func TestAskKnowledgeHandler_CollectorDownOmitsFreshness(t *testing.T) {
 		{Kind: "FACT", Key: "ms-auth", SourceAgentID: "a1"},
 	}}
 	collector := &oauthStubCollector{execErr: errors.New("collector down")}
-	h := NewKnowledgeHandlers(knowledge, collector, &oauthStubCompany{id: "company-1"}, &stubServiceToken{}, zap.NewNop())
+	h := testKnowledgeHandlers(knowledge, collector, &oauthStubCompany{id: "company-1"}, &stubServiceToken{}, zap.NewNop())
 	if err := h.AskKnowledgeHandler(c); err != nil {
 		t.Fatal(err)
 	}

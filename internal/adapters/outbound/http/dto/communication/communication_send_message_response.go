@@ -1,7 +1,5 @@
 package dto
 
-// SendMessageResponseDTO representa a resposta do ms-communication
-type SendMessageResponseDTO struct {
-	Success bool   `json:"success"`
-	Message string `json:"message"`
-}
+import appdto "github.com/keepguard/bff-core/internal/application/dto"
+
+type SendMessageResponseDTO = appdto.SendMessageResponseDTO

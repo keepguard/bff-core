@@ -1,17 +1,13 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 
 	inboundDto "github.com/keepguard/bff-core/internal/adapters/inbound/http/dto"
-	companydecorator "github.com/keepguard/bff-core/internal/adapters/outbound/http/decorator/company"
-	userdecorator "github.com/keepguard/bff-core/internal/adapters/outbound/http/decorator/user"
-	companyDto "github.com/keepguard/bff-core/internal/adapters/outbound/http/dto/company"
-	userDto "github.com/keepguard/bff-core/internal/adapters/outbound/http/dto/user"
 	appdto "github.com/keepguard/bff-core/internal/application/dto"
 	"github.com/keepguard/bff-core/internal/pkg"
 	"github.com/labstack/echo/v4"
@@ -20,11 +16,13 @@ import (
 	"go.uber.org/zap"
 )
 
-func stubCompanyClient() *companydecorator.MockCompanyClient {
-	mockCompany := new(companydecorator.MockCompanyClient)
-	mockCompany.On("GetByTenantId", mock.Anything, "tenant-1", "corr-1").
-		Return(companyDto.MSCompanyResponseDTO{ID: "company-1"}, nil)
-	return mockCompany
+type mockUserPort struct {
+	mock.Mock
+}
+
+func (m *mockUserPort) GetMe(ctx context.Context, query appdto.GetMeQuery) (appdto.MeProfileViewDTO, error) {
+	args := m.Called(ctx, query)
+	return args.Get(0).(appdto.MeProfileViewDTO), args.Error(1)
 }
 
 func TestGetMeHandler_UsesSubAndReturnsProfile(t *testing.T) {
@@ -37,18 +35,22 @@ func TestGetMeHandler_UsesSubAndReturnsProfile(t *testing.T) {
 	c.Set("token", "jwt-token")
 	c.Set("claims", &pkg.JWTClaims{Sub: "user-sub-1", TenantId: "tenant-1"})
 
-	mockUser := new(userdecorator.MockUserClient)
-	mockUser.On("GetUserByCodeUser", mock.Anything, "user-sub-1", "jwt-token", "tenant-1", "corr-1").
-		Return(userDto.MSUserResponseDTO{
-			Email:         "rafael@exemplo.com",
-			DisplayHandle: "rafael.soares",
-			PhoneE164:     "+5511999999999",
-			Type:          "PERSON",
-			Status:        "ACTIVE",
-			PersonProfile: &userDto.PersonProfileDTO{FullName: "Rafael Soares"},
-		}, nil)
+	users := new(mockUserPort)
+	users.On("GetMe", mock.Anything, appdto.GetMeQuery{
+		TenantID:      "tenant-1",
+		CorrelationID: "corr-1",
+		Token:         "jwt-token",
+		CodeUser:      "user-sub-1",
+	}).Return(appdto.MeProfileViewDTO{
+		Email:         "rafael@exemplo.com",
+		DisplayHandle: "rafael.soares",
+		PhoneE164:     "+5511999999999",
+		Type:          "PERSON",
+		Status:        "ACTIVE",
+		PersonProfile: &appdto.MePersonProfileViewDTO{FullName: "Rafael Soares"},
+	}, nil)
 
-	h := NewUserHandlers(mockUser, stubCompanyClient(), zap.NewNop())
+	h := NewUserHandlers(users, zap.NewNop())
 	err := h.GetMeHandler(c)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, rec.Code)
@@ -58,7 +60,7 @@ func TestGetMeHandler_UsesSubAndReturnsProfile(t *testing.T) {
 	assert.Equal(t, "rafael@exemplo.com", body.Email)
 	assert.Equal(t, "rafael.soares", body.DisplayHandle)
 	assert.Equal(t, "Rafael Soares", body.PersonProfile.FullName)
-	mockUser.AssertExpectations(t)
+	users.AssertExpectations(t)
 }
 
 func TestGetMeHandler_UnauthorizedWhenMissingSub(t *testing.T) {
@@ -71,14 +73,12 @@ func TestGetMeHandler_UnauthorizedWhenMissingSub(t *testing.T) {
 	c.Set("token", "jwt-token")
 	c.Set("claims", &pkg.JWTClaims{})
 
-	mockUser := new(userdecorator.MockUserClient)
-	mockCompany := new(companydecorator.MockCompanyClient)
-	h := NewUserHandlers(mockUser, mockCompany, zap.NewNop())
+	users := new(mockUserPort)
+	h := NewUserHandlers(users, zap.NewNop())
 	err := h.GetMeHandler(c)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusUnauthorized, rec.Code)
-	mockUser.AssertNotCalled(t, "GetUserByCodeUser")
-	mockCompany.AssertNotCalled(t, "GetByTenantId")
+	users.AssertNotCalled(t, "GetMe")
 }
 
 func TestGetMeHandler_Propagates403(t *testing.T) {
@@ -91,15 +91,15 @@ func TestGetMeHandler_Propagates403(t *testing.T) {
 	c.Set("token", "jwt-token")
 	c.Set("claims", &pkg.JWTClaims{Sub: "user-sub-1", TenantId: "tenant-1"})
 
-	mockUser := new(userdecorator.MockUserClient)
-	mockUser.On("GetUserByCodeUser", mock.Anything, "user-sub-1", "jwt-token", "tenant-1", "corr-1").
-		Return(userDto.MSUserResponseDTO{}, &appdto.HTTPError{Code: http.StatusForbidden, Message: "Sem permissão"})
+	users := new(mockUserPort)
+	users.On("GetMe", mock.Anything, mock.Anything).
+		Return(appdto.MeProfileViewDTO{}, &appdto.HTTPError{Code: http.StatusForbidden, Message: "Sem permissão"})
 
-	h := NewUserHandlers(mockUser, stubCompanyClient(), zap.NewNop())
+	h := NewUserHandlers(users, zap.NewNop())
 	err := h.GetMeHandler(c)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusForbidden, rec.Code)
-	mockUser.AssertExpectations(t)
+	users.AssertExpectations(t)
 }
 
 func TestGetMeHandler_Returns404WhenCompanyMissing(t *testing.T) {
@@ -112,16 +112,14 @@ func TestGetMeHandler_Returns404WhenCompanyMissing(t *testing.T) {
 	c.Set("token", "jwt-token")
 	c.Set("claims", &pkg.JWTClaims{Sub: "user-sub-1", TenantId: "tenant-1"})
 
-	mockUser := new(userdecorator.MockUserClient)
-	mockCompany := new(companydecorator.MockCompanyClient)
-	mockCompany.On("GetByTenantId", mock.Anything, "tenant-1", "corr-1").
-		Return(companyDto.MSCompanyResponseDTO{}, nil)
+	users := new(mockUserPort)
+	users.On("GetMe", mock.Anything, mock.Anything).
+		Return(appdto.MeProfileViewDTO{}, pkg.NewAppError("COMPANY_NOT_FOUND", "Empresa não encontrada para o tenant informado", http.StatusNotFound))
 
-	h := NewUserHandlers(mockUser, mockCompany, zap.NewNop())
+	h := NewUserHandlers(users, zap.NewNop())
 	err := h.GetMeHandler(c)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusNotFound, rec.Code)
-	mockUser.AssertNotCalled(t, "GetUserByCodeUser")
 }
 
 func TestGetMeHandler_UsesTenantFromJWTWithoutHeader(t *testing.T) {
@@ -133,37 +131,22 @@ func TestGetMeHandler_UsesTenantFromJWTWithoutHeader(t *testing.T) {
 	c.Set("token", "jwt-token")
 	c.Set("claims", &pkg.JWTClaims{Sub: "user-sub-1", TenantId: "tenant-1"})
 
-	mockUser := new(userdecorator.MockUserClient)
-	mockUser.On("GetUserByCodeUser", mock.Anything, "user-sub-1", "jwt-token", "tenant-1", "corr-1").
-		Return(userDto.MSUserResponseDTO{
-			Email:         "rafael@exemplo.com",
-			DisplayHandle: "rafael.soares",
-			Type:          "PERSON",
-			Status:        "ACTIVE",
-		}, nil)
+	users := new(mockUserPort)
+	users.On("GetMe", mock.Anything, appdto.GetMeQuery{
+		TenantID:      "tenant-1",
+		CorrelationID: "corr-1",
+		Token:         "jwt-token",
+		CodeUser:      "user-sub-1",
+	}).Return(appdto.MeProfileViewDTO{
+		Email:         "rafael@exemplo.com",
+		DisplayHandle: "rafael.soares",
+		Type:          "PERSON",
+		Status:        "ACTIVE",
+	}, nil)
 
-	h := NewUserHandlers(mockUser, stubCompanyClient(), zap.NewNop())
+	h := NewUserHandlers(users, zap.NewNop())
 	err := h.GetMeHandler(c)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, rec.Code)
-	mockUser.AssertExpectations(t)
-}
-
-func TestToMeProfile_DropsDocumentFields(t *testing.T) {
-	raw := `{
-		"email":"a@b.com",
-		"display_handle":"handle",
-		"personProfile":{"full_name":"Nome Completo","cpf":"123.456.789-00","rg":"1122233","mother_name":"Mae"}
-	}`
-	var user userDto.MSUserResponseDTO
-	assert.NoError(t, json.Unmarshal([]byte(raw), &user))
-
-	got := toMeProfile(user)
-	encoded, err := json.Marshal(got)
-	assert.NoError(t, err)
-	payload := strings.ToLower(string(encoded))
-	assert.NotContains(t, payload, "cpf")
-	assert.NotContains(t, payload, "rg")
-	assert.NotContains(t, payload, "mother")
-	assert.Equal(t, "Nome Completo", got.PersonProfile.FullName)
+	users.AssertExpectations(t)
 }

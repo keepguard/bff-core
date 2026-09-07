@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"strings"
 
+	companydecorator "github.com/keepguard/bff-core/internal/adapters/outbound/http/decorator/company"
 	authDto "github.com/keepguard/bff-core/internal/adapters/outbound/http/dto/auth"
 	userDto "github.com/keepguard/bff-core/internal/adapters/outbound/http/dto/user"
-	companydecorator "github.com/keepguard/bff-core/internal/adapters/outbound/http/decorator/company"
-	portsclient "github.com/keepguard/bff-core/internal/domain/ports/client"
+	portsclient "github.com/keepguard/bff-core/internal/application/port"
 	"github.com/keepguard/bff-core/internal/infrastructure/metrics"
 	"go.uber.org/zap"
 )

@@ -2,71 +2,50 @@ package handlers
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"strconv"
 	"strings"
 
+	inboundDto "github.com/keepguard/bff-core/internal/adapters/inbound/http/dto"
+	"github.com/keepguard/bff-core/internal/adapters/inbound/http/mapper"
 	middlewarePkg "github.com/keepguard/bff-core/internal/adapters/inbound/http/middleware"
+	"github.com/keepguard/bff-core/internal/application/collector"
 	appdto "github.com/keepguard/bff-core/internal/application/dto"
-	"github.com/keepguard/bff-core/internal/domain/ports/client"
+	"github.com/keepguard/bff-core/internal/application/port"
 	"github.com/keepguard/bff-core/internal/pkg"
 	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
 )
 
 type CollectorAgentHandlers struct {
-	collectorClient client.CollectorClient
-	companyClient   client.CompanyClient
-	knowledgeClient client.KnowledgeClient
-	serviceToken    client.ServiceTokenClient
-	logger          *zap.Logger
+	collector collector.CollectorPort
+	logger    *zap.Logger
 }
 
-func NewCollectorAgentHandlers(
-	collectorClient client.CollectorClient,
-	companyClient client.CompanyClient,
-	knowledgeClient client.KnowledgeClient,
-	serviceToken client.ServiceTokenClient,
-	logger *zap.Logger,
-) *CollectorAgentHandlers {
-	return &CollectorAgentHandlers{
-		collectorClient: collectorClient,
-		companyClient:   companyClient,
-		knowledgeClient: knowledgeClient,
-		serviceToken:    serviceToken,
-		logger:          logger,
+func NewCollectorAgentHandlers(port collector.CollectorPort, logger *zap.Logger) *CollectorAgentHandlers {
+	if logger == nil {
+		logger = zap.NewNop()
 	}
+	return &CollectorAgentHandlers{collector: port, logger: logger}
 }
 
-type collectorAgentCreateBody struct {
-	Name            string                      `json:"name"`
-	Description     string                      `json:"description,omitempty"`
-	Context         string                      `json:"context,omitempty"`
-	CollectorType   string                      `json:"collectorType"`
-	CollectorConfig json.RawMessage             `json:"collectorConfig"`
-	Prompt          string                      `json:"prompt,omitempty"`
-	Schedule        appdto.CollectorScheduleDTO `json:"schedule"`
-	Enabled         *bool                       `json:"enabled,omitempty"`
-	DataSourceID    string                      `json:"dataSourceId,omitempty"`
+func (h *CollectorAgentHandlers) requestScope(c echo.Context) (correlationID, tenantID, companyFromCtx string) {
+	correlationID = middlewarePkg.GetCorrelationID(c)
+	tenantID = middlewarePkg.ResolveTenantId(c, middlewarePkg.GetClaimsFromContext(c))
+	companyFromCtx = port.CompanyIDFromContext(c.Request().Context())
+	return
 }
 
-type collectorAgentUpdateBody struct {
-	Name            *string                      `json:"name,omitempty"`
-	Description     *string                      `json:"description,omitempty"`
-	Context         *string                      `json:"context,omitempty"`
-	CollectorConfig json.RawMessage              `json:"collectorConfig,omitempty"`
-	Prompt          *string                      `json:"prompt,omitempty"`
-	Schedule        *appdto.CollectorScheduleDTO `json:"schedule,omitempty"`
-	DataSourceID    *string                      `json:"dataSourceId,omitempty"`
+func collectorInvalidBody(c echo.Context, correlationID string) error {
+	return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
+		Error:         "INVALID_BODY",
+		Message:       "JSON inválido",
+		CorrelationID: correlationID,
+	})
 }
 
 func (h *CollectorAgentHandlers) ListCollectorAgentsHandler(c echo.Context) error {
-	correlationID := middlewarePkg.GetCorrelationID(c)
-	companyID, err := h.resolveCompany(c, correlationID)
-	if err != nil {
-		return err
-	}
+	correlationID, tenantID, companyFromCtx := h.requestScope(c)
 	query := map[string]string{}
 	for _, key := range []string{
 		"q", "enabled", "collector_type", "data_source_id",
@@ -94,25 +73,31 @@ func (h *CollectorAgentHandlers) ListCollectorAgentsHandler(c echo.Context) erro
 	if query["page"] == "" {
 		query["page"] = "0"
 	}
-	raw, err := h.collectorClient.SearchAgents(c.Request().Context(), companyID, correlationID, query)
+	result, err := h.collector.ListAgents(c.Request().Context(), collector.ListAgentsQuery{
+		CompanyFromCtx: companyFromCtx,
+		TenantID:       tenantID,
+		CorrelationID:  correlationID,
+		Filters:        query,
+	})
 	if err != nil {
 		h.logger.Error("Erro ao listar agents",
 			zap.String("correlationId", correlationID),
-			zap.String("companyId", companyID),
+			zap.String("companyId", companyFromCtx),
 			zap.Error(err),
 		)
 		return handleError(c, err, correlationID)
 	}
-	return c.JSON(http.StatusOK, appdto.MapPaginatedCollectorAgents(raw))
+	return c.JSON(http.StatusOK, result)
 }
 
 func (h *CollectorAgentHandlers) GetCollectorAgentHandler(c echo.Context) error {
-	correlationID := middlewarePkg.GetCorrelationID(c)
-	companyID, err := h.resolveCompany(c, correlationID)
-	if err != nil {
-		return err
-	}
-	raw, err := h.collectorClient.GetAgent(c.Request().Context(), companyID, c.Param("id"), correlationID)
+	correlationID, tenantID, companyFromCtx := h.requestScope(c)
+	result, err := h.collector.GetAgent(c.Request().Context(), collector.GetAgentQuery{
+		CompanyFromCtx: companyFromCtx,
+		TenantID:       tenantID,
+		CorrelationID:  correlationID,
+		ID:             c.Param("id"),
+	})
 	if err != nil {
 		h.logger.Error("Erro ao obter agent",
 			zap.String("correlationId", correlationID),
@@ -120,57 +105,16 @@ func (h *CollectorAgentHandlers) GetCollectorAgentHandler(c echo.Context) error 
 		)
 		return handleError(c, err, correlationID)
 	}
-	return c.JSON(http.StatusOK, appdto.MapCollectorAgentRaw(raw))
+	return c.JSON(http.StatusOK, result)
 }
 
 func (h *CollectorAgentHandlers) CreateCollectorAgentHandler(c echo.Context) error {
-	correlationID := middlewarePkg.GetCorrelationID(c)
-	var body collectorAgentCreateBody
+	correlationID, tenantID, companyFromCtx := h.requestScope(c)
+	var body inboundDto.CollectorAgentCreateRequestDTO
 	if err := c.Bind(&body); err != nil {
-		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
-			Error:         "INVALID_BODY",
-			Message:       "JSON inválido",
-			CorrelationID: correlationID,
-		})
+		return collectorInvalidBody(c, correlationID)
 	}
-	companyID, err := h.resolveCompany(c, correlationID)
-	if err != nil {
-		return err
-	}
-	if strings.TrimSpace(body.Name) == "" {
-		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
-			Error:         "MISSING_NAME",
-			Message:       "name é obrigatório",
-			CorrelationID: correlationID,
-		})
-	}
-	if strings.TrimSpace(body.CollectorType) == "" {
-		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
-			Error:         "MISSING_COLLECTOR_TYPE",
-			Message:       "collectorType é obrigatório",
-			CorrelationID: correlationID,
-		})
-	}
-	enabled := false
-	if body.Enabled != nil {
-		enabled = *body.Enabled
-	}
-	contextLabel := strings.TrimSpace(body.Context)
-	if contextLabel == "" {
-		contextLabel = "geral"
-	}
-	schedule := appdto.MapCollectorScheduleDTO(body.Schedule)
-	raw, err := h.collectorClient.CreateAgent(c.Request().Context(), companyID, correlationID, appdto.CollectorAgentWriteRaw{
-		Name:            body.Name,
-		Description:     optionalString(body.Description),
-		Context:         &contextLabel,
-		CollectorType:   body.CollectorType,
-		CollectorConfig: body.CollectorConfig,
-		Prompt:          optionalString(body.Prompt),
-		Schedule:        &schedule,
-		Enabled:         &enabled,
-		DataSourceID:    optionalString(body.DataSourceID),
-	})
+	result, err := h.collector.CreateAgent(c.Request().Context(), mapper.ToCreateCollectorAgentCommand(body, companyFromCtx, tenantID, correlationID))
 	if err != nil {
 		h.logger.Error("Erro ao criar agent",
 			zap.String("correlationId", correlationID),
@@ -178,40 +122,16 @@ func (h *CollectorAgentHandlers) CreateCollectorAgentHandler(c echo.Context) err
 		)
 		return handleError(c, err, correlationID)
 	}
-	return c.JSON(http.StatusCreated, appdto.MapCollectorAgentRaw(raw))
+	return c.JSON(http.StatusCreated, result)
 }
 
 func (h *CollectorAgentHandlers) UpdateCollectorAgentHandler(c echo.Context) error {
-	correlationID := middlewarePkg.GetCorrelationID(c)
-	var body collectorAgentUpdateBody
+	correlationID, tenantID, companyFromCtx := h.requestScope(c)
+	var body inboundDto.CollectorAgentUpdateRequestDTO
 	if err := c.Bind(&body); err != nil {
-		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
-			Error:         "INVALID_BODY",
-			Message:       "JSON inválido",
-			CorrelationID: correlationID,
-		})
+		return collectorInvalidBody(c, correlationID)
 	}
-	companyID, err := h.resolveCompany(c, correlationID)
-	if err != nil {
-		return err
-	}
-	write := appdto.CollectorAgentWriteRaw{
-		CollectorConfig: body.CollectorConfig,
-		Prompt:          body.Prompt,
-		Description:     body.Description,
-		Context:         body.Context,
-	}
-	if body.Name != nil {
-		write.Name = *body.Name
-	}
-	if body.Schedule != nil {
-		schedule := appdto.MapCollectorScheduleDTO(*body.Schedule)
-		write.Schedule = &schedule
-	}
-	if body.DataSourceID != nil {
-		write.DataSourceID = body.DataSourceID
-	}
-	raw, err := h.collectorClient.UpdateAgent(c.Request().Context(), companyID, c.Param("id"), correlationID, write)
+	result, err := h.collector.UpdateAgent(c.Request().Context(), mapper.ToUpdateCollectorAgentCommand(body, companyFromCtx, tenantID, correlationID, c.Param("id")))
 	if err != nil {
 		h.logger.Error("Erro ao atualizar agent",
 			zap.String("correlationId", correlationID),
@@ -219,28 +139,33 @@ func (h *CollectorAgentHandlers) UpdateCollectorAgentHandler(c echo.Context) err
 		)
 		return handleError(c, err, correlationID)
 	}
-	return c.JSON(http.StatusOK, appdto.MapCollectorAgentRaw(raw))
+	return c.JSON(http.StatusOK, result)
 }
 
 func (h *CollectorAgentHandlers) EnableCollectorAgentHandler(c echo.Context) error {
-	return h.toggle(c, true)
+	return h.toggleAgent(c, true)
 }
 
 func (h *CollectorAgentHandlers) DisableCollectorAgentHandler(c echo.Context) error {
-	return h.toggle(c, false)
+	return h.toggleAgent(c, false)
 }
 
-func (h *CollectorAgentHandlers) toggle(c echo.Context, enable bool) error {
-	correlationID := middlewarePkg.GetCorrelationID(c)
-	companyID, err := h.resolveCompany(c, correlationID)
-	if err != nil {
-		return err
+func (h *CollectorAgentHandlers) toggleAgent(c echo.Context, enable bool) error {
+	correlationID, tenantID, companyFromCtx := h.requestScope(c)
+	cmd := collector.AgentIDCommand{
+		CompanyFromCtx: companyFromCtx,
+		TenantID:       tenantID,
+		CorrelationID:  correlationID,
+		ID:             c.Param("id"),
 	}
-	var raw appdto.CollectorAgentRaw
+	var (
+		result appdto.CollectorAgentDetailDTO
+		err    error
+	)
 	if enable {
-		raw, err = h.collectorClient.EnableAgent(c.Request().Context(), companyID, c.Param("id"), correlationID)
+		result, err = h.collector.EnableAgent(c.Request().Context(), cmd)
 	} else {
-		raw, err = h.collectorClient.DisableAgent(c.Request().Context(), companyID, c.Param("id"), correlationID)
+		result, err = h.collector.DisableAgent(c.Request().Context(), cmd)
 	}
 	if err != nil {
 		h.logger.Error("Erro ao alterar status do agent",
@@ -250,16 +175,17 @@ func (h *CollectorAgentHandlers) toggle(c echo.Context, enable bool) error {
 		)
 		return handleError(c, err, correlationID)
 	}
-	return c.JSON(http.StatusOK, appdto.MapCollectorAgentRaw(raw))
+	return c.JSON(http.StatusOK, result)
 }
 
 func (h *CollectorAgentHandlers) DeleteCollectorAgentHandler(c echo.Context) error {
-	correlationID := middlewarePkg.GetCorrelationID(c)
-	companyID, err := h.resolveCompany(c, correlationID)
-	if err != nil {
-		return err
-	}
-	if err := h.collectorClient.DeleteAgent(c.Request().Context(), companyID, c.Param("id"), correlationID); err != nil {
+	correlationID, tenantID, companyFromCtx := h.requestScope(c)
+	if err := h.collector.DeleteAgent(c.Request().Context(), collector.AgentIDCommand{
+		CompanyFromCtx: companyFromCtx,
+		TenantID:       tenantID,
+		CorrelationID:  correlationID,
+		ID:             c.Param("id"),
+	}); err != nil {
 		h.logger.Error("Erro ao excluir agent",
 			zap.String("correlationId", correlationID),
 			zap.Error(err),
@@ -270,12 +196,13 @@ func (h *CollectorAgentHandlers) DeleteCollectorAgentHandler(c echo.Context) err
 }
 
 func (h *CollectorAgentHandlers) TestCollectorAgentHandler(c echo.Context) error {
-	correlationID := middlewarePkg.GetCorrelationID(c)
-	companyID, err := h.resolveCompany(c, correlationID)
-	if err != nil {
-		return err
-	}
-	result, err := h.collectorClient.TestAgent(c.Request().Context(), companyID, c.Param("id"), correlationID)
+	correlationID, tenantID, companyFromCtx := h.requestScope(c)
+	result, err := h.collector.TestAgent(c.Request().Context(), collector.AgentIDCommand{
+		CompanyFromCtx: companyFromCtx,
+		TenantID:       tenantID,
+		CorrelationID:  correlationID,
+		ID:             c.Param("id"),
+	})
 	if err != nil {
 		h.logger.Error("Erro ao testar agent",
 			zap.String("correlationId", correlationID),
@@ -287,12 +214,13 @@ func (h *CollectorAgentHandlers) TestCollectorAgentHandler(c echo.Context) error
 }
 
 func (h *CollectorAgentHandlers) RunCollectorAgentHandler(c echo.Context) error {
-	correlationID := middlewarePkg.GetCorrelationID(c)
-	companyID, err := h.resolveCompany(c, correlationID)
-	if err != nil {
-		return err
-	}
-	result, err := h.collectorClient.RunAgent(c.Request().Context(), companyID, c.Param("id"), correlationID)
+	correlationID, tenantID, companyFromCtx := h.requestScope(c)
+	result, err := h.collector.RunAgent(c.Request().Context(), collector.AgentIDCommand{
+		CompanyFromCtx: companyFromCtx,
+		TenantID:       tenantID,
+		CorrelationID:  correlationID,
+		ID:             c.Param("id"),
+	})
 	if err != nil {
 		h.logger.Error("Erro ao executar agent",
 			zap.String("correlationId", correlationID),
@@ -304,26 +232,12 @@ func (h *CollectorAgentHandlers) RunCollectorAgentHandler(c echo.Context) error 
 }
 
 func (h *CollectorAgentHandlers) BulkCollectorAgentsHandler(c echo.Context) error {
-	correlationID := middlewarePkg.GetCorrelationID(c)
-	companyID, err := h.resolveCompany(c, correlationID)
-	if err != nil {
-		return err
-	}
-	var body struct {
-		Action string   `json:"action"`
-		IDs    []string `json:"ids"`
-	}
+	correlationID, tenantID, companyFromCtx := h.requestScope(c)
+	var body inboundDto.CollectorBulkRequestDTO
 	if bindErr := c.Bind(&body); bindErr != nil {
-		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
-			Error:         "INVALID_BODY",
-			Message:       "JSON inválido",
-			CorrelationID: correlationID,
-		})
+		return collectorInvalidBody(c, correlationID)
 	}
-	result, status, err := h.collectorClient.BulkAgents(c.Request().Context(), companyID, correlationID, appdto.CollectorBulkWriteRaw{
-		Action: body.Action,
-		IDs:    body.IDs,
-	})
+	result, status, err := h.collector.BulkAgents(c.Request().Context(), mapper.ToBulkCollectorAgentsCommand(body, companyFromCtx, tenantID, correlationID))
 	if err != nil {
 		h.logger.Error("Erro ao executar lote de agents",
 			zap.String("correlationId", correlationID),
@@ -338,12 +252,13 @@ func (h *CollectorAgentHandlers) BulkCollectorAgentsHandler(c echo.Context) erro
 }
 
 func (h *CollectorAgentHandlers) GetCollectorBulkOperationHandler(c echo.Context) error {
-	correlationID := middlewarePkg.GetCorrelationID(c)
-	companyID, err := h.resolveCompany(c, correlationID)
-	if err != nil {
-		return err
-	}
-	result, err := h.collectorClient.GetBulkOperation(c.Request().Context(), companyID, c.Param("id"), correlationID)
+	correlationID, tenantID, companyFromCtx := h.requestScope(c)
+	result, err := h.collector.GetBulk(c.Request().Context(), collector.GetBulkQuery{
+		CompanyFromCtx: companyFromCtx,
+		TenantID:       tenantID,
+		CorrelationID:  correlationID,
+		ID:             c.Param("id"),
+	})
 	if err != nil {
 		h.logger.Error("Erro ao obter lote de agents",
 			zap.String("correlationId", correlationID),
@@ -355,12 +270,12 @@ func (h *CollectorAgentHandlers) GetCollectorBulkOperationHandler(c echo.Context
 }
 
 func (h *CollectorAgentHandlers) GetCollectorActiveBulkOperationHandler(c echo.Context) error {
-	correlationID := middlewarePkg.GetCorrelationID(c)
-	companyID, err := h.resolveCompany(c, correlationID)
-	if err != nil {
-		return err
-	}
-	result, err := h.collectorClient.GetActiveBulkOperation(c.Request().Context(), companyID, correlationID)
+	correlationID, tenantID, companyFromCtx := h.requestScope(c)
+	result, err := h.collector.GetActiveBulk(c.Request().Context(), collector.GetActiveBulkQuery{
+		CompanyFromCtx: companyFromCtx,
+		TenantID:       tenantID,
+		CorrelationID:  correlationID,
+	})
 	if err != nil {
 		if httpErr, ok := err.(*appdto.HTTPError); !ok || httpErr.Code != http.StatusNotFound {
 			h.logger.Error("Erro ao obter lote ativo de agents",
@@ -374,20 +289,20 @@ func (h *CollectorAgentHandlers) GetCollectorActiveBulkOperationHandler(c echo.C
 }
 
 func (h *CollectorAgentHandlers) ListCollectorAgentExecutionsHandler(c echo.Context) error {
-	correlationID := middlewarePkg.GetCorrelationID(c)
-	companyID, err := h.resolveCompany(c, correlationID)
-	if err != nil {
-		return err
-	}
+	correlationID, tenantID, companyFromCtx := h.requestScope(c)
 	limit := 50
 	if raw := strings.TrimSpace(c.QueryParam("limit")); raw != "" {
 		if parsed, parseErr := strconv.Atoi(raw); parseErr == nil && parsed > 0 {
 			limit = parsed
 		}
 	}
-	executions, err := h.collectorClient.ListAgentExecutions(
-		c.Request().Context(), companyID, c.Param("id"), correlationID, limit,
-	)
+	result, err := h.collector.ListExecutions(c.Request().Context(), collector.ListExecutionsQuery{
+		CompanyFromCtx: companyFromCtx,
+		TenantID:       tenantID,
+		CorrelationID:  correlationID,
+		AgentID:        c.Param("id"),
+		Limit:          limit,
+	})
 	if err != nil {
 		h.logger.Error("Erro ao listar execuções do agent",
 			zap.String("correlationId", correlationID),
@@ -395,205 +310,30 @@ func (h *CollectorAgentHandlers) ListCollectorAgentExecutionsHandler(c echo.Cont
 		)
 		return handleError(c, err, correlationID)
 	}
-	return c.JSON(http.StatusOK, appdto.MapCollectorExecutions(executions))
+	return c.JSON(http.StatusOK, result)
 }
 
 func (h *CollectorAgentHandlers) GetCollectorExecutionPayloadsHandler(c echo.Context) error {
-	correlationID := middlewarePkg.GetCorrelationID(c)
-	companyID, err := h.resolveCompany(c, correlationID)
+	correlationID, tenantID, companyFromCtx := h.requestScope(c)
+	items, err := h.collector.GetExecutionPayloads(c.Request().Context(), collector.GetExecutionPayloadsQuery{
+		CompanyFromCtx: companyFromCtx,
+		TenantID:       tenantID,
+		CorrelationID:  correlationID,
+		ExecutionID:    c.Param("executionId"),
+	})
 	if err != nil {
-		return err
-	}
-	if h.knowledgeClient == nil {
-		return c.JSON(http.StatusServiceUnavailable, pkg.ErrorResponse{
-			Error:         "SERVICE_UNAVAILABLE",
-			Message:       "Serviço de conhecimento indisponível",
-			CorrelationID: correlationID,
-		})
-	}
-	executionID := strings.TrimSpace(c.Param("executionId"))
-	if executionID == "" {
-		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
-			Error:         "BAD_REQUEST",
-			Message:       "executionId é obrigatório",
-			CorrelationID: correlationID,
-		})
-	}
-	execution, execErr := h.collectorClient.GetExecution(c.Request().Context(), companyID, executionID, correlationID)
-	if execErr != nil {
-		h.logger.Error("Erro ao buscar execução",
-			zap.String("correlationId", correlationID),
-			zap.String("executionId", executionID),
-			zap.Error(execErr),
-		)
-		return handleError(c, execErr, correlationID)
-	}
-	items, loadErr := h.loadExecutionPayloads(c, companyID, correlationID, execution)
-	if loadErr != nil {
 		h.logger.Error("Erro ao carregar payloads da execução",
 			zap.String("correlationId", correlationID),
-			zap.String("executionId", executionID),
-			zap.Error(loadErr),
+			zap.String("executionId", strings.TrimSpace(c.Param("executionId"))),
+			zap.Error(err),
 		)
-		return handleError(c, loadErr, correlationID)
-	}
-	if items == nil {
-		items = []appdto.ExecutionPayloadItemDTO{}
+		return handleError(c, err, correlationID)
 	}
 	return c.JSON(http.StatusOK, items)
 }
 
-func (h *CollectorAgentHandlers) loadExecutionPayloads(
-	c echo.Context, companyID, correlationID string, execution appdto.CollectorExecutionRaw,
-) ([]appdto.ExecutionPayloadItemDTO, error) {
-	bearer, tokErr := knowledgeServiceBearer(c.Request().Context(), h.serviceToken, companyID)
-	if tokErr != nil {
-		return nil, tokErr
-	}
-	ctx := c.Request().Context()
-	refs := parsePayloadRefs(execution.Metadata)
-	if len(refs) > 0 {
-		items := make([]appdto.ExecutionPayloadItemDTO, 0, len(refs))
-		for _, ref := range refs {
-			item, err := h.loadPayloadRef(ctx, companyID, bearer, correlationID, ref)
-			if err != nil {
-				if isNotFound(err) {
-					continue
-				}
-				return nil, err
-			}
-			items = append(items, item)
-		}
-		return items, nil
-	}
-	if strings.TrimSpace(execution.AgentID) == "" || strings.TrimSpace(execution.StartedAt) == "" {
-		return []appdto.ExecutionPayloadItemDTO{}, nil
-	}
-	results, err := h.knowledgeClient.GetCollectionResults(
-		ctx, companyID, bearer, correlationID, execution.AgentID, execution.StartedAt, 60,
-	)
-	if err != nil {
-		return nil, err
-	}
-	items := make([]appdto.ExecutionPayloadItemDTO, 0, len(results.Snapshots)+len(results.Documents))
-	for _, snapshot := range results.Snapshots {
-		items = append(items, snapshotToPayloadItem(snapshot))
-	}
-	for _, document := range results.Documents {
-		items = append(items, documentToPayloadItem(document))
-	}
-	return items, nil
-}
-
-type payloadRef struct {
-	Kind string
-	ID   string
-}
-
-func parsePayloadRefs(metadata map[string]any) []payloadRef {
-	if metadata == nil {
-		return nil
-	}
-	raw, ok := metadata["payload_refs"]
-	if !ok || raw == nil {
-		return nil
-	}
-	var rows []any
-	switch typed := raw.(type) {
-	case []any:
-		rows = typed
-	case []map[string]any:
-		for _, item := range typed {
-			rows = append(rows, item)
-		}
-	default:
-		return nil
-	}
-	refs := make([]payloadRef, 0, len(rows))
-	for _, row := range rows {
-		item, ok := row.(map[string]any)
-		if !ok {
-			continue
-		}
-		kind, _ := item["kind"].(string)
-		id, _ := item["id"].(string)
-		kind = strings.TrimSpace(strings.ToLower(kind))
-		id = strings.TrimSpace(id)
-		if (kind != "snapshot" && kind != "document") || id == "" {
-			continue
-		}
-		refs = append(refs, payloadRef{Kind: kind, ID: id})
-	}
-	return refs
-}
-
-func (h *CollectorAgentHandlers) loadPayloadRef(
-	ctx context.Context, companyID, bearer, correlationID string, ref payloadRef,
-) (appdto.ExecutionPayloadItemDTO, error) {
-	switch ref.Kind {
-	case "snapshot":
-		snapshot, err := h.knowledgeClient.GetSnapshot(ctx, companyID, bearer, correlationID, ref.ID)
-		if err != nil {
-			return appdto.ExecutionPayloadItemDTO{}, err
-		}
-		return snapshotToPayloadItem(snapshot), nil
-	case "document":
-		document, err := h.knowledgeClient.GetDocumentPreview(ctx, companyID, bearer, correlationID, ref.ID)
-		if err != nil {
-			return appdto.ExecutionPayloadItemDTO{}, err
-		}
-		return documentToPayloadItem(document), nil
-	default:
-		return appdto.ExecutionPayloadItemDTO{}, nil
-	}
-}
-
-func snapshotToPayloadItem(snapshot appdto.KnowledgeSnapshotDTO) appdto.ExecutionPayloadItemDTO {
-	return appdto.ExecutionPayloadItemDTO{
-		Kind:        "snapshot",
-		ID:          snapshot.ID,
-		ContentType: "application/json",
-		Payload:     snapshot.Payload,
-		Metadata: map[string]any{
-			"collectorType": snapshot.CollectorType,
-			"entityHint":    snapshot.EntityHint,
-			"collectedAt":   snapshot.CollectedAt,
-			"schema":        snapshot.Schema,
-			"sourceUrl":     snapshot.SourceURL,
-		},
-	}
-}
-
-func documentToPayloadItem(document appdto.KnowledgeDocumentPreviewDTO) appdto.ExecutionPayloadItemDTO {
-	return appdto.ExecutionPayloadItemDTO{
-		Kind:        "document",
-		ID:          document.ID,
-		ContentType: document.ContentType,
-		FileName:    document.FileName,
-		PreviewText: document.PreviewText,
-		Metadata: map[string]any{
-			"entityHint":       document.EntityHint,
-			"dataSource":       document.DataSource,
-			"sourceKey":        document.SourceKey,
-			"collectedAt":      document.CollectedAt,
-			"status":           document.Status,
-			"previewAvailable": document.PreviewAvailable,
-			"message":          document.Message,
-		},
-	}
-}
-
-func isNotFound(err error) bool {
-	httpErr, ok := err.(*appdto.HTTPError)
-	return ok && httpErr.Code == http.StatusNotFound
-}
-
 func (h *CollectorAgentHandlers) ListCollectorDataSourcesHandler(c echo.Context) error {
-	correlationID := middlewarePkg.GetCorrelationID(c)
-	companyID, err := h.resolveCompany(c, correlationID)
-	if err != nil {
-		return err
-	}
+	correlationID, tenantID, companyFromCtx := h.requestScope(c)
 	query := map[string]string{}
 	if include := strings.TrimSpace(c.QueryParam("includeDisabled")); include != "" {
 		query["include_disabled"] = include
@@ -601,7 +341,12 @@ func (h *CollectorAgentHandlers) ListCollectorDataSourcesHandler(c echo.Context)
 	if include := strings.TrimSpace(c.QueryParam("include_disabled")); include != "" {
 		query["include_disabled"] = include
 	}
-	raw, err := h.collectorClient.ListDataSources(c.Request().Context(), companyID, correlationID, query)
+	result, err := h.collector.ListDataSources(c.Request().Context(), collector.ListDataSourcesQuery{
+		CompanyFromCtx: companyFromCtx,
+		TenantID:       tenantID,
+		CorrelationID:  correlationID,
+		Filters:        query,
+	})
 	if err != nil {
 		h.logger.Error("Erro ao listar fontes de dados",
 			zap.String("correlationId", correlationID),
@@ -609,16 +354,17 @@ func (h *CollectorAgentHandlers) ListCollectorDataSourcesHandler(c echo.Context)
 		)
 		return handleError(c, err, correlationID)
 	}
-	return c.JSON(http.StatusOK, appdto.MapCollectorDataSources(raw))
+	return c.JSON(http.StatusOK, result)
 }
 
 func (h *CollectorAgentHandlers) GetCollectorDataSourceHandler(c echo.Context) error {
-	correlationID := middlewarePkg.GetCorrelationID(c)
-	companyID, err := h.resolveCompany(c, correlationID)
-	if err != nil {
-		return err
-	}
-	raw, err := h.collectorClient.GetDataSource(c.Request().Context(), companyID, c.Param("id"), correlationID)
+	correlationID, tenantID, companyFromCtx := h.requestScope(c)
+	result, err := h.collector.GetDataSource(c.Request().Context(), collector.GetDataSourceQuery{
+		CompanyFromCtx: companyFromCtx,
+		TenantID:       tenantID,
+		CorrelationID:  correlationID,
+		ID:             c.Param("id"),
+	})
 	if err != nil {
 		h.logger.Error("Erro ao buscar fonte de dados",
 			zap.String("correlationId", correlationID),
@@ -626,103 +372,16 @@ func (h *CollectorAgentHandlers) GetCollectorDataSourceHandler(c echo.Context) e
 		)
 		return handleError(c, err, correlationID)
 	}
-	return c.JSON(http.StatusOK, appdto.MapCollectorDataSourceRaw(raw))
-}
-
-type collectorDataSourceCreateBody struct {
-	Name                string                      `json:"name"`
-	Slug                string                      `json:"slug"`
-	Description         string                      `json:"description,omitempty"`
-	WebsiteURL          string                      `json:"websiteUrl,omitempty"`
-	CollectorType       string                      `json:"collectorType"`
-	NameTemplate        string                      `json:"nameTemplate,omitempty"`
-	DescriptionTemplate string                      `json:"descriptionTemplate,omitempty"`
-	PromptTemplate      string                      `json:"promptTemplate,omitempty"`
-	DefaultContext      string                      `json:"defaultContext,omitempty"`
-	DefaultSchedule     appdto.CollectorScheduleDTO `json:"defaultSchedule"`
-	ConfigTemplate      json.RawMessage             `json:"configTemplate"`
-	Variables           json.RawMessage             `json:"variables"`
-	Notes               string                      `json:"notes,omitempty"`
-	Enabled             *bool                       `json:"enabled,omitempty"`
-	RateLimit           json.RawMessage             `json:"rateLimit,omitempty"`
-}
-
-type collectorDataSourceUpdateBody struct {
-	Name                *string                      `json:"name,omitempty"`
-	Slug                *string                      `json:"slug,omitempty"`
-	Description         *string                      `json:"description,omitempty"`
-	WebsiteURL          *string                      `json:"websiteUrl,omitempty"`
-	NameTemplate        *string                      `json:"nameTemplate,omitempty"`
-	DescriptionTemplate *string                      `json:"descriptionTemplate,omitempty"`
-	PromptTemplate      *string                      `json:"promptTemplate,omitempty"`
-	DefaultContext      *string                      `json:"defaultContext,omitempty"`
-	DefaultSchedule     *appdto.CollectorScheduleDTO `json:"defaultSchedule,omitempty"`
-	ConfigTemplate      json.RawMessage              `json:"configTemplate,omitempty"`
-	Variables           json.RawMessage              `json:"variables,omitempty"`
-	Notes               *string                      `json:"notes,omitempty"`
-	RateLimit           json.RawMessage              `json:"rateLimit,omitempty"`
+	return c.JSON(http.StatusOK, result)
 }
 
 func (h *CollectorAgentHandlers) CreateCollectorDataSourceHandler(c echo.Context) error {
-	correlationID := middlewarePkg.GetCorrelationID(c)
-	var body collectorDataSourceCreateBody
+	correlationID, tenantID, companyFromCtx := h.requestScope(c)
+	var body inboundDto.CollectorDataSourceCreateRequestDTO
 	if err := c.Bind(&body); err != nil {
-		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
-			Error:         "INVALID_BODY",
-			Message:       "JSON inválido",
-			CorrelationID: correlationID,
-		})
+		return collectorInvalidBody(c, correlationID)
 	}
-	if strings.TrimSpace(body.Name) == "" {
-		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
-			Error:         "MISSING_NAME",
-			Message:       "name é obrigatório",
-			CorrelationID: correlationID,
-		})
-	}
-	if strings.TrimSpace(body.Slug) == "" {
-		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
-			Error:         "MISSING_SLUG",
-			Message:       "slug é obrigatório",
-			CorrelationID: correlationID,
-		})
-	}
-	if strings.TrimSpace(body.CollectorType) == "" {
-		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
-			Error:         "MISSING_COLLECTOR_TYPE",
-			Message:       "collectorType é obrigatório",
-			CorrelationID: correlationID,
-		})
-	}
-	companyID, err := h.resolveCompany(c, correlationID)
-	if err != nil {
-		return err
-	}
-	schedule, err := json.Marshal(appdto.MapCollectorScheduleDTO(body.DefaultSchedule))
-	if err != nil {
-		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
-			Error:         "INVALID_SCHEDULE",
-			Message:       "defaultSchedule inválido",
-			CorrelationID: correlationID,
-		})
-	}
-	raw, err := h.collectorClient.CreateDataSource(c.Request().Context(), companyID, correlationID, appdto.CollectorDataSourceWriteRaw{
-		Name:                body.Name,
-		Slug:                body.Slug,
-		Description:         optionalString(body.Description),
-		WebsiteURL:          optionalString(body.WebsiteURL),
-		CollectorType:       body.CollectorType,
-		NameTemplate:        optionalString(body.NameTemplate),
-		DescriptionTemplate: optionalString(body.DescriptionTemplate),
-		PromptTemplate:      optionalString(body.PromptTemplate),
-		DefaultContext:      optionalString(body.DefaultContext),
-		DefaultSchedule:     schedule,
-		ConfigTemplate:      body.ConfigTemplate,
-		Variables:           body.Variables,
-		Notes:               optionalString(body.Notes),
-		Enabled:             body.Enabled,
-		RateLimit:           body.RateLimit,
-	})
+	result, err := h.collector.CreateDataSource(c.Request().Context(), mapper.ToCreateCollectorDataSourceCommand(body, companyFromCtx, tenantID, correlationID))
 	if err != nil {
 		h.logger.Error("Erro ao criar fonte de dados",
 			zap.String("correlationId", correlationID),
@@ -730,53 +389,16 @@ func (h *CollectorAgentHandlers) CreateCollectorDataSourceHandler(c echo.Context
 		)
 		return handleError(c, err, correlationID)
 	}
-	return c.JSON(http.StatusCreated, appdto.MapCollectorDataSourceRaw(raw))
+	return c.JSON(http.StatusCreated, result)
 }
 
 func (h *CollectorAgentHandlers) UpdateCollectorDataSourceHandler(c echo.Context) error {
-	correlationID := middlewarePkg.GetCorrelationID(c)
-	var body collectorDataSourceUpdateBody
+	correlationID, tenantID, companyFromCtx := h.requestScope(c)
+	var body inboundDto.CollectorDataSourceUpdateRequestDTO
 	if err := c.Bind(&body); err != nil {
-		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
-			Error:         "INVALID_BODY",
-			Message:       "JSON inválido",
-			CorrelationID: correlationID,
-		})
+		return collectorInvalidBody(c, correlationID)
 	}
-	companyID, err := h.resolveCompany(c, correlationID)
-	if err != nil {
-		return err
-	}
-	write := appdto.CollectorDataSourceWriteRaw{
-		Description:         body.Description,
-		WebsiteURL:          body.WebsiteURL,
-		NameTemplate:        body.NameTemplate,
-		DescriptionTemplate: body.DescriptionTemplate,
-		PromptTemplate:      body.PromptTemplate,
-		DefaultContext:      body.DefaultContext,
-		ConfigTemplate:      body.ConfigTemplate,
-		Variables:           body.Variables,
-		Notes:               body.Notes,
-		RateLimit:           body.RateLimit,
-	}
-	if body.Name != nil {
-		write.Name = *body.Name
-	}
-	if body.Slug != nil {
-		write.Slug = *body.Slug
-	}
-	if body.DefaultSchedule != nil {
-		schedule, marshalErr := json.Marshal(appdto.MapCollectorScheduleDTO(*body.DefaultSchedule))
-		if marshalErr != nil {
-			return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
-				Error:         "INVALID_SCHEDULE",
-				Message:       "defaultSchedule inválido",
-				CorrelationID: correlationID,
-			})
-		}
-		write.DefaultSchedule = schedule
-	}
-	raw, err := h.collectorClient.UpdateDataSource(c.Request().Context(), companyID, c.Param("id"), correlationID, write)
+	result, err := h.collector.UpdateDataSource(c.Request().Context(), mapper.ToUpdateCollectorDataSourceCommand(body, companyFromCtx, tenantID, correlationID, c.Param("id")))
 	if err != nil {
 		h.logger.Error("Erro ao atualizar fonte de dados",
 			zap.String("correlationId", correlationID),
@@ -784,7 +406,7 @@ func (h *CollectorAgentHandlers) UpdateCollectorDataSourceHandler(c echo.Context
 		)
 		return handleError(c, err, correlationID)
 	}
-	return c.JSON(http.StatusOK, appdto.MapCollectorDataSourceRaw(raw))
+	return c.JSON(http.StatusOK, result)
 }
 
 func (h *CollectorAgentHandlers) EnableCollectorDataSourceHandler(c echo.Context) error {
@@ -796,16 +418,21 @@ func (h *CollectorAgentHandlers) DisableCollectorDataSourceHandler(c echo.Contex
 }
 
 func (h *CollectorAgentHandlers) toggleDataSource(c echo.Context, enable bool) error {
-	correlationID := middlewarePkg.GetCorrelationID(c)
-	companyID, err := h.resolveCompany(c, correlationID)
-	if err != nil {
-		return err
+	correlationID, tenantID, companyFromCtx := h.requestScope(c)
+	cmd := collector.DataSourceIDCommand{
+		CompanyFromCtx: companyFromCtx,
+		TenantID:       tenantID,
+		CorrelationID:  correlationID,
+		ID:             c.Param("id"),
 	}
-	var raw appdto.CollectorDataSourceRaw
+	var (
+		result appdto.CollectorDataSourceDTO
+		err    error
+	)
 	if enable {
-		raw, err = h.collectorClient.EnableDataSource(c.Request().Context(), companyID, c.Param("id"), correlationID)
+		result, err = h.collector.EnableDataSource(c.Request().Context(), cmd)
 	} else {
-		raw, err = h.collectorClient.DisableDataSource(c.Request().Context(), companyID, c.Param("id"), correlationID)
+		result, err = h.collector.DisableDataSource(c.Request().Context(), cmd)
 	}
 	if err != nil {
 		h.logger.Error("Erro ao alterar status da fonte de dados",
@@ -814,16 +441,17 @@ func (h *CollectorAgentHandlers) toggleDataSource(c echo.Context, enable bool) e
 		)
 		return handleError(c, err, correlationID)
 	}
-	return c.JSON(http.StatusOK, appdto.MapCollectorDataSourceRaw(raw))
+	return c.JSON(http.StatusOK, result)
 }
 
 func (h *CollectorAgentHandlers) DeleteCollectorDataSourceHandler(c echo.Context) error {
-	correlationID := middlewarePkg.GetCorrelationID(c)
-	companyID, err := h.resolveCompany(c, correlationID)
-	if err != nil {
-		return err
-	}
-	if err := h.collectorClient.DeleteDataSource(c.Request().Context(), companyID, c.Param("id"), correlationID); err != nil {
+	correlationID, tenantID, companyFromCtx := h.requestScope(c)
+	if err := h.collector.DeleteDataSource(c.Request().Context(), collector.DataSourceIDCommand{
+		CompanyFromCtx: companyFromCtx,
+		TenantID:       tenantID,
+		CorrelationID:  correlationID,
+		ID:             c.Param("id"),
+	}); err != nil {
 		h.logger.Error("Erro ao excluir fonte de dados",
 			zap.String("correlationId", correlationID),
 			zap.Error(err),
@@ -833,38 +461,13 @@ func (h *CollectorAgentHandlers) DeleteCollectorDataSourceHandler(c echo.Context
 	return c.NoContent(http.StatusNoContent)
 }
 
-type collectorPropagateBody struct {
-	Fields []string `json:"fields"`
-	DryRun bool     `json:"dryRun"`
-	Limit  int      `json:"limit,omitempty"`
-}
-
 func (h *CollectorAgentHandlers) PropagateCollectorDataSourceHandler(c echo.Context) error {
-	correlationID := middlewarePkg.GetCorrelationID(c)
-	var body collectorPropagateBody
+	correlationID, tenantID, companyFromCtx := h.requestScope(c)
+	var body inboundDto.CollectorPropagateRequestDTO
 	if err := c.Bind(&body); err != nil {
-		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
-			Error:         "INVALID_BODY",
-			Message:       "JSON inválido",
-			CorrelationID: correlationID,
-		})
+		return collectorInvalidBody(c, correlationID)
 	}
-	if len(body.Fields) == 0 {
-		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
-			Error:         "MISSING_FIELDS",
-			Message:       "fields é obrigatório",
-			CorrelationID: correlationID,
-		})
-	}
-	companyID, err := h.resolveCompany(c, correlationID)
-	if err != nil {
-		return err
-	}
-	raw, err := h.collectorClient.PropagateDataSource(c.Request().Context(), companyID, c.Param("id"), correlationID, appdto.PropagateDataSourceWriteRaw{
-		Fields: body.Fields,
-		DryRun: body.DryRun,
-		Limit:  body.Limit,
-	})
+	result, err := h.collector.PropagateDataSource(c.Request().Context(), mapper.ToPropagateCollectorDataSourceCommand(body, companyFromCtx, tenantID, correlationID, c.Param("id")))
 	if err != nil {
 		h.logger.Error("Erro ao propagar fonte de dados",
 			zap.String("correlationId", correlationID),
@@ -872,64 +475,11 @@ func (h *CollectorAgentHandlers) PropagateCollectorDataSourceHandler(c echo.Cont
 		)
 		return handleError(c, err, correlationID)
 	}
-	return c.JSON(http.StatusOK, appdto.MapPropagateDataSourceRaw(raw))
-}
-
-func (h *CollectorAgentHandlers) resolveCompany(c echo.Context, correlationID string) (string, error) {
-	if h.collectorClient == nil || h.companyClient == nil {
-		return "", c.JSON(http.StatusServiceUnavailable, pkg.ErrorResponse{
-			Error:         "SERVICE_UNAVAILABLE",
-			Message:       "Gestão de agents indisponível",
-			CorrelationID: correlationID,
-		})
-	}
-	if companyID := client.CompanyIDFromContext(c.Request().Context()); companyID != "" {
-		return companyID, nil
-	}
-	tenantID := middlewarePkg.ResolveTenantId(c, middlewarePkg.GetClaimsFromContext(c))
-	if strings.TrimSpace(tenantID) == "" {
-		return "", c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
-			Error:         "MISSING_TENANT",
-			Message:       "tenantId do JWT é obrigatório",
-			CorrelationID: correlationID,
-		})
-	}
-	company, err := h.companyClient.GetByTenantId(c.Request().Context(), tenantID, correlationID)
-	if err != nil {
-		h.logger.Error("Erro ao resolver company pelo tenant do JWT",
-			zap.String("correlationId", correlationID),
-			zap.String("tenantId", tenantID),
-			zap.Error(err),
-		)
-		return "", handleError(c, err, correlationID)
-	}
-	if company.ID == "" {
-		return "", c.JSON(http.StatusNotFound, pkg.ErrorResponse{
-			Error:         "COMPANY_NOT_FOUND",
-			Message:       "Empresa não encontrada para o tenant autenticado",
-			CorrelationID: correlationID,
-		})
-	}
-	return company.ID, nil
-}
-
-func optionalString(value string) *string {
-	if strings.TrimSpace(value) == "" {
-		return nil
-	}
-	return &value
-}
-
-func (h *CollectorAgentHandlers) actorCtx(c echo.Context) context.Context {
-	return client.WithUserID(c.Request().Context(), middlewarePkg.GetUserIDFromContext(c))
+	return c.JSON(http.StatusOK, result)
 }
 
 func (h *CollectorAgentHandlers) ListCollectorIncidentsHandler(c echo.Context) error {
-	correlationID := middlewarePkg.GetCorrelationID(c)
-	companyID, err := h.resolveCompany(c, correlationID)
-	if err != nil {
-		return err
-	}
+	correlationID, tenantID, companyFromCtx := h.requestScope(c)
 	query := map[string]string{}
 	for _, key := range []string{"status", "classification", "agent_id", "page", "size"} {
 		if value := c.QueryParam(key); value != "" {
@@ -939,7 +489,12 @@ func (h *CollectorAgentHandlers) ListCollectorIncidentsHandler(c echo.Context) e
 	if value := c.QueryParam("agentId"); value != "" {
 		query["agent_id"] = value
 	}
-	raw, err := h.collectorClient.ListIncidents(c.Request().Context(), companyID, correlationID, query)
+	result, err := h.collector.ListIncidents(c.Request().Context(), collector.ListIncidentsQuery{
+		CompanyFromCtx: companyFromCtx,
+		TenantID:       tenantID,
+		CorrelationID:  correlationID,
+		Filters:        query,
+	})
 	if err != nil {
 		h.logger.Error("Erro ao listar incidentes de coleta",
 			zap.String("correlationId", correlationID),
@@ -947,16 +502,17 @@ func (h *CollectorAgentHandlers) ListCollectorIncidentsHandler(c echo.Context) e
 		)
 		return handleError(c, err, correlationID)
 	}
-	return c.JSON(http.StatusOK, appdto.MapPaginatedCollectorIncidents(raw))
+	return c.JSON(http.StatusOK, result)
 }
 
 func (h *CollectorAgentHandlers) ListCollectorAgentIncidentsHandler(c echo.Context) error {
-	correlationID := middlewarePkg.GetCorrelationID(c)
-	companyID, err := h.resolveCompany(c, correlationID)
-	if err != nil {
-		return err
-	}
-	raw, err := h.collectorClient.ListAgentIncidents(c.Request().Context(), companyID, c.Param("id"), correlationID)
+	correlationID, tenantID, companyFromCtx := h.requestScope(c)
+	result, err := h.collector.ListAgentIncidents(c.Request().Context(), collector.ListAgentIncidentsQuery{
+		CompanyFromCtx: companyFromCtx,
+		TenantID:       tenantID,
+		CorrelationID:  correlationID,
+		AgentID:        c.Param("id"),
+	})
 	if err != nil {
 		h.logger.Error("Erro ao listar incidentes do agent",
 			zap.String("correlationId", correlationID),
@@ -964,31 +520,29 @@ func (h *CollectorAgentHandlers) ListCollectorAgentIncidentsHandler(c echo.Conte
 		)
 		return handleError(c, err, correlationID)
 	}
-	out := make([]appdto.CollectorIncidentDTO, 0, len(raw))
-	for _, item := range raw {
-		out = append(out, appdto.MapCollectorIncidentRaw(item))
-	}
-	return c.JSON(http.StatusOK, out)
+	return c.JSON(http.StatusOK, result)
 }
 
 func (h *CollectorAgentHandlers) AcknowledgeCollectorIncidentHandler(c echo.Context) error {
-	return h.mutateCollectorIncident(c, h.collectorClient.AcknowledgeIncident)
+	return h.mutateCollectorIncident(c, h.collector.AcknowledgeIncident)
 }
 
 func (h *CollectorAgentHandlers) ResolveCollectorIncidentHandler(c echo.Context) error {
-	return h.mutateCollectorIncident(c, h.collectorClient.ResolveIncident)
+	return h.mutateCollectorIncident(c, h.collector.ResolveIncident)
 }
 
 func (h *CollectorAgentHandlers) mutateCollectorIncident(
 	c echo.Context,
-	fn func(ctx context.Context, companyID, incidentID, correlationID string) (appdto.CollectorIncidentRaw, error),
+	fn func(ctx context.Context, cmd collector.MutateIncidentCommand) (appdto.CollectorIncidentDTO, error),
 ) error {
-	correlationID := middlewarePkg.GetCorrelationID(c)
-	companyID, err := h.resolveCompany(c, correlationID)
-	if err != nil {
-		return err
-	}
-	raw, err := fn(h.actorCtx(c), companyID, c.Param("id"), correlationID)
+	correlationID, tenantID, companyFromCtx := h.requestScope(c)
+	result, err := fn(c.Request().Context(), collector.MutateIncidentCommand{
+		CompanyFromCtx: companyFromCtx,
+		TenantID:       tenantID,
+		CorrelationID:  correlationID,
+		ActorUserID:    middlewarePkg.GetUserIDFromContext(c),
+		ID:             c.Param("id"),
+	})
 	if err != nil {
 		h.logger.Error("Erro ao atualizar incidente de coleta",
 			zap.String("correlationId", correlationID),
@@ -996,16 +550,17 @@ func (h *CollectorAgentHandlers) mutateCollectorIncident(
 		)
 		return handleError(c, err, correlationID)
 	}
-	return c.JSON(http.StatusOK, appdto.MapCollectorIncidentRaw(raw))
+	return c.JSON(http.StatusOK, result)
 }
 
 func (h *CollectorAgentHandlers) GetCollectorIncidentSuggestionHandler(c echo.Context) error {
-	correlationID := middlewarePkg.GetCorrelationID(c)
-	companyID, err := h.resolveCompany(c, correlationID)
-	if err != nil {
-		return err
-	}
-	raw, ok, err := h.collectorClient.GetIncidentSuggestion(c.Request().Context(), companyID, c.Param("id"), correlationID)
+	correlationID, tenantID, companyFromCtx := h.requestScope(c)
+	result, found, err := h.collector.GetIncidentSuggestion(c.Request().Context(), collector.GetIncidentSuggestionQuery{
+		CompanyFromCtx: companyFromCtx,
+		TenantID:       tenantID,
+		CorrelationID:  correlationID,
+		ID:             c.Param("id"),
+	})
 	if err != nil {
 		h.logger.Error("Erro ao obter sugestão de sucessor",
 			zap.String("correlationId", correlationID),
@@ -1013,31 +568,22 @@ func (h *CollectorAgentHandlers) GetCollectorIncidentSuggestionHandler(c echo.Co
 		)
 		return handleError(c, err, correlationID)
 	}
-	if !ok {
+	if !found {
 		return c.NoContent(http.StatusNoContent)
 	}
-	return c.JSON(http.StatusOK, appdto.MapCollectorIncidentSuggestion(raw))
+	return c.JSON(http.StatusOK, result)
 }
 
 func (h *CollectorAgentHandlers) ApplyCollectorIncidentSuccessorHandler(c echo.Context) error {
-	correlationID := middlewarePkg.GetCorrelationID(c)
-	companyID, err := h.resolveCompany(c, correlationID)
-	if err != nil {
-		return err
-	}
-	var body struct {
-		Confirmed bool `json:"confirmed"`
-	}
+	correlationID, tenantID, companyFromCtx := h.requestScope(c)
+	var body inboundDto.CollectorApplySuccessorRequestDTO
 	if bindErr := c.Bind(&body); bindErr != nil {
-		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
-			Error:         "INVALID_BODY",
-			Message:       "JSON inválido",
-			CorrelationID: correlationID,
-		})
+		return collectorInvalidBody(c, correlationID)
 	}
-	raw, err := h.collectorClient.ApplyIncidentSuccessor(h.actorCtx(c), companyID, c.Param("id"), correlationID, appdto.CollectorApplySuccessorRaw{
-		Confirmed: body.Confirmed,
-	})
+	result, err := h.collector.ApplyIncidentSuccessor(
+		c.Request().Context(),
+		mapper.ToApplyCollectorIncidentSuccessorCommand(body, companyFromCtx, tenantID, correlationID, middlewarePkg.GetUserIDFromContext(c), c.Param("id")),
+	)
 	if err != nil {
 		h.logger.Error("Erro ao aplicar sucessor",
 			zap.String("correlationId", correlationID),
@@ -1045,5 +591,5 @@ func (h *CollectorAgentHandlers) ApplyCollectorIncidentSuccessorHandler(c echo.C
 		)
 		return handleError(c, err, correlationID)
 	}
-	return c.JSON(http.StatusOK, appdto.MapCollectorIncidentRaw(raw))
+	return c.JSON(http.StatusOK, result)
 }

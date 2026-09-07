@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"testing"
 
-	appdto "github.com/keepguard/bff-core/internal/application/dto"
 	companyDto "github.com/keepguard/bff-core/internal/adapters/outbound/http/dto/company"
+	appdto "github.com/keepguard/bff-core/internal/application/dto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -20,9 +20,9 @@ func TestCompanyMetricsDecorator_GetByTenantId_Success(t *testing.T) {
 	decorator := NewCompanyMetricsDecorator(mockClient, metricsInstance, serviceName).(*companyMetricsDecorator)
 
 	expectedResponse := companyDto.MSCompanyResponseDTO{
-		ID:   "123",
+		ID:          "123",
 		CodeCompany: "TEST123",
-		Name: "Test Company",
+		Name:        "Test Company",
 	}
 
 	mockClient.On("GetByTenantId", mock.Anything, "test-app", "corr-123").Return(expectedResponse, nil).Once()
@@ -120,9 +120,9 @@ func TestCompanyMetricsDecorator_RecordsMetrics(t *testing.T) {
 	decorator := NewCompanyMetricsDecorator(mockClient, metricsInstance, serviceName).(*companyMetricsDecorator)
 
 	expectedResponse := companyDto.MSCompanyResponseDTO{
-		ID:   "123",
+		ID:          "123",
 		CodeCompany: "TEST123",
-		Name: "Test Company",
+		Name:        "Test Company",
 	}
 
 	mockClient.On("GetByTenantId", mock.Anything, "test-app", "corr-123").Return(expectedResponse, nil).Once()
