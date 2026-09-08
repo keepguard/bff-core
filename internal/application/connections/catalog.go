@@ -36,6 +36,7 @@ var catalog = []catalogItem{
 	{ID: "ms-company", Name: "MS Company", Description: "Tenants, empresas e provisionamento.", Group: "microservice", Endpoint: "GET /actuator/health/liveness", DefaultURL: "http://localhost:8083/actuator/health/liveness"},
 	{ID: "ms-user", Name: "MS User", Description: "Perfil e cadastro de usuários.", Group: "microservice", Endpoint: "GET /actuator/health/liveness", DefaultURL: "http://localhost:8085/actuator/health/liveness"},
 	{ID: "ms-user-consents", Name: "MS User Consents", Description: "Consentimentos e documentos LGPD.", Group: "microservice", Endpoint: "GET /actuator/health/liveness", DefaultURL: "http://localhost:8086/actuator/health/liveness"},
+	{ID: "ms-billing", Name: "MS Billing", Description: "Planos, assinaturas e entitlement Asaas por company.", Group: "microservice", Endpoint: "GET /actuator/health/liveness", DefaultURL: "http://localhost:8087/actuator/health/liveness"},
 	{ID: "srv-email-sender", Name: "SRV Email Sender", Description: "Worker de envio de e-mail.", Group: "worker", Endpoint: "GET /health", DefaultURL: "http://localhost:8601/health"},
 	{ID: "srv-token-manager", Name: "SRV Token Manager", Description: "Gestão de tokens OAuth de provedores.", Group: "worker", Endpoint: "GET /health", DefaultURL: "http://localhost:8700/health"},
 	{ID: "srv-sms-sender", Name: "SRV SMS Sender", Description: "Worker de envio assíncrono de SMS.", Group: "worker", Endpoint: "GET /health", DefaultURL: "http://localhost:8610/health"},

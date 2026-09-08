@@ -43,6 +43,28 @@ type LlmClient interface {
 	ListAlertFirings(ctx context.Context, tenantID, correlationID string, query map[string]string) (json.RawMessage, error)
 }
 
+type BillingScope struct {
+	CompanyID     string
+	UserID        string
+	CorrelationID string
+	Admin         bool
+}
+
+type BillingClient interface {
+	GetEntitlement(ctx context.Context, scope BillingScope) (json.RawMessage, error)
+	ListPlans(ctx context.Context, scope BillingScope) (json.RawMessage, error)
+	SavePlan(ctx context.Context, scope BillingScope, body any) (json.RawMessage, error)
+	PatchPlan(ctx context.Context, scope BillingScope, code string, body any) (json.RawMessage, error)
+	GetGatewayAccount(ctx context.Context, scope BillingScope) (json.RawMessage, error)
+	PutGatewayAccount(ctx context.Context, scope BillingScope, body any) (json.RawMessage, error)
+	GetSubscription(ctx context.Context, scope BillingScope) (json.RawMessage, error)
+	CreateSubscription(ctx context.Context, scope BillingScope, body any) (json.RawMessage, int, error)
+	CancelSubscription(ctx context.Context, scope BillingScope, id string) (json.RawMessage, error)
+	ListInvoices(ctx context.Context, scope BillingScope) (json.RawMessage, error)
+	GetInvoice(ctx context.Context, scope BillingScope, id string) (json.RawMessage, error)
+	ForwardAsaasWebhook(ctx context.Context, accessToken string, body []byte) (json.RawMessage, int, error)
+}
+
 type ServiceTokenClient interface {
 	GetToken(ctx context.Context, companyID string) (string, error)
 }

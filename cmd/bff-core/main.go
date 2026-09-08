@@ -22,6 +22,7 @@ import (
 	middlewarePkg "github.com/keepguard/bff-core/internal/adapters/inbound/http/middleware"
 	httpclient "github.com/keepguard/bff-core/internal/adapters/outbound/http/client"
 	auditdecorator "github.com/keepguard/bff-core/internal/adapters/outbound/http/decorator/audit"
+	billingdecorator "github.com/keepguard/bff-core/internal/adapters/outbound/http/decorator/billing"
 	collectordecorator "github.com/keepguard/bff-core/internal/adapters/outbound/http/decorator/collector"
 	communicationdecorator "github.com/keepguard/bff-core/internal/adapters/outbound/http/decorator/communication"
 	companydecorator "github.com/keepguard/bff-core/internal/adapters/outbound/http/decorator/company"
@@ -37,6 +38,7 @@ import (
 	messagingDecorator "github.com/keepguard/bff-core/internal/adapters/outbound/messaging/decorator"
 	rabbitmqPublisher "github.com/keepguard/bff-core/internal/adapters/outbound/messaging/rabbitmq"
 	"github.com/keepguard/bff-core/internal/application/audit"
+	appbilling "github.com/keepguard/bff-core/internal/application/billing"
 	"github.com/keepguard/bff-core/internal/application/collector"
 	"github.com/keepguard/bff-core/internal/application/connections"
 	"github.com/keepguard/bff-core/internal/application/consent"
@@ -343,7 +345,9 @@ func main() {
 	)
 	llmClient := llmdecorator.New(httpclient.NewLlmClient(cfg, zapLogger), zapLogger, metricsInstance, "srv-llm-gateway")
 	llmHandlers := handlersPkg.NewLlmHandlers(appllm.NewLlmPort(llmClient), zapLogger)
-	httpHandlers := handlersPkg.NewCombinedHandlers(registerHandlers, userHandlers, consentHandlers, connectionsHandlers, auditHandlers, guardianHandlers, oauthClientHandlers, collectorAgentHandlers, knowledgeHandlers, llmHandlers)
+	billingClient := billingdecorator.New(httpclient.NewBillingClient(cfg, zapLogger), zapLogger, metricsInstance, "ms-billing")
+	billingHandlers := handlersPkg.NewBillingHandlers(appbilling.NewBillingPort(billingClient), zapLogger)
+	httpHandlers := handlersPkg.NewCombinedHandlers(registerHandlers, userHandlers, consentHandlers, connectionsHandlers, auditHandlers, guardianHandlers, oauthClientHandlers, collectorAgentHandlers, knowledgeHandlers, llmHandlers, billingHandlers)
 
 	rateLimiterMiddleware := middlewarePkg.NewRateLimiterMiddleware(redisClient, cfg.RateLimit, zapLogger, metricsInstance)
 

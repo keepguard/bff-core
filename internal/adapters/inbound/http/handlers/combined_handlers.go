@@ -12,6 +12,7 @@ type CombinedHandlers struct {
 	*CollectorAgentHandlers
 	*KnowledgeHandlers
 	*LlmHandlers
+	*BillingHandlers
 }
 
 // NewCombinedHandlers cria CombinedHandlers.
@@ -26,6 +27,7 @@ func NewCombinedHandlers(
 	collectorAgentHandlers *CollectorAgentHandlers,
 	knowledgeHandlers *KnowledgeHandlers,
 	llmHandlers *LlmHandlers,
+	billingHandlers *BillingHandlers,
 ) *CombinedHandlers {
 	return &CombinedHandlers{
 		RegisterHandlers:       registerHandlers,
@@ -38,5 +40,6 @@ func NewCombinedHandlers(
 		CollectorAgentHandlers: collectorAgentHandlers,
 		KnowledgeHandlers:      knowledgeHandlers,
 		LlmHandlers:            llmHandlers,
+		BillingHandlers:        billingHandlers,
 	}
 }

@@ -37,6 +37,8 @@ const (
 	AuthorityOAuthRead      = "oauth:read"
 	AuthorityOAuthWrite     = "oauth:write"
 	AuthorityOpsRead        = "ops:read"
+	AuthorityBillingRead    = "billing:read"
+	AuthorityBillingWrite   = "billing:write"
 )
 
 func RequireAuthority(authority string) echo.MiddlewareFunc {
@@ -99,4 +101,12 @@ func RequireOAuthWrite() echo.MiddlewareFunc {
 
 func RequireOpsRead() echo.MiddlewareFunc {
 	return RequireAuthority(AuthorityOpsRead)
+}
+
+func RequireBillingRead() echo.MiddlewareFunc {
+	return RequireAuthority(AuthorityBillingRead)
+}
+
+func RequireBillingWrite() echo.MiddlewareFunc {
+	return RequireAuthority(AuthorityBillingWrite)
 }

@@ -1,4 +1,4 @@
-version: "1.0.86-SNAPSHOT"
+version: "1.0.87-SNAPSHOT"
 
 server:
   port: "8282"
@@ -47,6 +47,10 @@ services:
   llm:
     base_url: "http://localhost:8650"
     timeout: "60s"
+    retries: 1
+  billing:
+    base_url: "http://localhost:8087"
+    timeout: "30s"
     retries: 1
 
 oauth:

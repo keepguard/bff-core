@@ -20,6 +20,10 @@ func CompanyResolveMiddleware(companyClient client.CompanyClient) echo.Middlewar
 			if strings.HasPrefix(path, "/health") || strings.HasPrefix(path, "/swagger") {
 				return next(c)
 			}
+			requestPath := c.Request().URL.Path
+			if strings.Contains(path, "/billing/webhooks/") || strings.Contains(requestPath, "/billing/webhooks/") {
+				return next(c)
+			}
 
 			tenantId := tenantIDFromRequest(c)
 			if tenantId == "" {

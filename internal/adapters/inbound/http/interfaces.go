@@ -77,6 +77,18 @@ type Handler interface {
 	EnableLlmAlertRuleHandler(c echo.Context) error
 	DisableLlmAlertRuleHandler(c echo.Context) error
 	ListLlmAlertFiringsHandler(c echo.Context) error
+	GetBillingEntitlementHandler(c echo.Context) error
+	ListBillingPlansHandler(c echo.Context) error
+	CreateBillingPlanHandler(c echo.Context) error
+	PatchBillingPlanHandler(c echo.Context) error
+	GetBillingGatewayAccountHandler(c echo.Context) error
+	PutBillingGatewayAccountHandler(c echo.Context) error
+	GetBillingSubscriptionHandler(c echo.Context) error
+	CreateBillingSubscriptionHandler(c echo.Context) error
+	CancelBillingSubscriptionHandler(c echo.Context) error
+	ListBillingInvoicesHandler(c echo.Context) error
+	GetBillingInvoiceHandler(c echo.Context) error
+	AsaasWebhookHandler(c echo.Context) error
 }
 
 // Middleware define a interface para middlewares HTTP

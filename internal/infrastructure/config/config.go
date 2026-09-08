@@ -50,6 +50,8 @@ type RateLimitRulesConfig struct {
 	Collector         RateLimitRule `mapstructure:"collector"`
 	Knowledge         RateLimitRule `mapstructure:"knowledge"`
 	Llm               RateLimitRule `mapstructure:"llm"`
+	Billing           RateLimitRule `mapstructure:"billing"`
+	AsaasWebhook      RateLimitRule `mapstructure:"asaas_webhook"`
 	Default           RateLimitRule `mapstructure:"default"`
 }
 
@@ -89,6 +91,7 @@ type ServicesConfig struct {
 	Collector     ServiceConfig `mapstructure:"collector"`
 	Knowledge     ServiceConfig `mapstructure:"knowledge"`
 	Llm           ServiceConfig `mapstructure:"llm"`
+	Billing       ServiceConfig `mapstructure:"billing"`
 }
 
 // OAuthConfig é o client de serviço do BFF (token para ms-knowledge).
@@ -250,6 +253,9 @@ func setDefaults() {
 	viper.SetDefault("services.llm.base_url", "http://localhost:8650")
 	viper.SetDefault("services.llm.timeout", "60s")
 	viper.SetDefault("services.llm.retries", 1)
+	viper.SetDefault("services.billing.base_url", "http://localhost:8087")
+	viper.SetDefault("services.billing.timeout", "30s")
+	viper.SetDefault("services.billing.retries", 1)
 
 	viper.SetDefault("oauth.client_id", "bff-core")
 	viper.SetDefault("oauth.token_renew_before_sec", 600)
@@ -286,6 +292,10 @@ func setDefaults() {
 	viper.SetDefault("rate_limit.rules.knowledge.window", "60s")
 	viper.SetDefault("rate_limit.rules.llm.limit", 60)
 	viper.SetDefault("rate_limit.rules.llm.window", "60s")
+	viper.SetDefault("rate_limit.rules.billing.limit", 60)
+	viper.SetDefault("rate_limit.rules.billing.window", "60s")
+	viper.SetDefault("rate_limit.rules.asaas_webhook.limit", 120)
+	viper.SetDefault("rate_limit.rules.asaas_webhook.window", "60s")
 	viper.SetDefault("connections_health.snapshot_ttl", "60s")
 	viper.SetDefault("connections_health.lock_ttl", "5s")
 	viper.SetDefault("connections_health.probe_timeout", "500ms")

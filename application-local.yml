@@ -50,6 +50,10 @@ services:
     base_url: "http://localhost:8650"
     timeout: "60s"
     retries: 1
+  billing:
+    base_url: "http://localhost:8087"
+    timeout: "30s"
+    retries: 1
 
 oauth:
   client_id: "bff-core"
@@ -119,6 +123,12 @@ rate_limit:
     llm:
       limit: 60
       window: 60s
+    billing:
+      limit: 60
+      window: 60s
+    asaas_webhook:
+      limit: 120
+      window: 60s
     default:
       limit: 500
       window: 60s
@@ -148,6 +158,7 @@ connections_health:
     ms-company: "http://localhost:8083/actuator/health/liveness"
     ms-user: "http://localhost:8085/actuator/health/liveness"
     ms-user-consents: "http://localhost:8086/actuator/health/liveness"
+    ms-billing: "http://localhost:8087/actuator/health/liveness"
     srv-email-sender: "http://localhost:8601/health"
     srv-token-manager: "http://localhost:8700/health"
     srv-sms-sender: "http://localhost:8610/health"

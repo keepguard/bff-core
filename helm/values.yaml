@@ -27,6 +27,7 @@ env:
   collectorServiceUrl: "http://srv-data-collector:8630"
   knowledgeServiceUrl: "http://ms-knowledge:8090"
   llmServiceUrl: "http://srv-llm-gateway:8650"
+  billingServiceUrl: "http://ms-billing:8087"
 
 imagePullSecrets:
   - name: ghcr-secret

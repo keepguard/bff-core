@@ -241,6 +241,29 @@ func (s *serverImpl) SetupRoutes(handlers Handler) {
 	userGroup.POST("/core/llm/alert-rules/:id/disable", handlers.DisableLlmAlertRuleHandler, llmWrite...)
 	userGroup.GET("/core/llm/alert-firings", handlers.ListLlmAlertFiringsHandler, llmRead...)
 
+	billingRead := []echo.MiddlewareFunc{
+		s.jwt.Middleware(),
+		middlewarePkg.RequireBillingRead(),
+		rl.Limit("billing", rules.Billing),
+	}
+	billingWrite := []echo.MiddlewareFunc{
+		s.jwt.Middleware(),
+		middlewarePkg.RequireBillingWrite(),
+		rl.Limit("billing", rules.Billing),
+	}
+	userGroup.GET("/core/billing/entitlement", handlers.GetBillingEntitlementHandler, billingRead...)
+	userGroup.GET("/core/billing/plans", handlers.ListBillingPlansHandler, billingRead...)
+	userGroup.POST("/core/billing/plans", handlers.CreateBillingPlanHandler, billingWrite...)
+	userGroup.PATCH("/core/billing/plans/:code", handlers.PatchBillingPlanHandler, billingWrite...)
+	userGroup.GET("/core/billing/gateway-account", handlers.GetBillingGatewayAccountHandler, billingWrite...)
+	userGroup.PUT("/core/billing/gateway-account", handlers.PutBillingGatewayAccountHandler, billingWrite...)
+	userGroup.GET("/core/billing/subscription", handlers.GetBillingSubscriptionHandler, billingRead...)
+	userGroup.POST("/core/billing/subscriptions", handlers.CreateBillingSubscriptionHandler, billingRead...)
+	userGroup.POST("/core/billing/subscriptions/:id/cancel", handlers.CancelBillingSubscriptionHandler, billingRead...)
+	userGroup.GET("/core/billing/invoices", handlers.ListBillingInvoicesHandler, billingRead...)
+	userGroup.GET("/core/billing/invoices/:id", handlers.GetBillingInvoiceHandler, billingRead...)
+	userGroup.POST("/core/billing/webhooks/asaas", handlers.AsaasWebhookHandler, publicEndpoint.Middleware(), rl.Limit("asaas_webhook", rules.AsaasWebhook))
+
 	s.logger.Info("Rotas configuradas com sucesso com proteção de Rate Limit",
 		zap.String("port", s.config.Server.Port),
 	)
