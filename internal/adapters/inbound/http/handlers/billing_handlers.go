@@ -92,6 +92,13 @@ func (h *BillingHandlers) CreateBillingSubscriptionHandler(c echo.Context) error
 	if unavailable != nil {
 		return unavailable
 	}
+	if scope.Admin {
+		return c.JSON(http.StatusForbidden, pkg.ErrorResponse{
+			Error:         "BILLING_PAYER_OPS",
+			Message:       "Quem opera a organização não assina",
+			CorrelationID: scope.CorrelationID,
+		})
+	}
 	result, status, callErr := h.billing.CreateSubscription(c.Request().Context(), scope, body)
 	if callErr != nil {
 		return handleError(c, callErr, scope.CorrelationID)
@@ -218,7 +225,7 @@ func (h *BillingHandlers) guard(c echo.Context) (port.BillingScope, error) {
 		if userID == "" {
 			userID = strings.TrimSpace(claims.Sub)
 		}
-		admin = pkg.HasAnyRole(claims.Roles, "ADMIN", "SYSTEM")
+		admin = middlewarePkg.IsBillingOrgCaller(claims)
 	}
 	if userID == "" {
 		return port.BillingScope{}, c.JSON(http.StatusBadRequest, pkg.ErrorResponse{

@@ -110,3 +110,33 @@ func RequireBillingRead() echo.MiddlewareFunc {
 func RequireBillingWrite() echo.MiddlewareFunc {
 	return RequireAuthority(AuthorityBillingWrite)
 }
+
+func IsBillingOrgCaller(claims *pkg.JWTClaims) bool {
+	if claims == nil {
+		return false
+	}
+	if pkg.HasAnyRole(claims.Roles, "ADMIN", "SYSTEM") {
+		return true
+	}
+	if !pkg.HasAnyRole(claims.Roles, "MANAGER") {
+		return false
+	}
+	return pkg.HasAuthority(claims.Authorities, AuthorityBillingRead) || pkg.HasAuthority(claims.Authorities, AuthorityBillingWrite)
+}
+
+func RequireBillingOrgRead() echo.MiddlewareFunc {
+	message := "Acesso restrito a administradores ou gestores com billing:read"
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			correlationID := GetCorrelationID(c)
+			if IsBillingOrgCaller(GetClaimsFromContext(c)) {
+				return next(c)
+			}
+			return c.JSON(http.StatusForbidden, pkg.ErrorResponse{
+				Error:         "FORBIDDEN",
+				Message:       message,
+				CorrelationID: correlationID,
+			})
+		}
+	}
+}

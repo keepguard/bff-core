@@ -246,6 +246,11 @@ func (s *serverImpl) SetupRoutes(handlers Handler) {
 		middlewarePkg.RequireBillingRead(),
 		rl.Limit("billing", rules.Billing),
 	}
+	billingOrgRead := []echo.MiddlewareFunc{
+		s.jwt.Middleware(),
+		middlewarePkg.RequireBillingOrgRead(),
+		rl.Limit("billing", rules.Billing),
+	}
 	billingWrite := []echo.MiddlewareFunc{
 		s.jwt.Middleware(),
 		middlewarePkg.RequireBillingWrite(),
@@ -255,7 +260,7 @@ func (s *serverImpl) SetupRoutes(handlers Handler) {
 	userGroup.GET("/core/billing/plans", handlers.ListBillingPlansHandler, billingRead...)
 	userGroup.POST("/core/billing/plans", handlers.CreateBillingPlanHandler, billingWrite...)
 	userGroup.PATCH("/core/billing/plans/:code", handlers.PatchBillingPlanHandler, billingWrite...)
-	userGroup.GET("/core/billing/gateway-account", handlers.GetBillingGatewayAccountHandler, billingWrite...)
+	userGroup.GET("/core/billing/gateway-account", handlers.GetBillingGatewayAccountHandler, billingOrgRead...)
 	userGroup.PUT("/core/billing/gateway-account", handlers.PutBillingGatewayAccountHandler, billingWrite...)
 	userGroup.GET("/core/billing/subscription", handlers.GetBillingSubscriptionHandler, billingRead...)
 	userGroup.POST("/core/billing/subscriptions", handlers.CreateBillingSubscriptionHandler, billingRead...)

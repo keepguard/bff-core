@@ -159,3 +159,45 @@ func TestGetEntitlementPassesUserScope(t *testing.T) {
 		t.Fatalf("body %s", rec.Body.String())
 	}
 }
+
+func TestCreateSubscriptionRejectsOpsCaller(t *testing.T) {
+	c, rec := billingContext(http.MethodPost, "/api/v1/core/billing/subscriptions", `{"planCode":"basic","interval":"month","paymentMethod":"pix"}`, &pkg.JWTClaims{
+		UserID: "admin-1", Roles: []string{"ROLE_ADMIN"},
+	})
+	h := NewBillingHandlers(appbilling.NewBillingPort(&stubBillingClient{}), zap.NewNop())
+	if err := h.CreateBillingSubscriptionHandler(c); err != nil {
+		t.Fatal(err)
+	}
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status %d body %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "BILLING_PAYER_OPS") {
+		t.Fatalf("expected BILLING_PAYER_OPS, got %s", rec.Body.String())
+	}
+}
+
+func TestCreateSubscriptionAllowsUserPayer(t *testing.T) {
+	c, rec := billingContext(http.MethodPost, "/api/v1/core/billing/subscriptions", `{"planCode":"basic","interval":"month","paymentMethod":"pix"}`, &pkg.JWTClaims{
+		UserID: "user-1", Roles: []string{"ROLE_USER"}, Authorities: []string{"billing:read"},
+	})
+	h := NewBillingHandlers(appbilling.NewBillingPort(&stubBillingClient{}), zap.NewNop())
+	if err := h.CreateBillingSubscriptionHandler(c); err != nil {
+		t.Fatal(err)
+	}
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("status %d body %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestCreateSubscriptionRejectsManagerOpsCaller(t *testing.T) {
+	c, rec := billingContext(http.MethodPost, "/api/v1/core/billing/subscriptions", `{"planCode":"basic","interval":"month","paymentMethod":"pix"}`, &pkg.JWTClaims{
+		UserID: "mgr-1", Roles: []string{"ROLE_MANAGER"}, Authorities: []string{"billing:read"},
+	})
+	h := NewBillingHandlers(appbilling.NewBillingPort(&stubBillingClient{}), zap.NewNop())
+	if err := h.CreateBillingSubscriptionHandler(c); err != nil {
+		t.Fatal(err)
+	}
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status %d body %s", rec.Code, rec.Body.String())
+	}
+}
