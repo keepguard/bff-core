@@ -18,6 +18,7 @@ const asaasWebhookMaxBytes = 512 * 1024
 
 type BillingHandlers struct {
 	billing billing.BillingPort
+	users   port.UserClient
 	logger  *zap.Logger
 }
 
@@ -26,6 +27,11 @@ func NewBillingHandlers(billingPort billing.BillingPort, logger *zap.Logger) *Bi
 		logger = zap.NewNop()
 	}
 	return &BillingHandlers{billing: billingPort, logger: logger}
+}
+
+func (h *BillingHandlers) WithUsers(users port.UserClient) *BillingHandlers {
+	h.users = users
+	return h
 }
 
 func (h *BillingHandlers) GetBillingEntitlementHandler(c echo.Context) error {
@@ -98,6 +104,9 @@ func (h *BillingHandlers) CreateBillingSubscriptionHandler(c echo.Context) error
 			Message:       "Quem opera a organização não assina",
 			CorrelationID: scope.CorrelationID,
 		})
+	}
+	if attachErr := h.attachPayerProfile(c, body, scope); attachErr != nil {
+		return attachErr
 	}
 	result, status, callErr := h.billing.CreateSubscription(c.Request().Context(), scope, body)
 	if callErr != nil {
@@ -264,6 +273,59 @@ func bindBillingJSON(c echo.Context) (map[string]any, error) {
 		})
 	}
 	return body, nil
+}
+
+func (h *BillingHandlers) attachPayerProfile(c echo.Context, body map[string]any, scope port.BillingScope) error {
+	delete(body, "payerName")
+	delete(body, "payerEmail")
+	delete(body, "payerCpfCnpj")
+	if h.users == nil {
+		return nil
+	}
+	codeUser := middlewarePkg.GetUserIDFromContext(c)
+	user, err := h.users.GetUserByCodeUser(
+		c.Request().Context(),
+		codeUser,
+		middlewarePkg.GetTokenFromContext(c),
+		middlewarePkg.GetTenantId(c),
+		scope.CorrelationID,
+	)
+	if err != nil {
+		return handleError(c, err, scope.CorrelationID)
+	}
+	cpf := ""
+	name := strings.TrimSpace(user.Email)
+	if user.PersonProfile != nil {
+		cpf = digitsOnly(user.PersonProfile.CPF)
+		if fullName := strings.TrimSpace(user.PersonProfile.FullName); fullName != "" {
+			name = fullName
+		}
+	}
+	if len(cpf) != 11 && len(cpf) != 14 {
+		return c.JSON(http.StatusUnprocessableEntity, pkg.ErrorResponse{
+			Error:         "PAYER_DOCUMENT_MISSING",
+			Message:       "Complete o CPF no perfil para assinar com PIX ou boleto.",
+			CorrelationID: scope.CorrelationID,
+		})
+	}
+	if name != "" {
+		body["payerName"] = name
+	}
+	if email := strings.TrimSpace(user.Email); email != "" {
+		body["payerEmail"] = email
+	}
+	body["payerCpfCnpj"] = cpf
+	return nil
+}
+
+func digitsOnly(raw string) string {
+	var b strings.Builder
+	for _, r := range raw {
+		if r >= '0' && r <= '9' {
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
 }
 
 func containsCardData(value any) bool {

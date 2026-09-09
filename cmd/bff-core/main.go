@@ -346,7 +346,7 @@ func main() {
 	llmClient := llmdecorator.New(httpclient.NewLlmClient(cfg, zapLogger), zapLogger, metricsInstance, "srv-llm-gateway")
 	llmHandlers := handlersPkg.NewLlmHandlers(appllm.NewLlmPort(llmClient), zapLogger)
 	billingClient := billingdecorator.New(httpclient.NewBillingClient(cfg, zapLogger), zapLogger, metricsInstance, "ms-billing")
-	billingHandlers := handlersPkg.NewBillingHandlers(appbilling.NewBillingPort(billingClient), zapLogger)
+	billingHandlers := handlersPkg.NewBillingHandlers(appbilling.NewBillingPort(billingClient), zapLogger).WithUsers(userClient)
 	httpHandlers := handlersPkg.NewCombinedHandlers(registerHandlers, userHandlers, consentHandlers, connectionsHandlers, auditHandlers, guardianHandlers, oauthClientHandlers, collectorAgentHandlers, knowledgeHandlers, llmHandlers, billingHandlers)
 
 	rateLimiterMiddleware := middlewarePkg.NewRateLimiterMiddleware(redisClient, cfg.RateLimit, zapLogger, metricsInstance)
