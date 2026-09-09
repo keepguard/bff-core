@@ -335,10 +335,14 @@ func upstreamErrorCode(details string) string {
 		return ""
 	}
 	var payload struct {
-		Error string `json:"error"`
+		Error     string `json:"error"`
+		ErrorCode string `json:"errorCode"`
 	}
 	if err := json.Unmarshal([]byte(details), &payload); err != nil {
 		return ""
+	}
+	if code := strings.TrimSpace(payload.ErrorCode); code != "" && !strings.Contains(code, " ") {
+		return code
 	}
 	code := strings.TrimSpace(payload.Error)
 	if code == "" || strings.Contains(code, " ") {

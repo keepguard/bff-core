@@ -113,6 +113,43 @@ func (c *userClient) GetUserByCodeUser(ctx context.Context, codeUser, token, ten
 	return user, nil
 }
 
+// PatchPersonDocument grava o CPF uma única vez no perfil (first-write). Não loga o documento.
+func (c *userClient) PatchPersonDocument(ctx context.Context, userID, cpf, token, tenantId, correlationID string) (userDto.MSUserResponseDTO, error) {
+	url := fmt.Sprintf("%s/api/v1/users/%s/person-document", c.config.Services.User.BaseURL, userID)
+
+	companyID := domainclient.CompanyIDFromContext(ctx)
+	if companyID == "" {
+		companyID = companyHeader(ctx)
+	}
+	if companyID == "" {
+		return userDto.MSUserResponseDTO{}, fmt.Errorf("companyId é obrigatório para gravar documento")
+	}
+
+	resp, err := c.httpClient.R().
+		SetContext(ctx).
+		SetBody(map[string]string{"cpf": cpf}).
+		SetHeader("X-Correlation-ID", correlationID).
+		SetHeader("X-Company-Id", companyID).
+		SetHeader("X-Tenant-Id", tenantId).
+		SetHeader("Content-Type", "application/json").
+		Patch(url)
+
+	if err != nil {
+		return userDto.MSUserResponseDTO{}, fmt.Errorf("erro ao comunicar com user service: %w", err)
+	}
+
+	if resp.StatusCode() != http.StatusOK {
+		return userDto.MSUserResponseDTO{}, MapHTTPError(resp.StatusCode(), resp.Body(), "user service")
+	}
+
+	var user userDto.MSUserResponseDTO
+	if err := json.Unmarshal(resp.Body(), &user); err != nil {
+		return userDto.MSUserResponseDTO{}, fmt.Errorf("erro ao fazer parse da resposta: %w", err)
+	}
+
+	return user, nil
+}
+
 // GetByEmail busca um usuário por email no ms-user
 func (c *userClient) GetByEmail(ctx context.Context, email, tenantId, companyId, correlationID string) (authDto.UserByEmailResponseDTO, error) {
 	url := fmt.Sprintf("%s/api/v1/users/email/%s", c.config.Services.User.BaseURL, email)

@@ -22,4 +22,6 @@ type MeProfileViewDTO struct {
 
 type MePersonProfileViewDTO struct {
 	FullName string
+	HasCpf   bool
+	CpfLast4 string
 }

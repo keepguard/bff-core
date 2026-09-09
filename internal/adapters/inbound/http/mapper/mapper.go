@@ -48,7 +48,11 @@ func ToMeProfileResponse(view appdto.MeProfileViewDTO) inboundDto.MeProfileRespo
 		CreatedAt:       view.CreatedAt,
 	}
 	if view.PersonProfile != nil {
-		resp.PersonProfile = &inboundDto.MePersonProfileDTO{FullName: view.PersonProfile.FullName}
+		resp.PersonProfile = &inboundDto.MePersonProfileDTO{
+			FullName: view.PersonProfile.FullName,
+			HasCpf:   view.PersonProfile.HasCpf,
+			CpfLast4: view.PersonProfile.CpfLast4,
+		}
 	}
 	return resp
 }

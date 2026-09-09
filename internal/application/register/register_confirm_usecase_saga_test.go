@@ -37,6 +37,11 @@ func (m *MockUserClient) GetByEmail(ctx context.Context, email, tenantId, compan
 	return args.Get(0).(authDto.UserByEmailResponseDTO), args.Error(1)
 }
 
+func (m *MockUserClient) PatchPersonDocument(ctx context.Context, userID, cpf, token, tenantId, correlationID string) (userDto.MSUserResponseDTO, error) {
+	args := m.Called(ctx, userID, cpf, token, tenantId, correlationID)
+	return args.Get(0).(userDto.MSUserResponseDTO), args.Error(1)
+}
+
 func (m *MockUserClient) CreateUserNotify(ctx context.Context, req userDto.MSUserNotifyCreateRequestDTO, tenantId, correlationID string) (userDto.MSUserNotifyResponseDTO, error) {
 	args := m.Called(ctx, req, tenantId, correlationID)
 	return args.Get(0).(userDto.MSUserNotifyResponseDTO), args.Error(1)

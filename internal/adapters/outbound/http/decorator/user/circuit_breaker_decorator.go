@@ -55,6 +55,19 @@ func (d *circuitBreakerDecorator) GetUserByCodeUser(ctx context.Context, codeUse
 	return result.(userDto.MSUserResponseDTO), nil
 }
 
+// PatchPersonDocument implementa PatchPersonDocument com circuit breaker
+func (d *circuitBreakerDecorator) PatchPersonDocument(ctx context.Context, userID, cpf, token, tenantId, correlationID string) (userDto.MSUserResponseDTO, error) {
+	result, err := d.circuitBreaker.Execute(ctx, d.serviceName, func() (interface{}, error) {
+		return d.inner.PatchPersonDocument(ctx, userID, cpf, token, tenantId, correlationID)
+	})
+
+	if err != nil {
+		return userDto.MSUserResponseDTO{}, err
+	}
+
+	return result.(userDto.MSUserResponseDTO), nil
+}
+
 // GetByEmail implementa GetByEmail com circuit breaker
 func (d *circuitBreakerDecorator) GetByEmail(ctx context.Context, email, tenantId, companyId, correlationID string) (authDto.UserByEmailResponseDTO, error) {
 	result, err := d.circuitBreaker.Execute(ctx, d.serviceName, func() (interface{}, error) {

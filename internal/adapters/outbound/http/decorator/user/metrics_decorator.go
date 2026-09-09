@@ -114,6 +114,28 @@ func (d *userMetricsDecorator) GetByEmail(ctx context.Context, email, tenantId, 
 	return response, err
 }
 
+// PatchPersonDocument implementa PatchPersonDocument com métricas (sem o CPF)
+func (d *userMetricsDecorator) PatchPersonDocument(ctx context.Context, userID, cpf, token, tenantId, correlationID string) (userDto.MSUserResponseDTO, error) {
+	start := time.Now()
+
+	response, err := d.inner.PatchPersonDocument(ctx, userID, cpf, token, tenantId, correlationID)
+
+	duration := time.Since(start)
+	statusCode := d.getStatusCodeFromError(err)
+
+	d.metrics.RecordUpstreamRequest(d.serviceName, "PATCH", "/users/person-document", statusCode, duration)
+
+	if err != nil {
+		errorType := "unknown"
+		if httpErr, ok := err.(*appdto.HTTPError); ok {
+			errorType = httpErr.Message
+		}
+		d.metrics.RecordUpstreamError(d.serviceName, "PATCH", "/users/person-document", errorType)
+	}
+
+	return response, err
+}
+
 // CreateUserNotify implementa CreateUserNotify com métricas
 func (d *userMetricsDecorator) CreateUserNotify(ctx context.Context, req userDto.MSUserNotifyCreateRequestDTO, tenantId, correlationID string) (userDto.MSUserNotifyResponseDTO, error) {
 	start := time.Now()

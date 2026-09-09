@@ -9,6 +9,7 @@ import (
 
 	middlewarePkg "github.com/keepguard/bff-core/internal/adapters/inbound/http/middleware"
 	"github.com/keepguard/bff-core/internal/application/billing"
+	appdto "github.com/keepguard/bff-core/internal/application/dto"
 	"github.com/keepguard/bff-core/internal/application/port"
 	"github.com/keepguard/bff-core/internal/pkg"
 	"github.com/labstack/echo/v4"
@@ -330,6 +331,7 @@ func bindBillingJSON(c echo.Context) (map[string]any, error) {
 }
 
 func (h *BillingHandlers) attachPayerProfile(c echo.Context, body map[string]any, scope port.BillingScope) error {
+	clientDoc := digitsOnly(stringifyJSON(body["payerCpfCnpj"]))
 	delete(body, "payerName")
 	delete(body, "payerEmail")
 	delete(body, "payerCpfCnpj")
@@ -355,18 +357,125 @@ func (h *BillingHandlers) attachPayerProfile(c echo.Context, body map[string]any
 			name = fullName
 		}
 	}
+	if len(cpf) != 11 && len(cpf) != 14 {
+		if err := h.firstWritePayerDocument(c, &user, clientDoc, scope); err != nil {
+			return err
+		}
+		cpf = ""
+		if user.PersonProfile != nil {
+			cpf = digitsOnly(user.PersonProfile.CPF)
+			if fullName := strings.TrimSpace(user.PersonProfile.FullName); fullName != "" {
+				name = fullName
+			}
+		}
+	}
 	if name != "" {
 		body["payerName"] = name
 	}
 	if email := strings.TrimSpace(user.Email); email != "" {
 		body["payerEmail"] = email
 	}
-	// CPF no perfil é opcional se o customer Asaas já existir (reassinatura).
-	// ms-billing exige documento só na criação do customer.
 	if len(cpf) == 11 || len(cpf) == 14 {
 		body["payerCpfCnpj"] = cpf
 	}
 	return nil
+}
+
+func (h *BillingHandlers) firstWritePayerDocument(c echo.Context, user *appdto.MSUserResponseDTO, clientDoc string, scope port.BillingScope) error {
+	if len(clientDoc) != 11 {
+		return pkg.NewAppError("PAYER_DOCUMENT_MISSING", "Informe um CPF válido.", http.StatusUnprocessableEntity)
+	}
+	if !brazilianCPFValid(clientDoc) {
+		return pkg.NewAppError("PAYER_DOCUMENT_INVALID", "Informe um CPF válido.", http.StatusUnprocessableEntity)
+	}
+	userID := strings.TrimSpace(user.ID)
+	if userID == "" {
+		return pkg.NewAppError("PAYER_DOCUMENT_MISSING", "Informe um CPF válido.", http.StatusUnprocessableEntity)
+	}
+	patched, err := h.users.PatchPersonDocument(
+		c.Request().Context(),
+		userID,
+		clientDoc,
+		middlewarePkg.GetTokenFromContext(c),
+		middlewarePkg.GetTenantId(c),
+		scope.CorrelationID,
+	)
+	if err != nil {
+		return mapPersonDocumentError(err)
+	}
+	reloaded, reloadErr := h.users.GetUserByCodeUser(
+		c.Request().Context(),
+		middlewarePkg.GetUserIDFromContext(c),
+		middlewarePkg.GetTokenFromContext(c),
+		middlewarePkg.GetTenantId(c),
+		scope.CorrelationID,
+	)
+	if reloadErr == nil {
+		*user = reloaded
+	} else {
+		*user = patched
+	}
+	if user.PersonProfile == nil {
+		user.PersonProfile = &appdto.PersonProfileDTO{}
+	}
+	if len(digitsOnly(user.PersonProfile.CPF)) != 11 {
+		user.PersonProfile.CPF = clientDoc
+	}
+	return nil
+}
+
+func mapPersonDocumentError(err error) error {
+	httpErr, ok := err.(*appdto.HTTPError)
+	if !ok {
+		return err
+	}
+	code := upstreamErrorCode(httpErr.Details)
+	if code == "CPF_ALREADY_EXISTS" || (httpErr.Code == http.StatusConflict && strings.Contains(strings.ToUpper(httpErr.Details+" "+httpErr.Message), "CPF_ALREADY_EXISTS")) {
+		return pkg.NewAppError("CPF_ALREADY_EXISTS", "Este CPF já está em uso nesta organização.", http.StatusConflict)
+	}
+	if code == "PAYER_DOCUMENT_INVALID" || httpErr.Code == http.StatusUnprocessableEntity {
+		return pkg.NewAppError("PAYER_DOCUMENT_INVALID", "Informe um CPF válido.", http.StatusUnprocessableEntity)
+	}
+	if code == "PAYER_DOCUMENT_IMMUTABLE" {
+		return pkg.NewAppError("PAYER_DOCUMENT_IMMUTABLE", "Documento do pagador já está cadastrado", http.StatusConflict)
+	}
+	return err
+}
+
+func brazilianCPFValid(digits string) bool {
+	if len(digits) != 11 {
+		return false
+	}
+	allSame := true
+	for i := 1; i < 11; i++ {
+		if digits[i] != digits[0] {
+			allSame = false
+			break
+		}
+	}
+	if allSame {
+		return false
+	}
+	sum := 0
+	for i := 0; i < 9; i++ {
+		sum += int(digits[i]-'0') * (10 - i)
+	}
+	rest := sum * 10 % 11
+	if rest == 10 {
+		rest = 0
+	}
+	if rest != int(digits[9]-'0') {
+		return false
+	}
+	sum = 0
+	for i := 0; i < 10; i++ {
+		sum += int(digits[i]-'0') * (11 - i)
+	}
+	rest = sum * 10 % 11
+	if rest == 10 {
+		rest = 0
+	}
+	return rest == int(digits[10]-'0')
 }
 
 func digitsOnly(raw string) string {

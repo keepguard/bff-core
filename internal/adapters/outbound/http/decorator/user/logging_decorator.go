@@ -114,6 +114,46 @@ func (d *userLoggingDecorator) GetUserByCodeUser(ctx context.Context, codeUser, 
 	return response, nil
 }
 
+// PatchPersonDocument implementa PatchPersonDocument com logging (sem o CPF)
+func (d *userLoggingDecorator) PatchPersonDocument(ctx context.Context, userID, cpf, token, tenantId, correlationID string) (userDto.MSUserResponseDTO, error) {
+	start := time.Now()
+
+	d.logger.Info("Iniciando requisição",
+		zap.String("service", d.serviceName),
+		zap.String("operation", "PatchPersonDocument"),
+		zap.String("correlationID", correlationID),
+		zap.String("tenantId", tenantId),
+		zap.String("userID", userID),
+	)
+
+	response, err := d.inner.PatchPersonDocument(ctx, userID, cpf, token, tenantId, correlationID)
+	duration := time.Since(start)
+
+	if err != nil {
+		d.logger.Error("Erro na requisição",
+			zap.String("service", d.serviceName),
+			zap.String("operation", "PatchPersonDocument"),
+			zap.String("correlationID", correlationID),
+			zap.String("tenantId", tenantId),
+			zap.String("userID", userID),
+			zap.Duration("duration", duration),
+			zap.Error(err),
+		)
+		return response, err
+	}
+
+	d.logger.Info("Requisição concluída com sucesso",
+		zap.String("service", d.serviceName),
+		zap.String("operation", "PatchPersonDocument"),
+		zap.String("correlationID", correlationID),
+		zap.String("tenantId", tenantId),
+		zap.String("userID", userID),
+		zap.Duration("duration", duration),
+	)
+
+	return response, nil
+}
+
 // GetByEmail implementa GetByEmail com logging
 func (d *userLoggingDecorator) GetByEmail(ctx context.Context, email, tenantId, companyId, correlationID string) (authDto.UserByEmailResponseDTO, error) {
 	start := time.Now()

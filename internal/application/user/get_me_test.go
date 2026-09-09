@@ -22,8 +22,25 @@ func TestToMeProfile_DropsDocumentFields(t *testing.T) {
 	encoded, err := json.Marshal(got)
 	assert.NoError(t, err)
 	payload := strings.ToLower(string(encoded))
-	assert.NotContains(t, payload, "cpf")
-	assert.NotContains(t, payload, "rg")
+	assert.NotContains(t, payload, "123.456.789-00")
+	assert.NotContains(t, payload, "12345678900")
+	assert.NotContains(t, payload, "1122233")
 	assert.NotContains(t, payload, "mother")
 	assert.Equal(t, "Nome Completo", got.PersonProfile.FullName)
+	assert.True(t, got.PersonProfile.HasCpf)
+	assert.Equal(t, "8900", got.PersonProfile.CpfLast4)
+}
+
+func TestToMeProfile_OmitsLast4WhenCpfMissing(t *testing.T) {
+	user := appdto.MSUserResponseDTO{
+		Email:         "a@b.com",
+		PersonProfile: &appdto.PersonProfileDTO{FullName: "Nome Completo"},
+	}
+	got := toMeProfile(user)
+	assert.Equal(t, "Nome Completo", got.PersonProfile.FullName)
+	assert.False(t, got.PersonProfile.HasCpf)
+	assert.Empty(t, got.PersonProfile.CpfLast4)
+	encoded, err := json.Marshal(got)
+	assert.NoError(t, err)
+	assert.NotContains(t, strings.ToLower(string(encoded)), "123")
 }

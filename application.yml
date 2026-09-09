@@ -1,4 +1,4 @@
-version: "1.0.93-SNAPSHOT"
+version: "1.0.94-SNAPSHOT"
 
 server:
   port: "8282"

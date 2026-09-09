@@ -10,6 +10,7 @@ type UserClient interface {
 	CreateUser(ctx context.Context, req appdto.MSUserCreateRequestDTO, tenantId, correlationID string) (appdto.MSUserResponseDTO, error)
 	GetUserByCodeUser(ctx context.Context, codeUser, token, tenantId, correlationID string) (appdto.MSUserResponseDTO, error)
 	GetByEmail(ctx context.Context, email, tenantId, companyId, correlationID string) (appdto.UserByEmailResponseDTO, error)
+	PatchPersonDocument(ctx context.Context, userID, cpf, token, tenantId, correlationID string) (appdto.MSUserResponseDTO, error)
 	CreateUserNotify(ctx context.Context, req appdto.MSUserNotifyCreateRequestDTO, tenantId, correlationID string) (appdto.MSUserNotifyResponseDTO, error)
 	InitRegister(ctx context.Context, req appdto.MSUserRegisterInitRequestDTO, tenantId, correlationID string) (appdto.MSUserRegisterInitResponseDTO, error)
 	ConfirmRegister(ctx context.Context, req appdto.MSUserRegisterConfirmRequestDTO, tenantId, correlationID string) (appdto.MSUserRegisterConfirmResponseDTO, error)

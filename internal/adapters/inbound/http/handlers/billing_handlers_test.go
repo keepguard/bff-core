@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	appbilling "github.com/keepguard/bff-core/internal/application/billing"
+	appdto "github.com/keepguard/bff-core/internal/application/dto"
 	"github.com/keepguard/bff-core/internal/application/port"
 	"github.com/keepguard/bff-core/internal/pkg"
 	"github.com/labstack/echo/v4"
@@ -19,6 +20,8 @@ type stubBillingClient struct {
 	entitlement json.RawMessage
 	created     json.RawMessage
 	createdCode int
+	createCalls int
+	createBody  any
 	webhookBody []byte
 	webhookTok  string
 }
@@ -56,7 +59,9 @@ func (s *stubBillingClient) SetPrimaryGateway(context.Context, port.BillingScope
 func (s *stubBillingClient) GetSubscription(context.Context, port.BillingScope) (json.RawMessage, error) {
 	return json.RawMessage(`{"status":"pending_gateway"}`), nil
 }
-func (s *stubBillingClient) CreateSubscription(context.Context, port.BillingScope, any) (json.RawMessage, int, error) {
+func (s *stubBillingClient) CreateSubscription(_ context.Context, _ port.BillingScope, body any) (json.RawMessage, int, error) {
+	s.createCalls++
+	s.createBody = body
 	if s.created != nil {
 		code := s.createdCode
 		if code == 0 {
@@ -208,5 +213,162 @@ func TestCreateSubscriptionRejectsManagerOpsCaller(t *testing.T) {
 	}
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("status %d body %s", rec.Code, rec.Body.String())
+	}
+}
+
+const testValidCPF = "52998224725"
+
+type stubUserClient struct {
+	user     appdto.MSUserResponseDTO
+	patched  appdto.MSUserResponseDTO
+	patchErr error
+	gets     int
+	patches  int
+	patchCPF string
+}
+
+func (s *stubUserClient) CreateUser(context.Context, appdto.MSUserCreateRequestDTO, string, string) (appdto.MSUserResponseDTO, error) {
+	return appdto.MSUserResponseDTO{}, nil
+}
+func (s *stubUserClient) GetUserByCodeUser(context.Context, string, string, string, string) (appdto.MSUserResponseDTO, error) {
+	s.gets++
+	if s.patches > 0 && s.patched.ID != "" {
+		return s.patched, nil
+	}
+	return s.user, nil
+}
+func (s *stubUserClient) GetByEmail(context.Context, string, string, string, string) (appdto.UserByEmailResponseDTO, error) {
+	return appdto.UserByEmailResponseDTO{}, nil
+}
+func (s *stubUserClient) PatchPersonDocument(_ context.Context, userID, cpf, _, _, _ string) (appdto.MSUserResponseDTO, error) {
+	s.patches++
+	s.patchCPF = cpf
+	if s.patchErr != nil {
+		return appdto.MSUserResponseDTO{}, s.patchErr
+	}
+	if s.patched.ID != "" {
+		return s.patched, nil
+	}
+	out := s.user
+	out.ID = userID
+	out.PersonProfile = &appdto.PersonProfileDTO{CPF: cpf, FullName: "Nome"}
+	s.patched = out
+	return out, nil
+}
+func (s *stubUserClient) CreateUserNotify(context.Context, appdto.MSUserNotifyCreateRequestDTO, string, string) (appdto.MSUserNotifyResponseDTO, error) {
+	return appdto.MSUserNotifyResponseDTO{}, nil
+}
+func (s *stubUserClient) InitRegister(context.Context, appdto.MSUserRegisterInitRequestDTO, string, string) (appdto.MSUserRegisterInitResponseDTO, error) {
+	return appdto.MSUserRegisterInitResponseDTO{}, nil
+}
+func (s *stubUserClient) ConfirmRegister(context.Context, appdto.MSUserRegisterConfirmRequestDTO, string, string) (appdto.MSUserRegisterConfirmResponseDTO, error) {
+	return appdto.MSUserRegisterConfirmResponseDTO{}, nil
+}
+func (s *stubUserClient) DeleteUser(context.Context, string, string, string) error {
+	return nil
+}
+func (s *stubUserClient) ResendRegisterToken(context.Context, appdto.MSUserRegisterResendRequestDTO, string, string) (appdto.MSUserRegisterResendResponseDTO, error) {
+	return appdto.MSUserRegisterResendResponseDTO{}, nil
+}
+
+func TestCreateSubscriptionMissingCpf(t *testing.T) {
+	billing := &stubBillingClient{}
+	users := &stubUserClient{user: appdto.MSUserResponseDTO{
+		ID: "ms-user-1", Email: "a@b.com", PersonProfile: &appdto.PersonProfileDTO{FullName: "Nome"},
+	}}
+	c, rec := billingContext(http.MethodPost, "/api/v1/core/billing/subscriptions", `{"planCode":"basic","interval":"month","paymentMethod":"pix"}`, &pkg.JWTClaims{
+		UserID: "user-1", Roles: []string{"ROLE_USER"},
+	})
+	h := NewBillingHandlers(appbilling.NewBillingPort(billing), zap.NewNop()).WithUsers(users)
+	if err := h.CreateBillingSubscriptionHandler(c); err != nil {
+		t.Fatal(err)
+	}
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("status %d body %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "PAYER_DOCUMENT_MISSING") {
+		t.Fatalf("expected PAYER_DOCUMENT_MISSING, got %s", rec.Body.String())
+	}
+	if billing.createCalls != 0 || users.patches != 0 {
+		t.Fatalf("billing=%d patch=%d", billing.createCalls, users.patches)
+	}
+}
+
+func TestCreateSubscriptionIgnoresClientCpfWhenProfileHasDocument(t *testing.T) {
+	billing := &stubBillingClient{}
+	users := &stubUserClient{user: appdto.MSUserResponseDTO{
+		ID: "ms-user-1", Email: "a@b.com",
+		PersonProfile: &appdto.PersonProfileDTO{FullName: "Nome", CPF: testValidCPF},
+	}}
+	c, rec := billingContext(http.MethodPost, "/api/v1/core/billing/subscriptions",
+		`{"planCode":"basic","interval":"month","paymentMethod":"pix","payerCpfCnpj":"39053344705"}`,
+		&pkg.JWTClaims{UserID: "user-1", Roles: []string{"ROLE_USER"}})
+	h := NewBillingHandlers(appbilling.NewBillingPort(billing), zap.NewNop()).WithUsers(users)
+	if err := h.CreateBillingSubscriptionHandler(c); err != nil {
+		t.Fatal(err)
+	}
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("status %d body %s", rec.Code, rec.Body.String())
+	}
+	if users.patches != 0 {
+		t.Fatalf("patch calls %d", users.patches)
+	}
+	body, _ := billing.createBody.(map[string]any)
+	if body["payerCpfCnpj"] != testValidCPF {
+		t.Fatalf("payerCpfCnpj %v", body["payerCpfCnpj"])
+	}
+}
+
+func TestCreateSubscriptionUniqueCpfConflict(t *testing.T) {
+	billing := &stubBillingClient{}
+	users := &stubUserClient{
+		user: appdto.MSUserResponseDTO{
+			ID: "ms-user-1", Email: "a@b.com", PersonProfile: &appdto.PersonProfileDTO{FullName: "Nome"},
+		},
+		patchErr: &appdto.HTTPError{
+			Code:    http.StatusConflict,
+			Message: "CPF já está em uso nesta empresa",
+			Details: `{"errorCode":"CPF_ALREADY_EXISTS","message":"CPF já está em uso nesta empresa"}`,
+		},
+	}
+	c, rec := billingContext(http.MethodPost, "/api/v1/core/billing/subscriptions",
+		`{"planCode":"basic","interval":"month","paymentMethod":"pix","payerCpfCnpj":"529.982.247-25"}`,
+		&pkg.JWTClaims{UserID: "user-1", Roles: []string{"ROLE_USER"}})
+	h := NewBillingHandlers(appbilling.NewBillingPort(billing), zap.NewNop()).WithUsers(users)
+	if err := h.CreateBillingSubscriptionHandler(c); err != nil {
+		t.Fatal(err)
+	}
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("status %d body %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "CPF_ALREADY_EXISTS") {
+		t.Fatalf("expected CPF_ALREADY_EXISTS, got %s", rec.Body.String())
+	}
+	if billing.createCalls != 0 {
+		t.Fatalf("billing calls %d", billing.createCalls)
+	}
+}
+
+func TestCreateSubscriptionFirstWriteCpf(t *testing.T) {
+	billing := &stubBillingClient{}
+	users := &stubUserClient{user: appdto.MSUserResponseDTO{
+		ID: "ms-user-1", Email: "a@b.com", PersonProfile: &appdto.PersonProfileDTO{FullName: "Nome"},
+	}}
+	c, rec := billingContext(http.MethodPost, "/api/v1/core/billing/subscriptions",
+		`{"planCode":"basic","interval":"month","paymentMethod":"pix","payerCpfCnpj":"529.982.247-25"}`,
+		&pkg.JWTClaims{UserID: "user-1", Roles: []string{"ROLE_USER"}})
+	h := NewBillingHandlers(appbilling.NewBillingPort(billing), zap.NewNop()).WithUsers(users)
+	if err := h.CreateBillingSubscriptionHandler(c); err != nil {
+		t.Fatal(err)
+	}
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("status %d body %s", rec.Code, rec.Body.String())
+	}
+	if users.patches != 1 || users.patchCPF != testValidCPF {
+		t.Fatalf("patch calls=%d cpf=%s", users.patches, users.patchCPF)
+	}
+	body, _ := billing.createBody.(map[string]any)
+	if body["payerCpfCnpj"] != testValidCPF {
+		t.Fatalf("payerCpfCnpj %v", body["payerCpfCnpj"])
 	}
 }

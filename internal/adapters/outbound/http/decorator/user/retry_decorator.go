@@ -182,6 +182,13 @@ func (d *retryDecorator) GetUserByCodeUser(ctx context.Context, codeUser, token,
 	})
 }
 
+// PatchPersonDocument implementa PatchPersonDocument com retry
+func (d *retryDecorator) PatchPersonDocument(ctx context.Context, userID, cpf, token, tenantId, correlationID string) (userDto.MSUserResponseDTO, error) {
+	return d.retry(ctx, func() (userDto.MSUserResponseDTO, error) {
+		return d.inner.PatchPersonDocument(ctx, userID, cpf, token, tenantId, correlationID)
+	})
+}
+
 // GetByEmail implementa GetByEmail com retry
 func (d *retryDecorator) GetByEmail(ctx context.Context, email, tenantId, companyId, correlationID string) (authDto.UserByEmailResponseDTO, error) {
 	var lastErr error

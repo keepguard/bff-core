@@ -3,19 +3,23 @@ package pkg
 import "strings"
 
 var errorCodeMessages = map[string]string{
-	"USER_NOT_FOUND":      "Usuário não encontrado",
-	"INVALID_PASSWORD":    "Senha inválida",
-	"INVALID_CREDENTIALS": "Credenciais inválidas",
-	"USER_NOT_ACTIVE":     "Usuário não está ativo",
-	"EMAIL_NOT_VERIFIED":  "E-mail não verificado",
-	"INVALID_TOKEN":       "Token inválido ou expirado",
-	"TOKEN_REVOKED":       "Sessão revogada ou expirada. Por favor, realize login novamente.",
-	"RESOURCE_NOT_FOUND":  "Recurso não encontrado",
-	"ALREADY_EXISTS":      "Recurso já existe",
-	"COMPANY_NOT_FOUND":   "Empresa não encontrada",
-	"FORBIDDEN":           "Acesso negado",
-	"CONFLICT":            "Conflito com recurso existente",
-	"NOT_FOUND":           "Recurso não encontrado",
+	"USER_NOT_FOUND":           "Usuário não encontrado",
+	"INVALID_PASSWORD":         "Senha inválida",
+	"INVALID_CREDENTIALS":      "Credenciais inválidas",
+	"USER_NOT_ACTIVE":          "Usuário não está ativo",
+	"EMAIL_NOT_VERIFIED":       "E-mail não verificado",
+	"INVALID_TOKEN":            "Token inválido ou expirado",
+	"TOKEN_REVOKED":            "Sessão revogada ou expirada. Por favor, realize login novamente.",
+	"RESOURCE_NOT_FOUND":       "Recurso não encontrado",
+	"ALREADY_EXISTS":           "Recurso já existe",
+	"COMPANY_NOT_FOUND":        "Empresa não encontrada",
+	"FORBIDDEN":                "Acesso negado",
+	"CONFLICT":                 "Conflito com recurso existente",
+	"NOT_FOUND":                "Recurso não encontrado",
+	"CPF_ALREADY_EXISTS":       "Este CPF já está em uso nesta organização.",
+	"PAYER_DOCUMENT_MISSING":   "Informe um CPF válido.",
+	"PAYER_DOCUMENT_INVALID":   "Informe um CPF válido.",
+	"PAYER_DOCUMENT_IMMUTABLE": "Documento do pagador já está cadastrado",
 }
 
 var englishDetailMessages = map[string]string{

@@ -3,6 +3,7 @@ package user
 import (
 	"context"
 	"net/http"
+	"strings"
 	"time"
 
 	appdto "github.com/keepguard/bff-core/internal/application/dto"
@@ -59,8 +60,26 @@ func toMeProfile(user appdto.MSUserResponseDTO) appdto.MeProfileViewDTO {
 	if !user.CreatedAt.IsZero() {
 		view.CreatedAt = user.CreatedAt.Format(time.RFC3339)
 	}
-	if user.PersonProfile != nil && user.PersonProfile.FullName != "" {
-		view.PersonProfile = &appdto.MePersonProfileViewDTO{FullName: user.PersonProfile.FullName}
+	if user.PersonProfile != nil {
+		profile := &appdto.MePersonProfileViewDTO{FullName: user.PersonProfile.FullName}
+		digits := documentDigits(user.PersonProfile.CPF)
+		if len(digits) == 11 {
+			profile.HasCpf = true
+			profile.CpfLast4 = digits[len(digits)-4:]
+		}
+		if profile.FullName != "" || profile.HasCpf {
+			view.PersonProfile = profile
+		}
 	}
 	return view
+}
+
+func documentDigits(raw string) string {
+	var b strings.Builder
+	for _, r := range raw {
+		if r >= '0' && r <= '9' {
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
 }
