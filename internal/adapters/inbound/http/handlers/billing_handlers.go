@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"strings"
 
@@ -327,7 +328,38 @@ func bindBillingJSON(c echo.Context) (map[string]any, error) {
 			CorrelationID: correlationID,
 		})
 	}
+	method := strings.ToLower(strings.TrimSpace(stringifyJSON(body["paymentMethod"])))
+	if method == "credit_card" || method == "creditcard" {
+		token := strings.TrimSpace(stringifyJSON(body["creditCardToken"]))
+		if token == "" {
+			return nil, c.JSON(http.StatusUnprocessableEntity, pkg.ErrorResponse{
+				Error:         "CARD_TOKEN_MISSING",
+				Message:       "Informe o token do cartão (Asaas)",
+				CorrelationID: correlationID,
+			})
+		}
+		body["paymentMethod"] = "credit_card"
+		body["creditCardToken"] = token
+		if remote := clientRemoteIP(c); remote != "" {
+			body["remoteIp"] = remote
+		}
+	}
 	return body, nil
+}
+
+func clientRemoteIP(c echo.Context) string {
+	if xff := strings.TrimSpace(c.Request().Header.Get("X-Forwarded-For")); xff != "" {
+		parts := strings.Split(xff, ",")
+		return strings.TrimSpace(parts[0])
+	}
+	if realIP := strings.TrimSpace(c.Request().Header.Get("X-Real-IP")); realIP != "" {
+		return realIP
+	}
+	host, _, err := net.SplitHostPort(c.Request().RemoteAddr)
+	if err != nil {
+		return strings.TrimSpace(c.Request().RemoteAddr)
+	}
+	return host
 }
 
 func (h *BillingHandlers) attachPayerProfile(c echo.Context, body map[string]any, scope port.BillingScope) error {
