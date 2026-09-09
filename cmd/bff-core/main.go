@@ -54,7 +54,6 @@ import (
 	"github.com/keepguard/bff-core/internal/infrastructure/logger"
 	"github.com/keepguard/bff-core/internal/infrastructure/metrics"
 	"github.com/keepguard/bff-core/internal/infrastructure/resilience"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sony/gobreaker"
 	"go.uber.org/zap"
 )
@@ -365,7 +364,7 @@ func main() {
 		}
 
 		metricsMux := http.NewServeMux()
-		metricsMux.Handle(cfg.Metrics.ScrapePath, promhttp.Handler())
+		metricsMux.Handle(cfg.Metrics.ScrapePath, metricsInstance.Handler())
 
 		appLogger.Info("Servidor de métricas iniciado",
 			zap.String("service", "bff-core"),

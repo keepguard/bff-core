@@ -192,6 +192,8 @@ const (
 
 // Handler retorna o handler HTTP para métricas Prometheus
 func (m *Metrics) Handler() http.Handler {
-	return promhttp.Handler()
+	return promhttp.HandlerFor(prometheus.DefaultGatherer, promhttp.HandlerOpts{
+		DisableCompression: true,
+	})
 }
 
