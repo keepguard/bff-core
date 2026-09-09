@@ -60,8 +60,11 @@ func (s *stubBillingClient) CreateSubscription(context.Context, port.BillingScop
 func (s *stubBillingClient) CancelSubscription(context.Context, port.BillingScope, string) (json.RawMessage, error) {
 	return json.RawMessage(`{"status":"canceled"}`), nil
 }
-func (s *stubBillingClient) ListInvoices(context.Context, port.BillingScope) (json.RawMessage, error) {
-	return json.RawMessage(`[]`), nil
+func (s *stubBillingClient) ListInvoices(context.Context, port.BillingScope, map[string]string) (json.RawMessage, error) {
+	return json.RawMessage(`{"items":[],"page":0,"size":20,"totalElements":0,"totalPages":0}`), nil
+}
+func (s *stubBillingClient) ListEntitlements(context.Context, port.BillingScope, map[string]string) (json.RawMessage, error) {
+	return json.RawMessage(`{"items":[],"page":0,"size":20,"totalElements":0,"totalPages":0}`), nil
 }
 func (s *stubBillingClient) GetInvoice(context.Context, port.BillingScope, string) (json.RawMessage, error) {
 	return json.RawMessage(`{"status":"pending"}`), nil

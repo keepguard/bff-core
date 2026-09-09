@@ -85,9 +85,15 @@ func (d *decorated) CancelSubscription(ctx context.Context, scope port.BillingSc
 	})
 }
 
-func (d *decorated) ListInvoices(ctx context.Context, scope port.BillingScope) (json.RawMessage, error) {
+func (d *decorated) ListInvoices(ctx context.Context, scope port.BillingScope, query map[string]string) (json.RawMessage, error) {
 	return observe.Call(d.cfg, "ListInvoices", "GET", "/billing/invoices", scope.CorrelationID, func() (json.RawMessage, error) {
-		return d.inner.ListInvoices(ctx, scope)
+		return d.inner.ListInvoices(ctx, scope, query)
+	})
+}
+
+func (d *decorated) ListEntitlements(ctx context.Context, scope port.BillingScope, query map[string]string) (json.RawMessage, error) {
+	return observe.Call(d.cfg, "ListEntitlements", "GET", "/billing/entitlements", scope.CorrelationID, func() (json.RawMessage, error) {
+		return d.inner.ListEntitlements(ctx, scope, query)
 	})
 }
 

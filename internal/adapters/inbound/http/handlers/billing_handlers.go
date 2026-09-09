@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -126,8 +127,32 @@ func (h *BillingHandlers) CancelBillingSubscriptionHandler(c echo.Context) error
 }
 
 func (h *BillingHandlers) ListBillingInvoicesHandler(c echo.Context) error {
+	query := billingListQuery(c, "page", "size", "status", "paymentMethod", "payerUserId", "from", "to", "q")
 	return h.proxy(c, http.StatusOK, func(ctx echo.Context, scope port.BillingScope) (json.RawMessage, error) {
-		return h.billing.ListInvoices(ctx.Request().Context(), scope)
+		resolved := h.resolvePayerQuery(ctx, scope, query)
+		raw, err := h.billing.ListInvoices(ctx.Request().Context(), scope, resolved)
+		if err != nil {
+			return nil, err
+		}
+		if !scope.Admin {
+			return raw, nil
+		}
+		return h.enrichBillingPage(ctx, scope, raw, "payerUserId"), nil
+	})
+}
+
+func (h *BillingHandlers) ListBillingEntitlementsHandler(c echo.Context) error {
+	query := billingListQuery(c, "page", "size", "status", "planCode", "userId", "q", "hasPlan")
+	return h.proxy(c, http.StatusOK, func(ctx echo.Context, scope port.BillingScope) (json.RawMessage, error) {
+		if !scope.Admin {
+			return nil, pkg.NewAppError("FORBIDDEN", "Somente quem opera a organização lista entitlements.", http.StatusForbidden)
+		}
+		resolved := h.resolvePayerQuery(ctx, scope, query)
+		raw, err := h.billing.ListEntitlements(ctx.Request().Context(), scope, resolved)
+		if err != nil {
+			return nil, err
+		}
+		return h.enrichBillingPage(ctx, scope, raw, "userId"), nil
 	})
 }
 
@@ -323,6 +348,159 @@ func digitsOnly(raw string) string {
 		}
 	}
 	return b.String()
+}
+
+func billingListQuery(c echo.Context, keys ...string) map[string]string {
+	query := map[string]string{}
+	for _, key := range keys {
+		if value := strings.TrimSpace(c.QueryParam(key)); value != "" {
+			query[key] = value
+		}
+	}
+	return query
+}
+
+func (h *BillingHandlers) resolvePayerQuery(c echo.Context, scope port.BillingScope, query map[string]string) map[string]string {
+	out := map[string]string{}
+	for key, value := range query {
+		out[key] = value
+	}
+	q := strings.TrimSpace(out["q"])
+	if q == "" {
+		return out
+	}
+	if looksLikeUUID(q) {
+		if out["userId"] == "" {
+			out["userId"] = q
+		}
+		if out["payerUserId"] == "" {
+			out["payerUserId"] = q
+		}
+		return out
+	}
+	if strings.Contains(q, "@") && h.users != nil {
+		user, err := h.users.GetByEmail(
+			c.Request().Context(),
+			q,
+			middlewarePkg.GetTenantId(c),
+			scope.CompanyID,
+			scope.CorrelationID,
+		)
+		if err == nil {
+			id := strings.TrimSpace(user.CodeUser)
+			if id == "" {
+				id = strings.TrimSpace(user.ID)
+			}
+			if id != "" {
+				out["userId"] = id
+				out["payerUserId"] = id
+				delete(out, "q")
+				return out
+			}
+		}
+		out["userId"] = "00000000-0000-0000-0000-000000000000"
+		out["payerUserId"] = "00000000-0000-0000-0000-000000000000"
+		delete(out, "q")
+	}
+	return out
+}
+
+func (h *BillingHandlers) enrichBillingPage(c echo.Context, scope port.BillingScope, raw json.RawMessage, idField string) json.RawMessage {
+	if h.users == nil || len(raw) == 0 {
+		return raw
+	}
+	var page map[string]any
+	if err := json.Unmarshal(raw, &page); err != nil {
+		return raw
+	}
+	items, _ := page["items"].([]any)
+	if len(items) == 0 {
+		return raw
+	}
+	cache := map[string]payerProfile{}
+	for _, item := range items {
+		row, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+		id := stringifyJSON(row[idField])
+		if id == "" {
+			continue
+		}
+		profile, found := cache[id]
+		if !found {
+			profile = h.lookupPayer(c, scope, id)
+			cache[id] = profile
+		}
+		if profile.name != "" {
+			row["payerName"] = profile.name
+		}
+		if profile.email != "" {
+			row["payerEmail"] = profile.email
+		}
+	}
+	encoded, err := json.Marshal(page)
+	if err != nil {
+		return raw
+	}
+	return encoded
+}
+
+type payerProfile struct {
+	name  string
+	email string
+}
+
+func (h *BillingHandlers) lookupPayer(c echo.Context, scope port.BillingScope, userID string) payerProfile {
+	user, err := h.users.GetUserByCodeUser(
+		c.Request().Context(),
+		userID,
+		middlewarePkg.GetTokenFromContext(c),
+		middlewarePkg.GetTenantId(c),
+		scope.CorrelationID,
+	)
+	if err != nil {
+		return payerProfile{}
+	}
+	name := strings.TrimSpace(user.Email)
+	if user.PersonProfile != nil {
+		if fullName := strings.TrimSpace(user.PersonProfile.FullName); fullName != "" {
+			name = fullName
+		}
+	}
+	return payerProfile{name: name, email: strings.TrimSpace(user.Email)}
+}
+
+func looksLikeUUID(value string) bool {
+	if len(value) != 36 {
+		return false
+	}
+	for i, r := range value {
+		if i == 8 || i == 13 || i == 18 || i == 23 {
+			if r != '-' {
+				return false
+			}
+			continue
+		}
+		if (r < '0' || r > '9') && (r < 'a' || r > 'f') && (r < 'A' || r > 'F') {
+			return false
+		}
+	}
+	return true
+}
+
+func stringifyJSON(value any) string {
+	if value == nil {
+		return ""
+	}
+	switch typed := value.(type) {
+	case string:
+		return strings.TrimSpace(typed)
+	case json.Number:
+		return typed.String()
+	default:
+		return strings.TrimSpace(fmt.Sprint(typed))
+	}
 }
 
 func containsCardData(value any) bool {

@@ -18,7 +18,8 @@ type BillingPort interface {
 	GetSubscription(ctx context.Context, scope port.BillingScope) (json.RawMessage, error)
 	CreateSubscription(ctx context.Context, scope port.BillingScope, body any) (json.RawMessage, int, error)
 	CancelSubscription(ctx context.Context, scope port.BillingScope, id string) (json.RawMessage, error)
-	ListInvoices(ctx context.Context, scope port.BillingScope) (json.RawMessage, error)
+	ListInvoices(ctx context.Context, scope port.BillingScope, query map[string]string) (json.RawMessage, error)
+	ListEntitlements(ctx context.Context, scope port.BillingScope, query map[string]string) (json.RawMessage, error)
 	GetInvoice(ctx context.Context, scope port.BillingScope, id string) (json.RawMessage, error)
 	ForwardAsaasWebhook(ctx context.Context, accessToken string, body []byte) (json.RawMessage, int, error)
 }
@@ -104,11 +105,18 @@ func (s *service) CancelSubscription(ctx context.Context, scope port.BillingScop
 	return s.client.CancelSubscription(ctx, scope, id)
 }
 
-func (s *service) ListInvoices(ctx context.Context, scope port.BillingScope) (json.RawMessage, error) {
+func (s *service) ListInvoices(ctx context.Context, scope port.BillingScope, query map[string]string) (json.RawMessage, error) {
 	if err := s.require(); err != nil {
 		return nil, err
 	}
-	return s.client.ListInvoices(ctx, scope)
+	return s.client.ListInvoices(ctx, scope, query)
+}
+
+func (s *service) ListEntitlements(ctx context.Context, scope port.BillingScope, query map[string]string) (json.RawMessage, error) {
+	if err := s.require(); err != nil {
+		return nil, err
+	}
+	return s.client.ListEntitlements(ctx, scope, query)
 }
 
 func (s *service) GetInvoice(ctx context.Context, scope port.BillingScope, id string) (json.RawMessage, error) {

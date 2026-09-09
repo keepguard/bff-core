@@ -43,11 +43,11 @@ func (c *billingClient) headers(ctx context.Context, scope domainclient.BillingS
 }
 
 func (c *billingClient) GetEntitlement(ctx context.Context, scope domainclient.BillingScope) (json.RawMessage, error) {
-	return c.get(ctx, scope, "/api/v1/billing/entitlement")
+	return c.get(ctx, scope, "/api/v1/billing/entitlement", nil)
 }
 
 func (c *billingClient) ListPlans(ctx context.Context, scope domainclient.BillingScope) (json.RawMessage, error) {
-	return c.get(ctx, scope, "/api/v1/billing/plans")
+	return c.get(ctx, scope, "/api/v1/billing/plans", nil)
 }
 
 func (c *billingClient) SavePlan(ctx context.Context, scope domainclient.BillingScope, body any) (json.RawMessage, error) {
@@ -59,7 +59,7 @@ func (c *billingClient) PatchPlan(ctx context.Context, scope domainclient.Billin
 }
 
 func (c *billingClient) GetGatewayAccount(ctx context.Context, scope domainclient.BillingScope) (json.RawMessage, error) {
-	return c.get(ctx, scope, "/api/v1/billing/gateway-account")
+	return c.get(ctx, scope, "/api/v1/billing/gateway-account", nil)
 }
 
 func (c *billingClient) PutGatewayAccount(ctx context.Context, scope domainclient.BillingScope, body any) (json.RawMessage, error) {
@@ -67,7 +67,7 @@ func (c *billingClient) PutGatewayAccount(ctx context.Context, scope domainclien
 }
 
 func (c *billingClient) GetSubscription(ctx context.Context, scope domainclient.BillingScope) (json.RawMessage, error) {
-	return c.get(ctx, scope, "/api/v1/billing/subscription")
+	return c.get(ctx, scope, "/api/v1/billing/subscription", nil)
 }
 
 func (c *billingClient) CreateSubscription(ctx context.Context, scope domainclient.BillingScope, body any) (json.RawMessage, int, error) {
@@ -85,12 +85,16 @@ func (c *billingClient) CancelSubscription(ctx context.Context, scope domainclie
 	return c.send(ctx, scope, "POST", "/api/v1/billing/subscriptions/"+id+"/cancel", nil, 200)
 }
 
-func (c *billingClient) ListInvoices(ctx context.Context, scope domainclient.BillingScope) (json.RawMessage, error) {
-	return c.get(ctx, scope, "/api/v1/billing/invoices")
+func (c *billingClient) ListInvoices(ctx context.Context, scope domainclient.BillingScope, query map[string]string) (json.RawMessage, error) {
+	return c.get(ctx, scope, "/api/v1/billing/invoices", query)
+}
+
+func (c *billingClient) ListEntitlements(ctx context.Context, scope domainclient.BillingScope, query map[string]string) (json.RawMessage, error) {
+	return c.get(ctx, scope, "/api/v1/billing/entitlements", query)
 }
 
 func (c *billingClient) GetInvoice(ctx context.Context, scope domainclient.BillingScope, id string) (json.RawMessage, error) {
-	return c.get(ctx, scope, "/api/v1/billing/invoices/"+id)
+	return c.get(ctx, scope, "/api/v1/billing/invoices/"+id, nil)
 }
 
 func (c *billingClient) ForwardAsaasWebhook(ctx context.Context, accessToken string, body []byte) (json.RawMessage, int, error) {
@@ -108,8 +112,14 @@ func (c *billingClient) ForwardAsaasWebhook(ctx context.Context, accessToken str
 	return cloneBody(resp.Body()), resp.StatusCode(), nil
 }
 
-func (c *billingClient) get(ctx context.Context, scope domainclient.BillingScope, path string) (json.RawMessage, error) {
-	resp, err := c.headers(ctx, scope).Get(c.baseURL + path)
+func (c *billingClient) get(ctx context.Context, scope domainclient.BillingScope, path string, query map[string]string) (json.RawMessage, error) {
+	req := c.headers(ctx, scope)
+	for key, value := range query {
+		if strings.TrimSpace(value) != "" {
+			req.SetQueryParam(key, value)
+		}
+	}
+	resp, err := req.Get(c.baseURL + path)
 	if err != nil {
 		return nil, MapNetworkError(err, "ms-billing")
 	}

@@ -267,6 +267,7 @@ func (s *serverImpl) SetupRoutes(handlers Handler) {
 	userGroup.POST("/core/billing/subscriptions/:id/cancel", handlers.CancelBillingSubscriptionHandler, billingRead...)
 	userGroup.GET("/core/billing/invoices", handlers.ListBillingInvoicesHandler, billingRead...)
 	userGroup.GET("/core/billing/invoices/:id", handlers.GetBillingInvoiceHandler, billingRead...)
+	userGroup.GET("/core/billing/entitlements", handlers.ListBillingEntitlementsHandler, billingOrgRead...)
 	userGroup.POST("/core/billing/webhooks/asaas", handlers.AsaasWebhookHandler, publicEndpoint.Middleware(), rl.Limit("asaas_webhook", rules.AsaasWebhook))
 
 	s.logger.Info("Rotas configuradas com sucesso com proteção de Rate Limit",

@@ -60,7 +60,8 @@ type BillingClient interface {
 	GetSubscription(ctx context.Context, scope BillingScope) (json.RawMessage, error)
 	CreateSubscription(ctx context.Context, scope BillingScope, body any) (json.RawMessage, int, error)
 	CancelSubscription(ctx context.Context, scope BillingScope, id string) (json.RawMessage, error)
-	ListInvoices(ctx context.Context, scope BillingScope) (json.RawMessage, error)
+	ListInvoices(ctx context.Context, scope BillingScope, query map[string]string) (json.RawMessage, error)
+	ListEntitlements(ctx context.Context, scope BillingScope, query map[string]string) (json.RawMessage, error)
 	GetInvoice(ctx context.Context, scope BillingScope, id string) (json.RawMessage, error)
 	ForwardAsaasWebhook(ctx context.Context, accessToken string, body []byte) (json.RawMessage, int, error)
 }

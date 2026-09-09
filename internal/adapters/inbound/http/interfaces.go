@@ -87,6 +87,7 @@ type Handler interface {
 	CreateBillingSubscriptionHandler(c echo.Context) error
 	CancelBillingSubscriptionHandler(c echo.Context) error
 	ListBillingInvoicesHandler(c echo.Context) error
+	ListBillingEntitlementsHandler(c echo.Context) error
 	GetBillingInvoiceHandler(c echo.Context) error
 	AsaasWebhookHandler(c echo.Context) error
 }
