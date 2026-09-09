@@ -123,7 +123,9 @@ func (h *BillingHandlers) CreateBillingSubscriptionHandler(c echo.Context) error
 	if unavailable != nil {
 		return unavailable
 	}
-	if scope.Admin {
+	claims := middlewarePkg.GetClaimsFromContext(c)
+	// MANAGER opera a org e não assina. ADMIN/SYSTEM podem ter plano próprio.
+	if claims != nil && pkg.HasAnyRole(claims.Roles, "MANAGER") && !pkg.HasAnyRole(claims.Roles, "ADMIN", "SYSTEM") {
 		return handleError(c, pkg.NewAppError(
 			"BILLING_PAYER_OPS",
 			"Quem opera a organização não assina",
@@ -133,7 +135,10 @@ func (h *BillingHandlers) CreateBillingSubscriptionHandler(c echo.Context) error
 	if attachErr := h.attachPayerProfile(c, body, scope); attachErr != nil {
 		return handleError(c, attachErr, scope.CorrelationID)
 	}
-	result, status, callErr := h.billing.CreateSubscription(c.Request().Context(), scope, body)
+	// Assinatura é sempre do caller: não marcar X-Caller-Admin (evita BILLING_PAYER_OPS no MS).
+	payerScope := scope
+	payerScope.Admin = false
+	result, status, callErr := h.billing.CreateSubscription(c.Request().Context(), payerScope, body)
 	if callErr != nil {
 		return handleError(c, callErr, scope.CorrelationID)
 	}
