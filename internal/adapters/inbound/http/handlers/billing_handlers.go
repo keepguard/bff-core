@@ -99,14 +99,14 @@ func (h *BillingHandlers) CreateBillingSubscriptionHandler(c echo.Context) error
 		return unavailable
 	}
 	if scope.Admin {
-		return c.JSON(http.StatusForbidden, pkg.ErrorResponse{
-			Error:         "BILLING_PAYER_OPS",
-			Message:       "Quem opera a organização não assina",
-			CorrelationID: scope.CorrelationID,
-		})
+		return handleError(c, pkg.NewAppError(
+			"BILLING_PAYER_OPS",
+			"Quem opera a organização não assina",
+			http.StatusForbidden,
+		), scope.CorrelationID)
 	}
 	if attachErr := h.attachPayerProfile(c, body, scope); attachErr != nil {
-		return attachErr
+		return handleError(c, attachErr, scope.CorrelationID)
 	}
 	result, status, callErr := h.billing.CreateSubscription(c.Request().Context(), scope, body)
 	if callErr != nil {
@@ -291,22 +291,15 @@ func (h *BillingHandlers) attachPayerProfile(c echo.Context, body map[string]any
 		scope.CorrelationID,
 	)
 	if err != nil {
-		return handleError(c, err, scope.CorrelationID)
+		return err
 	}
-	cpf := ""
 	name := strings.TrimSpace(user.Email)
+	cpf := ""
 	if user.PersonProfile != nil {
 		cpf = digitsOnly(user.PersonProfile.CPF)
 		if fullName := strings.TrimSpace(user.PersonProfile.FullName); fullName != "" {
 			name = fullName
 		}
-	}
-	if len(cpf) != 11 && len(cpf) != 14 {
-		return c.JSON(http.StatusUnprocessableEntity, pkg.ErrorResponse{
-			Error:         "PAYER_DOCUMENT_MISSING",
-			Message:       "Complete o CPF no perfil para assinar com PIX ou boleto.",
-			CorrelationID: scope.CorrelationID,
-		})
 	}
 	if name != "" {
 		body["payerName"] = name
@@ -314,7 +307,11 @@ func (h *BillingHandlers) attachPayerProfile(c echo.Context, body map[string]any
 	if email := strings.TrimSpace(user.Email); email != "" {
 		body["payerEmail"] = email
 	}
-	body["payerCpfCnpj"] = cpf
+	// CPF no perfil é opcional se o customer Asaas já existir (reassinatura).
+	// ms-billing exige documento só na criação do customer.
+	if len(cpf) == 11 || len(cpf) == 14 {
+		body["payerCpfCnpj"] = cpf
+	}
 	return nil
 }
 

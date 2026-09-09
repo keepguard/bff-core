@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
 	"strings"
 
@@ -312,7 +313,11 @@ func handleError(c echo.Context, err error, correlationID string) error {
 
 	// Trata erros HTTP (HTTPError) - MapHTTPError já extraiu a mensagem detalhada
 	if httpErr, ok := err.(*appdto.HTTPError); ok {
-		appErr := pkg.NewAppError("HTTP_ERROR", httpErr.Message, httpErr.Code)
+		code := "HTTP_ERROR"
+		if upstream := upstreamErrorCode(httpErr.Details); upstream != "" {
+			code = upstream
+		}
+		appErr := pkg.NewAppError(code, httpErr.Message, httpErr.Code)
 		return c.JSON(appErr.StatusCode, appErr.WithTraceID(correlationID).ToResponse())
 	}
 
@@ -322,4 +327,22 @@ func handleError(c echo.Context, err error, correlationID string) error {
 		Message:       "Erro interno do servidor",
 		CorrelationID: correlationID,
 	})
+}
+
+func upstreamErrorCode(details string) string {
+	details = strings.TrimSpace(details)
+	if details == "" || details[0] != '{' {
+		return ""
+	}
+	var payload struct {
+		Error string `json:"error"`
+	}
+	if err := json.Unmarshal([]byte(details), &payload); err != nil {
+		return ""
+	}
+	code := strings.TrimSpace(payload.Error)
+	if code == "" || strings.Contains(code, " ") {
+		return ""
+	}
+	return code
 }
