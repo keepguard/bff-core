@@ -15,6 +15,9 @@ type BillingPort interface {
 	PatchPlan(ctx context.Context, scope port.BillingScope, code string, body any) (json.RawMessage, error)
 	GetGatewayAccount(ctx context.Context, scope port.BillingScope) (json.RawMessage, error)
 	PutGatewayAccount(ctx context.Context, scope port.BillingScope, body any) (json.RawMessage, error)
+	ListGatewayAccounts(ctx context.Context, scope port.BillingScope) (json.RawMessage, error)
+	PutGatewayAccountByGateway(ctx context.Context, scope port.BillingScope, gateway string, body any) (json.RawMessage, error)
+	SetPrimaryGateway(ctx context.Context, scope port.BillingScope, gateway string) (json.RawMessage, error)
 	GetSubscription(ctx context.Context, scope port.BillingScope) (json.RawMessage, error)
 	CreateSubscription(ctx context.Context, scope port.BillingScope, body any) (json.RawMessage, int, error)
 	CancelSubscription(ctx context.Context, scope port.BillingScope, id string) (json.RawMessage, error)
@@ -82,6 +85,27 @@ func (s *service) PutGatewayAccount(ctx context.Context, scope port.BillingScope
 		return nil, err
 	}
 	return s.client.PutGatewayAccount(ctx, scope, body)
+}
+
+func (s *service) ListGatewayAccounts(ctx context.Context, scope port.BillingScope) (json.RawMessage, error) {
+	if err := s.require(); err != nil {
+		return nil, err
+	}
+	return s.client.ListGatewayAccounts(ctx, scope)
+}
+
+func (s *service) PutGatewayAccountByGateway(ctx context.Context, scope port.BillingScope, gateway string, body any) (json.RawMessage, error) {
+	if err := s.require(); err != nil {
+		return nil, err
+	}
+	return s.client.PutGatewayAccountByGateway(ctx, scope, gateway, body)
+}
+
+func (s *service) SetPrimaryGateway(ctx context.Context, scope port.BillingScope, gateway string) (json.RawMessage, error) {
+	if err := s.require(); err != nil {
+		return nil, err
+	}
+	return s.client.SetPrimaryGateway(ctx, scope, gateway)
 }
 
 func (s *service) GetSubscription(ctx context.Context, scope port.BillingScope) (json.RawMessage, error) {

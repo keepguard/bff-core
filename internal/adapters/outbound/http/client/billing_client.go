@@ -66,6 +66,18 @@ func (c *billingClient) PutGatewayAccount(ctx context.Context, scope domainclien
 	return c.send(ctx, scope, "PUT", "/api/v1/billing/gateway-account", body, 200)
 }
 
+func (c *billingClient) ListGatewayAccounts(ctx context.Context, scope domainclient.BillingScope) (json.RawMessage, error) {
+	return c.get(ctx, scope, "/api/v1/billing/gateway-accounts", nil)
+}
+
+func (c *billingClient) PutGatewayAccountByGateway(ctx context.Context, scope domainclient.BillingScope, gateway string, body any) (json.RawMessage, error) {
+	return c.send(ctx, scope, "PUT", "/api/v1/billing/gateway-accounts/"+gateway, body, 200)
+}
+
+func (c *billingClient) SetPrimaryGateway(ctx context.Context, scope domainclient.BillingScope, gateway string) (json.RawMessage, error) {
+	return c.send(ctx, scope, "POST", "/api/v1/billing/gateway-accounts/"+gateway+"/primary", nil, 200)
+}
+
 func (c *billingClient) GetSubscription(ctx context.Context, scope domainclient.BillingScope) (json.RawMessage, error) {
 	return c.get(ctx, scope, "/api/v1/billing/subscription", nil)
 }

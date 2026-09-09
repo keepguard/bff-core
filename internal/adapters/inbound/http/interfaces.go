@@ -83,6 +83,9 @@ type Handler interface {
 	PatchBillingPlanHandler(c echo.Context) error
 	GetBillingGatewayAccountHandler(c echo.Context) error
 	PutBillingGatewayAccountHandler(c echo.Context) error
+	ListBillingGatewayAccountsHandler(c echo.Context) error
+	PutBillingGatewayAccountByGatewayHandler(c echo.Context) error
+	SetPrimaryBillingGatewayHandler(c echo.Context) error
 	GetBillingSubscriptionHandler(c echo.Context) error
 	CreateBillingSubscriptionHandler(c echo.Context) error
 	CancelBillingSubscriptionHandler(c echo.Context) error

@@ -58,6 +58,24 @@ func (d *decorated) PutGatewayAccount(ctx context.Context, scope port.BillingSco
 	})
 }
 
+func (d *decorated) ListGatewayAccounts(ctx context.Context, scope port.BillingScope) (json.RawMessage, error) {
+	return observe.Call(d.cfg, "ListGatewayAccounts", "GET", "/billing/gateway-accounts", scope.CorrelationID, func() (json.RawMessage, error) {
+		return d.inner.ListGatewayAccounts(ctx, scope)
+	})
+}
+
+func (d *decorated) PutGatewayAccountByGateway(ctx context.Context, scope port.BillingScope, gateway string, body any) (json.RawMessage, error) {
+	return observe.Call(d.cfg, "PutGatewayAccountByGateway", "PUT", "/billing/gateway-accounts/{gateway}", scope.CorrelationID, func() (json.RawMessage, error) {
+		return d.inner.PutGatewayAccountByGateway(ctx, scope, gateway, body)
+	})
+}
+
+func (d *decorated) SetPrimaryGateway(ctx context.Context, scope port.BillingScope, gateway string) (json.RawMessage, error) {
+	return observe.Call(d.cfg, "SetPrimaryGateway", "POST", "/billing/gateway-accounts/{gateway}/primary", scope.CorrelationID, func() (json.RawMessage, error) {
+		return d.inner.SetPrimaryGateway(ctx, scope, gateway)
+	})
+}
+
 func (d *decorated) GetSubscription(ctx context.Context, scope port.BillingScope) (json.RawMessage, error) {
 	return observe.Call(d.cfg, "GetSubscription", "GET", "/billing/subscription", scope.CorrelationID, func() (json.RawMessage, error) {
 		return d.inner.GetSubscription(ctx, scope)

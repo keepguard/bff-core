@@ -44,6 +44,15 @@ func (s *stubBillingClient) GetGatewayAccount(context.Context, port.BillingScope
 func (s *stubBillingClient) PutGatewayAccount(context.Context, port.BillingScope, any) (json.RawMessage, error) {
 	return json.RawMessage(`{"apiKeyMasked":"****9999"}`), nil
 }
+func (s *stubBillingClient) ListGatewayAccounts(context.Context, port.BillingScope) (json.RawMessage, error) {
+	return json.RawMessage(`{"items":[]}`), nil
+}
+func (s *stubBillingClient) PutGatewayAccountByGateway(context.Context, port.BillingScope, string, any) (json.RawMessage, error) {
+	return json.RawMessage(`{"gateway":"asaas","primary":true,"apiKeyMasked":"****9999"}`), nil
+}
+func (s *stubBillingClient) SetPrimaryGateway(context.Context, port.BillingScope, string) (json.RawMessage, error) {
+	return json.RawMessage(`{"gateway":"asaas","primary":true}`), nil
+}
 func (s *stubBillingClient) GetSubscription(context.Context, port.BillingScope) (json.RawMessage, error) {
 	return json.RawMessage(`{"status":"pending_gateway"}`), nil
 }

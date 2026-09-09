@@ -84,6 +84,30 @@ func (h *BillingHandlers) PutBillingGatewayAccountHandler(c echo.Context) error 
 	})
 }
 
+func (h *BillingHandlers) ListBillingGatewayAccountsHandler(c echo.Context) error {
+	return h.proxy(c, http.StatusOK, func(ctx echo.Context, scope port.BillingScope) (json.RawMessage, error) {
+		return h.billing.ListGatewayAccounts(ctx.Request().Context(), scope)
+	})
+}
+
+func (h *BillingHandlers) PutBillingGatewayAccountByGatewayHandler(c echo.Context) error {
+	body, err := bindBillingJSON(c)
+	if err != nil {
+		return err
+	}
+	gateway := c.Param("gateway")
+	return h.proxy(c, http.StatusOK, func(ctx echo.Context, scope port.BillingScope) (json.RawMessage, error) {
+		return h.billing.PutGatewayAccountByGateway(ctx.Request().Context(), scope, gateway, body)
+	})
+}
+
+func (h *BillingHandlers) SetPrimaryBillingGatewayHandler(c echo.Context) error {
+	gateway := c.Param("gateway")
+	return h.proxy(c, http.StatusOK, func(ctx echo.Context, scope port.BillingScope) (json.RawMessage, error) {
+		return h.billing.SetPrimaryGateway(ctx.Request().Context(), scope, gateway)
+	})
+}
+
 func (h *BillingHandlers) GetBillingSubscriptionHandler(c echo.Context) error {
 	return h.proxy(c, http.StatusOK, func(ctx echo.Context, scope port.BillingScope) (json.RawMessage, error) {
 		return h.billing.GetSubscription(ctx.Request().Context(), scope)
