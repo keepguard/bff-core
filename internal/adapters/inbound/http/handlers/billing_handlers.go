@@ -121,6 +121,9 @@ func (h *BillingHandlers) CreateBillingSubscriptionHandler(c echo.Context) error
 	if err != nil {
 		return err
 	}
+	if c.Response().Committed {
+		return nil
+	}
 	scope, unavailable := h.guard(c)
 	if unavailable != nil {
 		return unavailable
@@ -137,6 +140,7 @@ func (h *BillingHandlers) CreateBillingSubscriptionHandler(c echo.Context) error
 	if attachErr := h.attachPayerProfile(c, body, scope); attachErr != nil {
 		return handleError(c, attachErr, scope.CorrelationID)
 	}
+	h.attachSessionSnapshot(c, body, claims)
 	// Assinatura é sempre do caller: não marcar X-Caller-Admin (evita BILLING_PAYER_OPS no MS).
 	payerScope := scope
 	payerScope.Admin = false
@@ -487,6 +491,9 @@ func clientRemoteIP(c echo.Context) string {
 }
 
 func (h *BillingHandlers) attachPayerProfile(c echo.Context, body map[string]any, scope port.BillingScope) error {
+	if body == nil {
+		return nil
+	}
 	clientDoc := digitsOnly(stringifyJSON(body["payerCpfCnpj"]))
 	delete(body, "payerName")
 	delete(body, "payerEmail")
@@ -535,6 +542,62 @@ func (h *BillingHandlers) attachPayerProfile(c echo.Context, body map[string]any
 		body["payerCpfCnpj"] = cpf
 	}
 	return nil
+}
+
+func (h *BillingHandlers) attachSessionSnapshot(c echo.Context, body map[string]any, claims *pkg.JWTClaims) {
+	if body == nil {
+		return
+	}
+	if _, exists := body["deviceId"]; !exists || stringifyJSON(body["deviceId"]) == "" {
+		devID := strings.TrimSpace(c.Request().Header.Get("X-Device-Id"))
+		if devID == "" && claims != nil {
+			devID = strings.TrimSpace(claims.DeviceID)
+		}
+		if devID != "" {
+			body["deviceId"] = devID
+		}
+	}
+
+	if _, exists := body["deviceName"]; !exists || stringifyJSON(body["deviceName"]) == "" {
+		if devName := strings.TrimSpace(c.Request().Header.Get("X-Device-Name")); devName != "" {
+			body["deviceName"] = devName
+		}
+	}
+
+	if _, exists := body["deviceType"]; !exists || stringifyJSON(body["deviceType"]) == "" {
+		if devType := strings.TrimSpace(c.Request().Header.Get("X-Device-Type")); devType != "" {
+			body["deviceType"] = devType
+		}
+	}
+
+	if _, exists := body["ipAddress"]; !exists || stringifyJSON(body["ipAddress"]) == "" {
+		ip := strings.TrimSpace(c.Request().Header.Get("X-Public-IP"))
+		if ip == "" {
+			ip = strings.TrimSpace(c.RealIP())
+		}
+		if ip != "" {
+			body["ipAddress"] = ip
+		}
+	}
+
+	if _, exists := body["userAgent"]; !exists || stringifyJSON(body["userAgent"]) == "" {
+		if ua := strings.TrimSpace(c.Request().UserAgent()); ua != "" {
+			body["userAgent"] = ua
+		}
+	}
+
+	if _, exists := body["sessionId"]; !exists || stringifyJSON(body["sessionId"]) == "" {
+		sessID := strings.TrimSpace(c.Request().Header.Get("X-Session-Id"))
+		if sessID == "" && claims != nil {
+			sessID = strings.TrimSpace(claims.JTI)
+		}
+		if sessID == "" && claims != nil {
+			sessID = strings.TrimSpace(claims.DeviceID)
+		}
+		if sessID != "" {
+			body["sessionId"] = sessID
+		}
+	}
 }
 
 func (h *BillingHandlers) firstWritePayerDocument(c echo.Context, user *appdto.MSUserResponseDTO, clientDoc string, scope port.BillingScope) error {

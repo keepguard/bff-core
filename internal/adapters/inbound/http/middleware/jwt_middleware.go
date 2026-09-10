@@ -225,6 +225,9 @@ func (j *JWTMiddleware) validateTokenLocal(tokenString, tenantIdHeader string) (
 	if deviceID, ok := mapClaims["device_id"].(string); ok {
 		claims.DeviceID = deviceID
 	}
+	if jti, ok := mapClaims["jti"].(string); ok {
+		claims.JTI = jti
+	}
 	claims.Roles = stringSliceFromClaim(mapClaims["roles"])
 	claims.Authorities = stringSliceFromClaim(mapClaims["authorities"])
 

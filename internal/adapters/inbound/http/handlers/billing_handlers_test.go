@@ -499,3 +499,48 @@ func TestLookupBillingUserHandler(t *testing.T) {
 	})
 }
 
+func TestCreateSubscriptionAttachesSessionSnapshot(t *testing.T) {
+	c, rec := billingContext(http.MethodPost, "/api/v1/core/billing/subscriptions", `{"planCode":"basic","interval":"month"}`, &pkg.JWTClaims{
+		UserID: "user-1", Roles: []string{"USER"}, DeviceID: "dev_claim_1", JTI: "jti_token_1",
+	})
+	c.Request().Header.Set("X-Device-Id", "dev_header_1")
+	c.Request().Header.Set("X-Device-Name", "Chrome no Mac")
+	c.Request().Header.Set("X-Device-Type", "DESKTOP")
+	c.Request().Header.Set("X-Public-IP", "189.10.20.30")
+	c.Request().Header.Set("User-Agent", "GoTestBrowser/1.0")
+	c.Request().Header.Set("X-Session-Id", "sess_header_1")
+
+	client := &stubBillingClient{}
+	h := NewBillingHandlers(appbilling.NewBillingPort(client), zap.NewNop())
+	if err := h.CreateBillingSubscriptionHandler(c); err != nil {
+		t.Fatal(err)
+	}
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("expected status 201, got %d", rec.Code)
+	}
+
+	bodyMap, ok := client.createBody.(map[string]any)
+	if !ok {
+		t.Fatalf("expected map[string]any, got %T", client.createBody)
+	}
+
+	if bodyMap["deviceId"] != "dev_header_1" {
+		t.Fatalf("expected deviceId dev_header_1, got %v", bodyMap["deviceId"])
+	}
+	if bodyMap["deviceName"] != "Chrome no Mac" {
+		t.Fatalf("expected deviceName Chrome no Mac, got %v", bodyMap["deviceName"])
+	}
+	if bodyMap["deviceType"] != "DESKTOP" {
+		t.Fatalf("expected deviceType DESKTOP, got %v", bodyMap["deviceType"])
+	}
+	if bodyMap["ipAddress"] != "189.10.20.30" {
+		t.Fatalf("expected ipAddress 189.10.20.30, got %v", bodyMap["ipAddress"])
+	}
+	if bodyMap["userAgent"] != "GoTestBrowser/1.0" {
+		t.Fatalf("expected userAgent GoTestBrowser/1.0, got %v", bodyMap["userAgent"])
+	}
+	if bodyMap["sessionId"] != "sess_header_1" {
+		t.Fatalf("expected sessionId sess_header_1, got %v", bodyMap["sessionId"])
+	}
+}
+
