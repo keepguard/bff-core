@@ -186,15 +186,21 @@ func (h *BillingHandlers) LookupBillingUserHandler(c echo.Context) error {
 	tenantID := middlewarePkg.GetTenantId(c)
 	user, err := h.users.GetByEmail(c.Request().Context(), q, tenantID, scope.CompanyID, scope.CorrelationID)
 	if err != nil {
+		h.logger.Warn("Falha ao buscar usuário por email no lookup de billing",
+			zap.String("correlationId", scope.CorrelationID),
+			zap.String("companyId", scope.CompanyID),
+			zap.String("email", q),
+			zap.Error(err),
+		)
 		return c.JSON(http.StatusNotFound, pkg.ErrorResponse{
 			Error:         "USER_NOT_FOUND",
 			Message:       "Usuário não encontrado nesta organização",
 			CorrelationID: scope.CorrelationID,
 		})
 	}
-	userID := strings.TrimSpace(user.ID)
+	userID := strings.TrimSpace(user.CodeUser)
 	if userID == "" {
-		userID = strings.TrimSpace(user.CodeUser)
+		userID = strings.TrimSpace(user.ID)
 	}
 	return c.JSON(http.StatusOK, map[string]any{
 		"id":            userID,

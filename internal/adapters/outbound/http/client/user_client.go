@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/go-resty/resty/v2"
@@ -150,9 +151,51 @@ func (c *userClient) PatchPersonDocument(ctx context.Context, userID, cpf, token
 	return user, nil
 }
 
-// GetByEmail busca um usuário por email no ms-user
+// GetByEmail busca um usuário por email consultando prioritariamente o ms-auth (canônico para busca por email)
+// e enriquecendo os dados cadastrais (nome completo) via endpoint interno do ms-user.
 func (c *userClient) GetByEmail(ctx context.Context, email, tenantId, companyId, correlationID string) (authDto.UserByEmailResponseDTO, error) {
-	url := fmt.Sprintf("%s/api/v1/users/email/%s", c.config.Services.User.BaseURL, email)
+	authBaseURL := strings.TrimRight(c.config.Services.Auth.BaseURL, "/")
+	if authBaseURL != "" {
+		url := fmt.Sprintf("%s/api/v1/users/email/%s", authBaseURL, email)
+		resp, err := c.httpClient.R().
+			SetContext(ctx).
+			SetHeader("X-Correlation-ID", correlationID).
+			SetHeader("X-Company-Id", companyId).
+			SetHeader("Content-Type", "application/json").
+			Get(url)
+
+		if err == nil && resp.StatusCode() == http.StatusOK {
+			var authUser authDto.UserByEmailResponseDTO
+			if unmarshalErr := json.Unmarshal(resp.Body(), &authUser); unmarshalErr == nil {
+				// Se temos codeUser, tenta enriquecer o nome completo com ms-user via endpoint interno
+				if codeUser := strings.TrimSpace(authUser.CodeUser); codeUser != "" {
+					userInternalURL := fmt.Sprintf("%s/internal/v1/users/code/%s", strings.TrimRight(c.config.Services.User.BaseURL, "/"), codeUser)
+					userResp, userErr := c.httpClient.R().
+						SetContext(ctx).
+						SetHeader("X-Correlation-ID", correlationID).
+						SetHeader("X-Company-Id", companyId).
+						SetHeader("Content-Type", "application/json").
+						Get(userInternalURL)
+
+					if userErr == nil && userResp.StatusCode() == http.StatusOK {
+						var msUser userDto.MSUserResponseDTO
+						if err := json.Unmarshal(userResp.Body(), &msUser); err == nil {
+							if msUser.PersonProfile != nil && strings.TrimSpace(msUser.PersonProfile.FullName) != "" {
+								authUser.Username = strings.TrimSpace(msUser.PersonProfile.FullName)
+							} else if strings.TrimSpace(msUser.DisplayHandle) != "" {
+								authUser.Username = strings.TrimSpace(msUser.DisplayHandle)
+							}
+						}
+					}
+				}
+				return authUser, nil
+			}
+		}
+	}
+
+	// Fallback para ms-user caso ms-auth não responda
+	userBaseURL := strings.TrimRight(c.config.Services.User.BaseURL, "/")
+	url := fmt.Sprintf("%s/api/v1/users/email/%s", userBaseURL, email)
 
 	resp, err := c.httpClient.R().
 		SetContext(ctx).
@@ -162,11 +205,11 @@ func (c *userClient) GetByEmail(ctx context.Context, email, tenantId, companyId,
 		Get(url)
 
 	if err != nil {
-		return authDto.UserByEmailResponseDTO{}, fmt.Errorf("erro ao comunicar com ms-user service: %w", err)
+		return authDto.UserByEmailResponseDTO{}, fmt.Errorf("erro ao comunicar com user/auth service: %w", err)
 	}
 
 	if resp.StatusCode() != http.StatusOK {
-		return authDto.UserByEmailResponseDTO{}, fmt.Errorf("ms-user service retornou erro %d: %s", resp.StatusCode(), string(resp.Body()))
+		return authDto.UserByEmailResponseDTO{}, fmt.Errorf("user service retornou erro %d: %s", resp.StatusCode(), string(resp.Body()))
 	}
 
 	var user authDto.UserByEmailResponseDTO

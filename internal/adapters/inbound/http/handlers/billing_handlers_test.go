@@ -465,7 +465,7 @@ func TestLookupBillingUserHandler(t *testing.T) {
 		if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
 			t.Fatal(err)
 		}
-		if resp["id"] != "11111111-2222-3333-4444-555555555555" || resp["email"] != "john@example.com" {
+		if resp["id"] != "USR-001" || resp["email"] != "john@example.com" {
 			t.Fatalf("unexpected response: %+v", resp)
 		}
 	})

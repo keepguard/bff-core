@@ -260,12 +260,13 @@ type GenerateResetTokenMSResponseDTO struct {
 }
 
 type UserByEmailResponseDTO struct {
-	ID            string `json:"id"`
-	CodeUser      string `json:"codeUser"`
-	Username      string `json:"username"`
-	Email         string `json:"email"`
-	Status        string `json:"status"`
-	EmailVerified bool   `json:"emailVerified"`
+	ID             string `json:"id"`
+	IdUserExternal string `json:"idUserExternal,omitempty"`
+	CodeUser       string `json:"codeUser"`
+	Username       string `json:"username"`
+	Email          string `json:"email"`
+	Status         string `json:"status"`
+	EmailVerified  bool   `json:"emailVerified"`
 }
 
 type SendNotificationRequestDTO struct {
