@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	domainclient "github.com/keepguard/bff-core/internal/application/port"
 	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
 )
@@ -93,6 +94,7 @@ type Handler interface {
 	ListBillingEntitlementsHandler(c echo.Context) error
 	GetBillingInvoiceHandler(c echo.Context) error
 	AsaasWebhookHandler(c echo.Context) error
+	StripeWebhookHandler(c echo.Context) error
 }
 
 // Middleware define a interface para middlewares HTTP
@@ -112,6 +114,7 @@ type Server interface {
 	Start() error
 	Stop(ctx context.Context) error
 	SetupRoutes(handlers Handler)
+	WithBillingClient(client domainclient.BillingClient) Server
 }
 
 // Logger define a interface para logging

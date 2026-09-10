@@ -10,6 +10,7 @@ import (
 
 type BillingPort interface {
 	GetEntitlement(ctx context.Context, scope port.BillingScope) (json.RawMessage, error)
+	GetCompanyEntitlement(ctx context.Context, scope port.BillingScope) (json.RawMessage, error)
 	ListPlans(ctx context.Context, scope port.BillingScope) (json.RawMessage, error)
 	SavePlan(ctx context.Context, scope port.BillingScope, body any) (json.RawMessage, error)
 	PatchPlan(ctx context.Context, scope port.BillingScope, code string, body any) (json.RawMessage, error)
@@ -25,6 +26,7 @@ type BillingPort interface {
 	ListEntitlements(ctx context.Context, scope port.BillingScope, query map[string]string) (json.RawMessage, error)
 	GetInvoice(ctx context.Context, scope port.BillingScope, id string) (json.RawMessage, error)
 	ForwardAsaasWebhook(ctx context.Context, accessToken string, body []byte) (json.RawMessage, int, error)
+	ForwardStripeWebhook(ctx context.Context, token string, body []byte) (json.RawMessage, int, error)
 }
 
 type service struct {
@@ -50,6 +52,13 @@ func (s *service) GetEntitlement(ctx context.Context, scope port.BillingScope) (
 		return nil, err
 	}
 	return s.client.GetEntitlement(ctx, scope)
+}
+
+func (s *service) GetCompanyEntitlement(ctx context.Context, scope port.BillingScope) (json.RawMessage, error) {
+	if err := s.require(); err != nil {
+		return nil, err
+	}
+	return s.client.GetCompanyEntitlement(ctx, scope)
 }
 
 func (s *service) ListPlans(ctx context.Context, scope port.BillingScope) (json.RawMessage, error) {
@@ -155,4 +164,11 @@ func (s *service) ForwardAsaasWebhook(ctx context.Context, accessToken string, b
 		return nil, 0, err
 	}
 	return s.client.ForwardAsaasWebhook(ctx, accessToken, body)
+}
+
+func (s *service) ForwardStripeWebhook(ctx context.Context, token string, body []byte) (json.RawMessage, int, error) {
+	if err := s.require(); err != nil {
+		return nil, 0, err
+	}
+	return s.client.ForwardStripeWebhook(ctx, token, body)
 }

@@ -19,12 +19,18 @@ import (
 
 // serverImpl representa o servidor HTTP
 type serverImpl struct {
-	echo        *echo.Echo
-	config      *config.Config
-	logger      logger.Logger
-	metrics     *metrics.Metrics
-	rateLimiter *middlewarePkg.RateLimiterMiddleware
-	jwt         *middlewarePkg.JWTMiddleware
+	echo          *echo.Echo
+	config        *config.Config
+	logger        logger.Logger
+	metrics       *metrics.Metrics
+	rateLimiter   *middlewarePkg.RateLimiterMiddleware
+	jwt           *middlewarePkg.JWTMiddleware
+	billingClient client.BillingClient
+}
+
+func (s *serverImpl) WithBillingClient(client client.BillingClient) Server {
+	s.billingClient = client
+	return s
 }
 
 // NewServer cria um novo servidor HTTP
@@ -100,6 +106,8 @@ func (s *serverImpl) SetupRoutes(handlers Handler) {
 	// Register routes
 	userGroup := s.echo.Group("/api/v1")
 
+	billingRestricted := middlewarePkg.RequireBillingPlatformNotRestricted(s.billingClient)
+
 	// ========================================================================
 	// ROTAS PÚBLICAS - Registro de usuários e Documentos Legais com Rate Limit
 	// ========================================================================
@@ -140,6 +148,7 @@ func (s *serverImpl) SetupRoutes(handlers Handler) {
 	guardianWrite := []echo.MiddlewareFunc{
 		s.jwt.Middleware(),
 		middlewarePkg.RequireGuardianWrite(),
+		billingRestricted,
 		rl.Limit("guardian", rules.Guardian),
 	}
 	userGroup.GET("/core/guardian/incidents", handlers.ListGuardianIncidentsHandler, guardianRead...)
@@ -158,6 +167,7 @@ func (s *serverImpl) SetupRoutes(handlers Handler) {
 	oauthWrite := []echo.MiddlewareFunc{
 		s.jwt.Middleware(),
 		middlewarePkg.RequireOAuthWrite(),
+		billingRestricted,
 		rl.Limit("guardian", rules.Guardian),
 	}
 	userGroup.GET("/core/oauth/clients", handlers.ListOAuthClientsHandler, oauthRead...)
@@ -177,6 +187,7 @@ func (s *serverImpl) SetupRoutes(handlers Handler) {
 	collectorWrite := []echo.MiddlewareFunc{
 		s.jwt.Middleware(),
 		middlewarePkg.RequireCollectorWrite(),
+		billingRestricted,
 		rl.Limit("collector", rules.Collector),
 	}
 	userGroup.GET("/core/collector/agents", handlers.ListCollectorAgentsHandler, collectorRead...)
@@ -224,6 +235,7 @@ func (s *serverImpl) SetupRoutes(handlers Handler) {
 	llmWrite := []echo.MiddlewareFunc{
 		s.jwt.Middleware(),
 		middlewarePkg.RequireLlmWrite(),
+		billingRestricted,
 		rl.Limit("llm", rules.Llm),
 	}
 	userGroup.GET("/core/llm/providers", handlers.ListLlmProvidersHandler, llmRead...)
@@ -272,6 +284,7 @@ func (s *serverImpl) SetupRoutes(handlers Handler) {
 	userGroup.GET("/core/billing/invoices/:id", handlers.GetBillingInvoiceHandler, billingRead...)
 	userGroup.GET("/core/billing/entitlements", handlers.ListBillingEntitlementsHandler, billingOrgRead...)
 	userGroup.POST("/core/billing/webhooks/asaas", handlers.AsaasWebhookHandler, publicEndpoint.Middleware(), rl.Limit("asaas_webhook", rules.AsaasWebhook))
+	userGroup.POST("/core/billing/webhooks/stripe", handlers.StripeWebhookHandler, publicEndpoint.Middleware(), rl.Limit("stripe_webhook", rules.AsaasWebhook))
 
 	s.logger.Info("Rotas configuradas com sucesso com proteção de Rate Limit",
 		zap.String("port", s.config.Server.Port),

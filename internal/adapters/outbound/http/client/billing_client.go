@@ -46,6 +46,10 @@ func (c *billingClient) GetEntitlement(ctx context.Context, scope domainclient.B
 	return c.get(ctx, scope, "/api/v1/billing/entitlement", nil)
 }
 
+func (c *billingClient) GetCompanyEntitlement(ctx context.Context, scope domainclient.BillingScope) (json.RawMessage, error) {
+	return c.get(ctx, scope, "/api/v1/billing/entitlement/company", nil)
+}
+
 func (c *billingClient) ListPlans(ctx context.Context, scope domainclient.BillingScope) (json.RawMessage, error) {
 	return c.get(ctx, scope, "/api/v1/billing/plans", nil)
 }
@@ -115,6 +119,25 @@ func (c *billingClient) ForwardAsaasWebhook(ctx context.Context, accessToken str
 		SetHeader("asaas-access-token", accessToken).
 		SetBody(body).
 		Post(c.baseURL + "/api/v1/billing/webhooks/asaas")
+	if err != nil {
+		return nil, 0, MapNetworkError(err, "ms-billing")
+	}
+	if resp.StatusCode() < 200 || resp.StatusCode() >= 300 {
+		return nil, resp.StatusCode(), MapHTTPError(resp.StatusCode(), resp.Body(), "ms-billing")
+	}
+	return cloneBody(resp.Body()), resp.StatusCode(), nil
+}
+
+func (c *billingClient) ForwardStripeWebhook(ctx context.Context, token string, body []byte) (json.RawMessage, int, error) {
+	req := c.httpClient.R().SetContext(ctx).
+		SetHeader("Content-Type", "application/json").
+		SetBody(body)
+	if strings.HasPrefix(token, "t=") || strings.Contains(token, "v1=") {
+		req.SetHeader("stripe-signature", token)
+	} else {
+		req.SetHeader("x-webhook-token", token)
+	}
+	resp, err := req.Post(c.baseURL + "/api/v1/billing/webhooks/stripe")
 	if err != nil {
 		return nil, 0, MapNetworkError(err, "ms-billing")
 	}

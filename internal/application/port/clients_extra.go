@@ -52,6 +52,7 @@ type BillingScope struct {
 
 type BillingClient interface {
 	GetEntitlement(ctx context.Context, scope BillingScope) (json.RawMessage, error)
+	GetCompanyEntitlement(ctx context.Context, scope BillingScope) (json.RawMessage, error)
 	ListPlans(ctx context.Context, scope BillingScope) (json.RawMessage, error)
 	SavePlan(ctx context.Context, scope BillingScope, body any) (json.RawMessage, error)
 	PatchPlan(ctx context.Context, scope BillingScope, code string, body any) (json.RawMessage, error)
@@ -67,6 +68,7 @@ type BillingClient interface {
 	ListEntitlements(ctx context.Context, scope BillingScope, query map[string]string) (json.RawMessage, error)
 	GetInvoice(ctx context.Context, scope BillingScope, id string) (json.RawMessage, error)
 	ForwardAsaasWebhook(ctx context.Context, accessToken string, body []byte) (json.RawMessage, int, error)
+	ForwardStripeWebhook(ctx context.Context, token string, body []byte) (json.RawMessage, int, error)
 }
 
 type ServiceTokenClient interface {

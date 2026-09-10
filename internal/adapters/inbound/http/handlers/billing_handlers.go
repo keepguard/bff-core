@@ -253,6 +253,68 @@ func (h *BillingHandlers) AsaasWebhookHandler(c echo.Context) error {
 	return writeRaw(c, status, result)
 }
 
+func (h *BillingHandlers) StripeWebhookHandler(c echo.Context) error {
+	correlationID := middlewarePkg.GetCorrelationID(c)
+	if c.QueryString() != "" {
+		return c.JSON(http.StatusUnauthorized, pkg.ErrorResponse{
+			Error:         "UNAUTHORIZED",
+			Message:       "query string recusada no webhook",
+			CorrelationID: correlationID,
+		})
+	}
+	token := strings.TrimSpace(c.Request().Header.Get("stripe-signature"))
+	if token == "" {
+		token = strings.TrimSpace(c.Request().Header.Get("x-webhook-token"))
+	}
+	if token == "" {
+		return c.JSON(http.StatusUnauthorized, pkg.ErrorResponse{
+			Error:         "UNAUTHORIZED",
+			Message:       "webhook token/signature inválido",
+			CorrelationID: correlationID,
+		})
+	}
+	if c.Request().ContentLength > asaasWebhookMaxBytes {
+		return c.JSON(http.StatusRequestEntityTooLarge, pkg.ErrorResponse{
+			Error:         "PAYLOAD_TOO_LARGE",
+			Message:       "body excede o teto",
+			CorrelationID: correlationID,
+		})
+	}
+	body, err := io.ReadAll(io.LimitReader(c.Request().Body, asaasWebhookMaxBytes+1))
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
+			Error:         "BAD_REQUEST",
+			Message:       "body inválido",
+			CorrelationID: correlationID,
+		})
+	}
+	if len(body) > asaasWebhookMaxBytes {
+		return c.JSON(http.StatusRequestEntityTooLarge, pkg.ErrorResponse{
+			Error:         "PAYLOAD_TOO_LARGE",
+			Message:       "body excede o teto",
+			CorrelationID: correlationID,
+		})
+	}
+	if h.billing == nil {
+		return c.JSON(http.StatusBadGateway, pkg.ErrorResponse{
+			Error:         "GATEWAY_UNAVAILABLE",
+			Message:       "Billing indisponível",
+			CorrelationID: correlationID,
+		})
+	}
+	result, status, callErr := h.billing.ForwardStripeWebhook(c.Request().Context(), token, body)
+	if callErr != nil {
+		if httpErr, ok := callErr.(*pkg.AppError); ok {
+			return c.JSON(httpErr.StatusCode, httpErr.WithTraceID(correlationID).ToResponse())
+		}
+		return handleError(c, callErr, correlationID)
+	}
+	if status == 0 {
+		status = http.StatusOK
+	}
+	return writeRaw(c, status, result)
+}
+
 func (h *BillingHandlers) proxy(c echo.Context, status int, fn func(echo.Context, port.BillingScope) (json.RawMessage, error)) error {
 	scope, unavailable := h.guard(c)
 	if unavailable != nil {

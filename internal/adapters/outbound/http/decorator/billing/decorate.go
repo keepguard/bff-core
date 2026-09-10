@@ -28,6 +28,12 @@ func (d *decorated) GetEntitlement(ctx context.Context, scope port.BillingScope)
 	})
 }
 
+func (d *decorated) GetCompanyEntitlement(ctx context.Context, scope port.BillingScope) (json.RawMessage, error) {
+	return observe.Call(d.cfg, "GetCompanyEntitlement", "GET", "/billing/entitlement/company", scope.CorrelationID, func() (json.RawMessage, error) {
+		return d.inner.GetCompanyEntitlement(ctx, scope)
+	})
+}
+
 func (d *decorated) ListPlans(ctx context.Context, scope port.BillingScope) (json.RawMessage, error) {
 	return observe.Call(d.cfg, "ListPlans", "GET", "/billing/plans", scope.CorrelationID, func() (json.RawMessage, error) {
 		return d.inner.ListPlans(ctx, scope)
@@ -123,4 +129,8 @@ func (d *decorated) GetInvoice(ctx context.Context, scope port.BillingScope, id 
 
 func (d *decorated) ForwardAsaasWebhook(ctx context.Context, accessToken string, body []byte) (json.RawMessage, int, error) {
 	return d.inner.ForwardAsaasWebhook(ctx, accessToken, body)
+}
+
+func (d *decorated) ForwardStripeWebhook(ctx context.Context, token string, body []byte) (json.RawMessage, int, error) {
+	return d.inner.ForwardStripeWebhook(ctx, token, body)
 }

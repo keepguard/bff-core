@@ -32,6 +32,12 @@ func (s *stubBillingClient) GetEntitlement(context.Context, port.BillingScope) (
 	}
 	return json.RawMessage(`{"status":"none","allowsProduct":false}`), nil
 }
+func (s *stubBillingClient) GetCompanyEntitlement(context.Context, port.BillingScope) (json.RawMessage, error) {
+	if s.entitlement != nil {
+		return s.entitlement, nil
+	}
+	return json.RawMessage(`{"status":"active","allowsProduct":true,"allowsWrite":true,"allowsIngest":true}`), nil
+}
 func (s *stubBillingClient) ListPlans(context.Context, port.BillingScope) (json.RawMessage, error) {
 	return json.RawMessage(`[]`), nil
 }
@@ -85,6 +91,11 @@ func (s *stubBillingClient) GetInvoice(context.Context, port.BillingScope, strin
 }
 func (s *stubBillingClient) ForwardAsaasWebhook(_ context.Context, accessToken string, body []byte) (json.RawMessage, int, error) {
 	s.webhookTok = accessToken
+	s.webhookBody = append([]byte(nil), body...)
+	return json.RawMessage(`{"received":true}`), 200, nil
+}
+func (s *stubBillingClient) ForwardStripeWebhook(_ context.Context, token string, body []byte) (json.RawMessage, int, error) {
+	s.webhookTok = token
 	s.webhookBody = append([]byte(nil), body...)
 	return json.RawMessage(`{"received":true}`), 200, nil
 }
@@ -372,3 +383,24 @@ func TestCreateSubscriptionFirstWriteCpf(t *testing.T) {
 		t.Fatalf("payerCpfCnpj %v", body["payerCpfCnpj"])
 	}
 }
+
+func TestStripeWebhookHandler_Forwarded(t *testing.T) {
+	billing := &stubBillingClient{}
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/core/billing/webhooks/stripe", strings.NewReader(`{"id":"evt_123","type":"invoice.payment_succeeded"}`))
+	req.Header.Set("stripe-signature", "t=1700000000,v1=signature_hash")
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	h := NewBillingHandlers(appbilling.NewBillingPort(billing), zap.NewNop())
+	if err := h.StripeWebhookHandler(c); err != nil {
+		t.Fatal(err)
+	}
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", rec.Code)
+	}
+	if billing.webhookTok != "t=1700000000,v1=signature_hash" {
+		t.Fatalf("expected token forwarded, got %s", billing.webhookTok)
+	}
+}
+

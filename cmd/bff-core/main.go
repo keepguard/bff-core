@@ -351,7 +351,7 @@ func main() {
 	rateLimiterMiddleware := middlewarePkg.NewRateLimiterMiddleware(redisClient, cfg.RateLimit, zapLogger, metricsInstance)
 
 	// Inicializa servidor HTTP com Rate Limiting e Validação de Sessão/Blacklist via Redis
-	server := httpserver.NewServer(cfg, appLogger, metricsInstance, rateLimiterMiddleware, redisClient, companyClient, auditEventPublisher)
+	server := httpserver.NewServer(cfg, appLogger, metricsInstance, rateLimiterMiddleware, redisClient, companyClient, auditEventPublisher).WithBillingClient(billingClient)
 	server.SetupRoutes(httpHandlers)
 
 	// =============================================================================
