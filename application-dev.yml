@@ -123,7 +123,7 @@ rate_limit:
       limit: 60
       window: 60s
     billing:
-      limit: 60
+      limit: 120
       window: 60s
     asaas_webhook:
       limit: 120
