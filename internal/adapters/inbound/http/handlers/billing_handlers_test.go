@@ -77,6 +77,9 @@ func (s *stubBillingClient) CreateSubscription(_ context.Context, _ port.Billing
 	}
 	return json.RawMessage(`{"status":"active"}`), 201, nil
 }
+func (s *stubBillingClient) GrantLifetimeSubscription(context.Context, port.BillingScope, any) (json.RawMessage, error) {
+	return json.RawMessage(`{"status":"active","planCode":"VIP","interval":"lifetime"}`), nil
+}
 func (s *stubBillingClient) CancelSubscription(context.Context, port.BillingScope, string) (json.RawMessage, error) {
 	return json.RawMessage(`{"status":"canceled"}`), nil
 }
@@ -401,6 +404,25 @@ func TestStripeWebhookHandler_Forwarded(t *testing.T) {
 	}
 	if billing.webhookTok != "t=1700000000,v1=signature_hash" {
 		t.Fatalf("expected token forwarded, got %s", billing.webhookTok)
+	}
+}
+
+func TestGrantLifetimeBillingSubscriptionHandler(t *testing.T) {
+	billing := &stubBillingClient{}
+	c, rec := billingContext(http.MethodPost, "/core/billing/subscriptions/grant-lifetime",
+		`{"targetUserId":"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa","planCode":"VIP"}`,
+		&pkg.JWTClaims{
+			TenantId: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+			UserID:   "cccccccc-cccc-cccc-cccc-cccccccccccc",
+			Roles:    []string{"ADMIN"},
+		})
+
+	h := NewBillingHandlers(appbilling.NewBillingPort(billing), zap.NewNop())
+	if err := h.GrantLifetimeBillingSubscriptionHandler(c); err != nil {
+		t.Fatal(err)
+	}
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("expected status 201, got %d", rec.Code)
 	}
 }
 

@@ -89,6 +89,7 @@ type Handler interface {
 	SetPrimaryBillingGatewayHandler(c echo.Context) error
 	GetBillingSubscriptionHandler(c echo.Context) error
 	CreateBillingSubscriptionHandler(c echo.Context) error
+	GrantLifetimeBillingSubscriptionHandler(c echo.Context) error
 	CancelBillingSubscriptionHandler(c echo.Context) error
 	ListBillingInvoicesHandler(c echo.Context) error
 	ListBillingEntitlementsHandler(c echo.Context) error

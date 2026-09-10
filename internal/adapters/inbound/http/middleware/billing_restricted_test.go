@@ -53,6 +53,9 @@ func (m *mockBillingClientForMiddleware) GetSubscription(ctx context.Context, sc
 func (m *mockBillingClientForMiddleware) CreateSubscription(ctx context.Context, scope domainclient.BillingScope, body any) (json.RawMessage, int, error) {
 	return nil, 0, nil
 }
+func (m *mockBillingClientForMiddleware) GrantLifetimeSubscription(ctx context.Context, scope domainclient.BillingScope, body any) (json.RawMessage, error) {
+	return nil, nil
+}
 func (m *mockBillingClientForMiddleware) CancelSubscription(ctx context.Context, scope domainclient.BillingScope, id string) (json.RawMessage, error) {
 	return nil, nil
 }

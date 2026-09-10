@@ -63,6 +63,7 @@ type BillingClient interface {
 	SetPrimaryGateway(ctx context.Context, scope BillingScope, gateway string) (json.RawMessage, error)
 	GetSubscription(ctx context.Context, scope BillingScope) (json.RawMessage, error)
 	CreateSubscription(ctx context.Context, scope BillingScope, body any) (json.RawMessage, int, error)
+	GrantLifetimeSubscription(ctx context.Context, scope BillingScope, body any) (json.RawMessage, error)
 	CancelSubscription(ctx context.Context, scope BillingScope, id string) (json.RawMessage, error)
 	ListInvoices(ctx context.Context, scope BillingScope, query map[string]string) (json.RawMessage, error)
 	ListEntitlements(ctx context.Context, scope BillingScope, query map[string]string) (json.RawMessage, error)

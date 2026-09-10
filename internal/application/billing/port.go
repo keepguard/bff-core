@@ -21,6 +21,7 @@ type BillingPort interface {
 	SetPrimaryGateway(ctx context.Context, scope port.BillingScope, gateway string) (json.RawMessage, error)
 	GetSubscription(ctx context.Context, scope port.BillingScope) (json.RawMessage, error)
 	CreateSubscription(ctx context.Context, scope port.BillingScope, body any) (json.RawMessage, int, error)
+	GrantLifetimeSubscription(ctx context.Context, scope port.BillingScope, body any) (json.RawMessage, error)
 	CancelSubscription(ctx context.Context, scope port.BillingScope, id string) (json.RawMessage, error)
 	ListInvoices(ctx context.Context, scope port.BillingScope, query map[string]string) (json.RawMessage, error)
 	ListEntitlements(ctx context.Context, scope port.BillingScope, query map[string]string) (json.RawMessage, error)
@@ -129,6 +130,13 @@ func (s *service) CreateSubscription(ctx context.Context, scope port.BillingScop
 		return nil, 0, err
 	}
 	return s.client.CreateSubscription(ctx, scope, body)
+}
+
+func (s *service) GrantLifetimeSubscription(ctx context.Context, scope port.BillingScope, body any) (json.RawMessage, error) {
+	if err := s.require(); err != nil {
+		return nil, err
+	}
+	return s.client.GrantLifetimeSubscription(ctx, scope, body)
 }
 
 func (s *service) CancelSubscription(ctx context.Context, scope port.BillingScope, id string) (json.RawMessage, error) {

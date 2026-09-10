@@ -150,6 +150,16 @@ func (h *BillingHandlers) CreateBillingSubscriptionHandler(c echo.Context) error
 	return writeRaw(c, status, result)
 }
 
+func (h *BillingHandlers) GrantLifetimeBillingSubscriptionHandler(c echo.Context) error {
+	body, err := bindBillingJSON(c)
+	if err != nil {
+		return err
+	}
+	return h.proxy(c, http.StatusCreated, func(ctx echo.Context, scope port.BillingScope) (json.RawMessage, error) {
+		return h.billing.GrantLifetimeSubscription(ctx.Request().Context(), scope, body)
+	})
+}
+
 func (h *BillingHandlers) CancelBillingSubscriptionHandler(c echo.Context) error {
 	id := c.Param("id")
 	return h.proxy(c, http.StatusOK, func(ctx echo.Context, scope port.BillingScope) (json.RawMessage, error) {

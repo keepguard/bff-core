@@ -103,6 +103,12 @@ func (d *decorated) CreateSubscription(ctx context.Context, scope port.BillingSc
 	return out.raw, out.status, nil
 }
 
+func (d *decorated) GrantLifetimeSubscription(ctx context.Context, scope port.BillingScope, body any) (json.RawMessage, error) {
+	return observe.Call(d.cfg, "GrantLifetimeSubscription", "POST", "/billing/subscriptions/grant-lifetime", scope.CorrelationID, func() (json.RawMessage, error) {
+		return d.inner.GrantLifetimeSubscription(ctx, scope, body)
+	})
+}
+
 func (d *decorated) CancelSubscription(ctx context.Context, scope port.BillingScope, id string) (json.RawMessage, error) {
 	return observe.Call(d.cfg, "CancelSubscription", "POST", "/billing/subscriptions/{id}/cancel", scope.CorrelationID, func() (json.RawMessage, error) {
 		return d.inner.CancelSubscription(ctx, scope, id)

@@ -97,6 +97,10 @@ func (c *billingClient) CreateSubscription(ctx context.Context, scope domainclie
 	return cloneBody(resp.Body()), resp.StatusCode(), nil
 }
 
+func (c *billingClient) GrantLifetimeSubscription(ctx context.Context, scope domainclient.BillingScope, body any) (json.RawMessage, error) {
+	return c.send(ctx, scope, "POST", "/api/v1/billing/subscriptions/grant-lifetime", body, 201)
+}
+
 func (c *billingClient) CancelSubscription(ctx context.Context, scope domainclient.BillingScope, id string) (json.RawMessage, error) {
 	return c.send(ctx, scope, "POST", "/api/v1/billing/subscriptions/"+id+"/cancel", nil, 200)
 }
