@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -233,12 +234,14 @@ func TestCreateSubscriptionRejectsManagerOpsCaller(t *testing.T) {
 const testValidCPF = "52998224725"
 
 type stubUserClient struct {
-	user     appdto.MSUserResponseDTO
-	patched  appdto.MSUserResponseDTO
-	patchErr error
-	gets     int
-	patches  int
-	patchCPF string
+	user           appdto.MSUserResponseDTO
+	patched        appdto.MSUserResponseDTO
+	patchErr       error
+	gets           int
+	patches        int
+	patchCPF       string
+	getByEmailUser appdto.UserByEmailResponseDTO
+	getByEmailErr  error
 }
 
 func (s *stubUserClient) CreateUser(context.Context, appdto.MSUserCreateRequestDTO, string, string) (appdto.MSUserResponseDTO, error) {
@@ -252,7 +255,10 @@ func (s *stubUserClient) GetUserByCodeUser(context.Context, string, string, stri
 	return s.user, nil
 }
 func (s *stubUserClient) GetByEmail(context.Context, string, string, string, string) (appdto.UserByEmailResponseDTO, error) {
-	return appdto.UserByEmailResponseDTO{}, nil
+	if s.getByEmailErr != nil {
+		return appdto.UserByEmailResponseDTO{}, s.getByEmailErr
+	}
+	return s.getByEmailUser, nil
 }
 func (s *stubUserClient) PatchPersonDocument(_ context.Context, userID, cpf, _, _, _ string) (appdto.MSUserResponseDTO, error) {
 	s.patches++
@@ -424,5 +430,72 @@ func TestGrantLifetimeBillingSubscriptionHandler(t *testing.T) {
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("expected status 201, got %d", rec.Code)
 	}
+}
+
+func TestLookupBillingUserHandler(t *testing.T) {
+	billing := &stubBillingClient{}
+	claims := &pkg.JWTClaims{
+		TenantId: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+		UserID:   "cccccccc-cccc-cccc-cccc-cccccccccccc",
+		Roles:    []string{"ADMIN"},
+	}
+
+	t.Run("success", func(t *testing.T) {
+		users := &stubUserClient{
+			getByEmailUser: appdto.UserByEmailResponseDTO{
+				ID:            "11111111-2222-3333-4444-555555555555",
+				CodeUser:      "USR-001",
+				Username:      "John Doe",
+				Email:         "john@example.com",
+				Status:        "ACTIVE",
+				EmailVerified: true,
+			},
+		}
+		c, rec := billingContext(http.MethodGet, "/core/billing/users/lookup?email=john@example.com", "", claims)
+		h := NewBillingHandlers(appbilling.NewBillingPort(billing), zap.NewNop()).WithUsers(users)
+
+		if err := h.LookupBillingUserHandler(c); err != nil {
+			t.Fatal(err)
+		}
+		if rec.Code != http.StatusOK {
+			t.Fatalf("expected status 200, got %d", rec.Code)
+		}
+
+		var resp map[string]any
+		if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+			t.Fatal(err)
+		}
+		if resp["id"] != "11111111-2222-3333-4444-555555555555" || resp["email"] != "john@example.com" {
+			t.Fatalf("unexpected response: %+v", resp)
+		}
+	})
+
+	t.Run("missing_query", func(t *testing.T) {
+		users := &stubUserClient{}
+		c, rec := billingContext(http.MethodGet, "/core/billing/users/lookup", "", claims)
+		h := NewBillingHandlers(appbilling.NewBillingPort(billing), zap.NewNop()).WithUsers(users)
+
+		if err := h.LookupBillingUserHandler(c); err != nil {
+			t.Fatal(err)
+		}
+		if rec.Code != http.StatusBadRequest {
+			t.Fatalf("expected status 400, got %d", rec.Code)
+		}
+	})
+
+	t.Run("user_not_found", func(t *testing.T) {
+		users := &stubUserClient{
+			getByEmailErr: fmt.Errorf("not found"),
+		}
+		c, rec := billingContext(http.MethodGet, "/core/billing/users/lookup?q=unknown@example.com", "", claims)
+		h := NewBillingHandlers(appbilling.NewBillingPort(billing), zap.NewNop()).WithUsers(users)
+
+		if err := h.LookupBillingUserHandler(c); err != nil {
+			t.Fatal(err)
+		}
+		if rec.Code != http.StatusNotFound {
+			t.Fatalf("expected status 404, got %d", rec.Code)
+		}
+	})
 }
 

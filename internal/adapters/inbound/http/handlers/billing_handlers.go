@@ -160,6 +160,52 @@ func (h *BillingHandlers) GrantLifetimeBillingSubscriptionHandler(c echo.Context
 	})
 }
 
+func (h *BillingHandlers) LookupBillingUserHandler(c echo.Context) error {
+	scope, unavailable := h.guard(c)
+	if unavailable != nil {
+		return unavailable
+	}
+	q := strings.TrimSpace(c.QueryParam("q"))
+	if q == "" {
+		q = strings.TrimSpace(c.QueryParam("email"))
+	}
+	if q == "" {
+		return c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
+			Error:         "VALIDATION_ERROR",
+			Message:       "Informe o e-mail do usuário para busca",
+			CorrelationID: scope.CorrelationID,
+		})
+	}
+	if h.users == nil {
+		return c.JSON(http.StatusServiceUnavailable, pkg.ErrorResponse{
+			Error:         "SERVICE_UNAVAILABLE",
+			Message:       "Serviço de usuários indisponível",
+			CorrelationID: scope.CorrelationID,
+		})
+	}
+	tenantID := middlewarePkg.GetTenantId(c)
+	user, err := h.users.GetByEmail(c.Request().Context(), q, tenantID, scope.CompanyID, scope.CorrelationID)
+	if err != nil {
+		return c.JSON(http.StatusNotFound, pkg.ErrorResponse{
+			Error:         "USER_NOT_FOUND",
+			Message:       "Usuário não encontrado nesta organização",
+			CorrelationID: scope.CorrelationID,
+		})
+	}
+	userID := strings.TrimSpace(user.ID)
+	if userID == "" {
+		userID = strings.TrimSpace(user.CodeUser)
+	}
+	return c.JSON(http.StatusOK, map[string]any{
+		"id":            userID,
+		"codeUser":      user.CodeUser,
+		"username":      user.Username,
+		"email":         user.Email,
+		"status":        user.Status,
+		"emailVerified": user.EmailVerified,
+	})
+}
+
 func (h *BillingHandlers) CancelBillingSubscriptionHandler(c echo.Context) error {
 	id := c.Param("id")
 	return h.proxy(c, http.StatusOK, func(ctx echo.Context, scope port.BillingScope) (json.RawMessage, error) {

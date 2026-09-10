@@ -284,6 +284,7 @@ func (s *serverImpl) SetupRoutes(handlers Handler) {
 	userGroup.GET("/core/billing/invoices", handlers.ListBillingInvoicesHandler, billingRead...)
 	userGroup.GET("/core/billing/invoices/:id", handlers.GetBillingInvoiceHandler, billingRead...)
 	userGroup.GET("/core/billing/entitlements", handlers.ListBillingEntitlementsHandler, billingOrgRead...)
+	userGroup.GET("/core/billing/users/lookup", handlers.LookupBillingUserHandler, billingOrgRead...)
 	userGroup.POST("/core/billing/webhooks/asaas", handlers.AsaasWebhookHandler, publicEndpoint.Middleware(), rl.Limit("asaas_webhook", rules.AsaasWebhook))
 	userGroup.POST("/core/billing/webhooks/stripe", handlers.StripeWebhookHandler, publicEndpoint.Middleware(), rl.Limit("stripe_webhook", rules.AsaasWebhook))
 

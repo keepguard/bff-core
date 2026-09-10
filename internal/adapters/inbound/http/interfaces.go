@@ -94,6 +94,7 @@ type Handler interface {
 	ListBillingInvoicesHandler(c echo.Context) error
 	ListBillingEntitlementsHandler(c echo.Context) error
 	GetBillingInvoiceHandler(c echo.Context) error
+	LookupBillingUserHandler(c echo.Context) error
 	AsaasWebhookHandler(c echo.Context) error
 	StripeWebhookHandler(c echo.Context) error
 }
