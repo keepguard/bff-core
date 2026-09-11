@@ -7,6 +7,7 @@ import (
 	middlewarePkg "github.com/keepguard/bff-core/internal/adapters/inbound/http/middleware"
 	client "github.com/keepguard/bff-core/internal/application/port"
 	auditport "github.com/keepguard/bff-core/internal/domain/ports/audit"
+	"github.com/keepguard/bff-core/internal/infrastructure/clientip"
 	"github.com/keepguard/bff-core/internal/infrastructure/config"
 	"github.com/keepguard/bff-core/internal/infrastructure/logger"
 	"github.com/keepguard/bff-core/internal/infrastructure/metrics"
@@ -46,6 +47,12 @@ func NewServer(
 	e := echo.New()
 	e.HideBanner = true
 	e.HidePort = true
+	e.IPExtractor = func(req *http.Request) string {
+		if ip := clientip.FromRequest(req); ip != "" {
+			return ip
+		}
+		return echo.ExtractIPFromXFFHeader()(req)
+	}
 
 	// Middlewares
 	zapLogger, _ := zap.NewDevelopment()

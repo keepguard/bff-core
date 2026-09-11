@@ -75,11 +75,23 @@ func TestMiddleware_CORS(t *testing.T) {
 func TestMiddleware_Security(t *testing.T) {
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("X-Caller-Admin", "true")
+	req.Header.Set("X-Client-IP", "1.2.3.4")
+	req.Header.Set("X-Public-IP", "5.6.7.8")
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 
 	middleware := NewMiddleware(zap.NewNop())
 	handler := middleware.SecurityMiddleware()(func(c echo.Context) error {
+		if c.Request().Header.Get("X-Caller-Admin") != "" {
+			t.Fatal("expected X-Caller-Admin to be stripped")
+		}
+		if c.Request().Header.Get("X-Client-IP") != "" {
+			t.Fatal("expected X-Client-IP to be stripped")
+		}
+		if c.Request().Header.Get("X-Public-IP") != "" {
+			t.Fatal("expected X-Public-IP to be stripped")
+		}
 		return c.String(http.StatusOK, "ok")
 	})
 

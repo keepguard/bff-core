@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/keepguard/bff-core/internal/infrastructure/clientip"
 	"github.com/keepguard/bff-core/internal/infrastructure/config"
 	metricsPkg "github.com/keepguard/bff-core/internal/infrastructure/metrics"
 	"github.com/keepguard/bff-core/internal/pkg"
@@ -13,6 +14,14 @@ import (
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
+
+var incrExpireLua = redis.NewScript(`
+local current = redis.call('INCR', KEYS[1])
+if current == 1 then
+    redis.call('EXPIRE', KEYS[1], ARGV[1])
+end
+return current
+`)
 
 // RateLimiterMiddleware gerencia rate limiting distribuído usando Redis
 type RateLimiterMiddleware struct {
@@ -46,7 +55,10 @@ func (r *RateLimiterMiddleware) Limit(action string, rule config.RateLimitRule) 
 				return next(c)
 			}
 
-			clientIP := c.RealIP()
+			clientIP := clientip.FromRequest(c.Request())
+			if clientIP == "" {
+				clientIP = c.RealIP()
+			}
 			if clientIP == "" {
 				clientIP = "unknown"
 			}
@@ -70,18 +82,19 @@ func (r *RateLimiterMiddleware) Limit(action string, rule config.RateLimitRule) 
 				window = 60 * time.Second
 			}
 
-			// Incremento atômico
-			count, err := r.redisClient.Incr(ctx, redisKey).Result()
+			ttlSeconds := int(window.Seconds())
+			if ttlSeconds <= 0 {
+				ttlSeconds = 60
+			}
+
+			// Incremento atômico com expiração imediata via Lua (RN-RL-02)
+			count, err := incrExpireLua.Run(ctx, r.redisClient, []string{redisKey}, ttlSeconds).Int64()
 			if err != nil {
 				r.logger.Warn("Erro ao consultar Redis para RateLimit (fail-open)",
 					zap.String("key", redisKey),
 					zap.Error(err),
 				)
 				return next(c)
-			}
-
-			if count == 1 {
-				r.redisClient.Expire(ctx, redisKey, window)
 			}
 
 			remaining := rule.Limit - int(count)

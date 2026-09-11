@@ -155,11 +155,26 @@ func (m *middlewareImpl) RecoveryMiddleware() echo.MiddlewareFunc {
 	})
 }
 
-// CORSMiddleware configura CORS
+// CORSMiddleware configura CORS com origens estritas (RN-FE-02)
 func (m *middlewareImpl) CORSMiddleware() echo.MiddlewareFunc {
+	allowedOrigins := []string{
+		"https://app.keepguard.com.br",
+		"https://backoffice.keepguard.com.br",
+		"http://localhost:3000",
+		"http://localhost:5173",
+		"http://localhost:5174",
+	}
+	if envOrigins := os.Getenv("BFF_CORE_CORS_ALLOWED_ORIGINS"); envOrigins != "" {
+		for _, o := range strings.Split(envOrigins, ",") {
+			if trimmed := strings.TrimSpace(o); trimmed != "" {
+				allowedOrigins = append(allowedOrigins, trimmed)
+			}
+		}
+	}
 	return middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowOrigins: []string{"*"},
-		AllowMethods: []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete, http.MethodOptions},
+		AllowOrigins:     allowedOrigins,
+		AllowCredentials: true,
+		AllowMethods:     []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete, http.MethodOptions},
 		AllowHeaders: []string{
 			echo.HeaderOrigin,
 			echo.HeaderContentType,
@@ -174,8 +189,6 @@ func (m *middlewareImpl) CORSMiddleware() echo.MiddlewareFunc {
 			"X-Device-Id",
 			"X-Device-Name",
 			"X-Device-Type",
-			"X-Public-IP",
-			"X-Public-Location",
 			"Idempotency-Key",
 		},
 		ExposeHeaders: []string{
@@ -189,12 +202,17 @@ func (m *middlewareImpl) CORSMiddleware() echo.MiddlewareFunc {
 	})
 }
 
-// SecurityMiddleware adiciona headers de segurança
+// SecurityMiddleware adiciona headers de segurança e descarta cabeçalhos não confiáveis
 func (m *middlewareImpl) SecurityMiddleware() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			// Remove header do servidor
 			c.Response().Header().Set(echo.HeaderServer, "")
+
+			// Sanitização de cabeçalhos não confiáveis da borda (RN-AUTH-01 / RN-RL-01)
+			c.Request().Header.Del("X-Caller-Admin")
+			c.Request().Header.Del("X-Client-IP")
+			c.Request().Header.Del("X-Public-IP")
 
 			// Adiciona headers de segurança
 			c.Response().Header().Set("X-Content-Type-Options", "nosniff")
