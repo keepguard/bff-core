@@ -139,6 +139,7 @@ func TestAuditMiddlewareAuditReadPublishes(t *testing.T) {
 
 func TestShouldSkipProductGet(t *testing.T) {
 	require.True(t, shouldSkipAudit(http.MethodGet, "/api/v1/core/collector/agents"))
-	require.False(t, shouldSkipAudit(http.MethodGet, "/api/v1/core/audits"))
+	require.True(t, shouldSkipAudit(http.MethodGet, "/api/v1/core/audits"), "listagem de auditoria deve ser skip para evitar auto-auditoria em looping")
+	require.False(t, shouldSkipAudit(http.MethodGet, "/api/v1/core/audits/evt-1"), "leitura de evento específico deve ser auditada")
 	require.False(t, shouldSkipAudit(http.MethodPost, "/api/v1/core/collector/agents"))
 }

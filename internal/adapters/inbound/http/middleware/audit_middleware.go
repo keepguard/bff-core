@@ -60,7 +60,7 @@ func AuditMiddleware(publisher auditport.EventPublisher, sourceService string) e
 				Outcome:  outcome,
 				Metadata: map[string]any{"method": c.Request().Method, "status": status},
 			}
-			if strings.Contains(path, "/core/audits") || strings.HasSuffix(path, "/audits") || strings.Contains(path, "/audits/") {
+			if strings.Contains(path, "/core/audits/") || strings.HasPrefix(path, "/api/v1/audits/") {
 				event.Action = "AUDIT_READ"
 				event.Resource = auditport.Resource{Type: "AUDIT_EVENT", ID: strings.TrimSpace(c.Param("eventId"))}
 			}
@@ -88,7 +88,9 @@ func shouldSkipAudit(method, path string) bool {
 }
 
 func privilegedAuditRead(path string) bool {
-	if strings.Contains(path, "/core/audits") || path == "/api/v1/audits" || strings.HasPrefix(path, "/api/v1/audits/") {
+	// Apenas leitura de detalhe específico (/core/audits/:eventId ou /api/v1/audits/:eventId) é privilegiada.
+	// Listagens gerais (/core/audits) são ignoradas para evitar auto-auditoria recursiva com o auto-refresh do frontend.
+	if strings.Contains(path, "/core/audits/") || strings.HasPrefix(path, "/api/v1/audits/") {
 		return true
 	}
 	if strings.Contains(path, "/core/oauth/clients/") && !strings.Contains(path, "/service-roles") {
@@ -132,7 +134,7 @@ func mapAuditAction(method, path string) string {
 		return "REGISTER_RESEND"
 	case strings.Contains(path, "/user-consents/accept"):
 		return "ACCEPT_CONSENTS"
-	case strings.Contains(path, "/core/audits") || strings.Contains(path, "/audits"):
+	case strings.Contains(path, "/core/audits/") || strings.HasPrefix(path, "/api/v1/audits/"):
 		return "AUDIT_READ"
 	default:
 		return method + "_" + strings.Trim(path, "/")
