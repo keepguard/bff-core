@@ -279,6 +279,7 @@ func (s *serverImpl) SetupRoutes(handlers Handler) {
 	userGroup.GET("/core/billing/plans", handlers.ListBillingPlansHandler, billingRead...)
 	userGroup.POST("/core/billing/plans", handlers.CreateBillingPlanHandler, billingWrite...)
 	userGroup.PATCH("/core/billing/plans/:code", handlers.PatchBillingPlanHandler, billingWrite...)
+	userGroup.DELETE("/core/billing/plans/:code", handlers.DeleteBillingPlanHandler, billingWrite...)
 	userGroup.GET("/core/billing/gateway-account", handlers.GetBillingGatewayAccountHandler, billingOrgRead...)
 	userGroup.PUT("/core/billing/gateway-account", handlers.PutBillingGatewayAccountHandler, billingWrite...)
 	userGroup.GET("/core/billing/gateway-accounts", handlers.ListBillingGatewayAccountsHandler, billingOrgRead...)

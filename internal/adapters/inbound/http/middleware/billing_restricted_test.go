@@ -32,6 +32,9 @@ func (m *mockBillingClientForMiddleware) SavePlan(ctx context.Context, scope dom
 func (m *mockBillingClientForMiddleware) PatchPlan(ctx context.Context, scope domainclient.BillingScope, code string, body any) (json.RawMessage, error) {
 	return nil, nil
 }
+func (m *mockBillingClientForMiddleware) DeletePlan(ctx context.Context, scope domainclient.BillingScope, code string) error {
+	return nil
+}
 func (m *mockBillingClientForMiddleware) GetGatewayAccount(ctx context.Context, scope domainclient.BillingScope) (json.RawMessage, error) {
 	return nil, nil
 }

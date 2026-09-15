@@ -82,6 +82,7 @@ type Handler interface {
 	ListBillingPlansHandler(c echo.Context) error
 	CreateBillingPlanHandler(c echo.Context) error
 	PatchBillingPlanHandler(c echo.Context) error
+	DeleteBillingPlanHandler(c echo.Context) error
 	GetBillingGatewayAccountHandler(c echo.Context) error
 	PutBillingGatewayAccountHandler(c echo.Context) error
 	ListBillingGatewayAccountsHandler(c echo.Context) error

@@ -70,6 +70,18 @@ func (h *BillingHandlers) PatchBillingPlanHandler(c echo.Context) error {
 	})
 }
 
+func (h *BillingHandlers) DeleteBillingPlanHandler(c echo.Context) error {
+	code := c.Param("code")
+	scope, unavailable := h.guard(c)
+	if unavailable != nil {
+		return unavailable
+	}
+	if err := h.billing.DeletePlan(c.Request().Context(), scope, code); err != nil {
+		return handleError(c, err, scope.CorrelationID)
+	}
+	return c.NoContent(http.StatusNoContent)
+}
+
 func (h *BillingHandlers) GetBillingGatewayAccountHandler(c echo.Context) error {
 	return h.proxy(c, http.StatusOK, func(ctx echo.Context, scope port.BillingScope) (json.RawMessage, error) {
 		return h.billing.GetGatewayAccount(ctx.Request().Context(), scope)

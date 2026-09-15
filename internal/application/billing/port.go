@@ -14,6 +14,7 @@ type BillingPort interface {
 	ListPlans(ctx context.Context, scope port.BillingScope) (json.RawMessage, error)
 	SavePlan(ctx context.Context, scope port.BillingScope, body any) (json.RawMessage, error)
 	PatchPlan(ctx context.Context, scope port.BillingScope, code string, body any) (json.RawMessage, error)
+	DeletePlan(ctx context.Context, scope port.BillingScope, code string) error
 	GetGatewayAccount(ctx context.Context, scope port.BillingScope) (json.RawMessage, error)
 	PutGatewayAccount(ctx context.Context, scope port.BillingScope, body any) (json.RawMessage, error)
 	ListGatewayAccounts(ctx context.Context, scope port.BillingScope) (json.RawMessage, error)
@@ -81,6 +82,13 @@ func (s *service) PatchPlan(ctx context.Context, scope port.BillingScope, code s
 		return nil, err
 	}
 	return s.client.PatchPlan(ctx, scope, code, body)
+}
+
+func (s *service) DeletePlan(ctx context.Context, scope port.BillingScope, code string) error {
+	if err := s.require(); err != nil {
+		return err
+	}
+	return s.client.DeletePlan(ctx, scope, code)
 }
 
 func (s *service) GetGatewayAccount(ctx context.Context, scope port.BillingScope) (json.RawMessage, error) {

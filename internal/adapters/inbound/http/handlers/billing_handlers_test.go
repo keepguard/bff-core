@@ -48,6 +48,9 @@ func (s *stubBillingClient) SavePlan(context.Context, port.BillingScope, any) (j
 func (s *stubBillingClient) PatchPlan(context.Context, port.BillingScope, string, any) (json.RawMessage, error) {
 	return json.RawMessage(`{}`), nil
 }
+func (s *stubBillingClient) DeletePlan(context.Context, port.BillingScope, string) error {
+	return nil
+}
 func (s *stubBillingClient) GetGatewayAccount(context.Context, port.BillingScope) (json.RawMessage, error) {
 	return json.RawMessage(`{"apiKeyMasked":"****1234"}`), nil
 }
@@ -543,4 +546,23 @@ func TestCreateSubscriptionAttachesSessionSnapshot(t *testing.T) {
 		t.Fatalf("expected sessionId sess_header_1, got %v", bodyMap["sessionId"])
 	}
 }
+
+func TestDeleteBillingPlanHandler_Success(t *testing.T) {
+	h := NewBillingHandlers(appbilling.NewBillingPort(&stubBillingClient{}), zap.NewNop())
+	c, rec := billingContext(http.MethodDelete, "/api/v1/core/billing/plans/pro-test", "", &pkg.JWTClaims{
+		UserID:   "user-admin",
+		TenantId: "company-1",
+		Roles:    []string{"ROLE_ADMIN"},
+	})
+	c.SetParamNames("code")
+	c.SetParamValues("pro-test")
+
+	if err := h.DeleteBillingPlanHandler(c); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("expected status 204, got %d", rec.Code)
+	}
+}
+
 

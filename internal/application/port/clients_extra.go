@@ -56,6 +56,7 @@ type BillingClient interface {
 	ListPlans(ctx context.Context, scope BillingScope) (json.RawMessage, error)
 	SavePlan(ctx context.Context, scope BillingScope, body any) (json.RawMessage, error)
 	PatchPlan(ctx context.Context, scope BillingScope, code string, body any) (json.RawMessage, error)
+	DeletePlan(ctx context.Context, scope BillingScope, code string) error
 	GetGatewayAccount(ctx context.Context, scope BillingScope) (json.RawMessage, error)
 	PutGatewayAccount(ctx context.Context, scope BillingScope, body any) (json.RawMessage, error)
 	ListGatewayAccounts(ctx context.Context, scope BillingScope) (json.RawMessage, error)

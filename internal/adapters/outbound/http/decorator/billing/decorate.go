@@ -52,6 +52,13 @@ func (d *decorated) PatchPlan(ctx context.Context, scope port.BillingScope, code
 	})
 }
 
+func (d *decorated) DeletePlan(ctx context.Context, scope port.BillingScope, code string) error {
+	_, err := observe.Call(d.cfg, "DeletePlan", "DELETE", "/billing/plans/{code}", scope.CorrelationID, func() (json.RawMessage, error) {
+		return nil, d.inner.DeletePlan(ctx, scope, code)
+	})
+	return err
+}
+
 func (d *decorated) GetGatewayAccount(ctx context.Context, scope port.BillingScope) (json.RawMessage, error) {
 	return observe.Call(d.cfg, "GetGatewayAccount", "GET", "/billing/gateway-account", scope.CorrelationID, func() (json.RawMessage, error) {
 		return d.inner.GetGatewayAccount(ctx, scope)

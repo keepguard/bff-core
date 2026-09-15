@@ -62,6 +62,11 @@ func (c *billingClient) PatchPlan(ctx context.Context, scope domainclient.Billin
 	return c.send(ctx, scope, "PATCH", "/api/v1/billing/plans/"+code, body, 200)
 }
 
+func (c *billingClient) DeletePlan(ctx context.Context, scope domainclient.BillingScope, code string) error {
+	_, err := c.send(ctx, scope, "DELETE", "/api/v1/billing/plans/"+code, nil, 204)
+	return err
+}
+
 func (c *billingClient) GetGatewayAccount(ctx context.Context, scope domainclient.BillingScope) (json.RawMessage, error) {
 	return c.get(ctx, scope, "/api/v1/billing/gateway-account", nil)
 }
@@ -183,6 +188,8 @@ func (c *billingClient) send(ctx context.Context, scope domainclient.BillingScop
 		resp, err = req.Put(url)
 	case "PATCH":
 		resp, err = req.Patch(url)
+	case "DELETE":
+		resp, err = req.Delete(url)
 	default:
 		resp, err = req.Get(url)
 	}
