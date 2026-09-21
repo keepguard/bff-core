@@ -61,6 +61,26 @@ func (c *llmClient) SetProviderEnabled(ctx context.Context, tenantID, correlatio
 	return c.sendJSON(ctx, tenantID, correlationID, "POST", fmt.Sprintf("/api/v1/llm/providers/%s/%s", id, action), nil, 200)
 }
 
+func (c *llmClient) SetProviderDefault(ctx context.Context, tenantID, correlationID, id string) (json.RawMessage, error) {
+	return c.sendJSON(ctx, tenantID, correlationID, "POST", fmt.Sprintf("/api/v1/llm/providers/%s/default", id), nil, 200)
+}
+
+func (c *llmClient) ListClientAPIKeys(ctx context.Context, tenantID, correlationID string) (json.RawMessage, error) {
+	return c.getRaw(ctx, tenantID, correlationID, "/api/v1/llm/api-keys", nil)
+}
+
+func (c *llmClient) CreateClientAPIKey(ctx context.Context, tenantID, correlationID string, body any) (json.RawMessage, error) {
+	return c.sendJSON(ctx, tenantID, correlationID, "POST", "/api/v1/llm/api-keys", body, 201)
+}
+
+func (c *llmClient) SetClientAPIKeyEnabled(ctx context.Context, tenantID, correlationID, id string, enabled bool) (json.RawMessage, error) {
+	action := "enable"
+	if !enabled {
+		action = "disable"
+	}
+	return c.sendJSON(ctx, tenantID, correlationID, "POST", fmt.Sprintf("/api/v1/llm/api-keys/%s/%s", id, action), nil, 200)
+}
+
 func (c *llmClient) Complete(ctx context.Context, tenantID, companyID, correlationID string, body any) (json.RawMessage, error) {
 	req := c.headers(ctx, c.httpClient.R(), tenantID, correlationID).
 		SetHeader("X-Company-Id", companyID).

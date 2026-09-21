@@ -32,6 +32,18 @@ func (s *stubLlmClient) UpdateProvider(context.Context, string, string, string, 
 func (s *stubLlmClient) SetProviderEnabled(context.Context, string, string, string, bool) (json.RawMessage, error) {
 	return json.RawMessage(`{"id":"p1","enabled":true}`), nil
 }
+func (s *stubLlmClient) SetProviderDefault(context.Context, string, string, string) (json.RawMessage, error) {
+	return json.RawMessage(`{"id":"p1","isDefault":true}`), nil
+}
+func (s *stubLlmClient) ListClientAPIKeys(context.Context, string, string) (json.RawMessage, error) {
+	return json.RawMessage(`[]`), nil
+}
+func (s *stubLlmClient) CreateClientAPIKey(context.Context, string, string, any) (json.RawMessage, error) {
+	return json.RawMessage(`{"id":"k1","apiKey":"kg_test"}`), nil
+}
+func (s *stubLlmClient) SetClientAPIKeyEnabled(context.Context, string, string, string, bool) (json.RawMessage, error) {
+	return json.RawMessage(`{"id":"k1","enabled":true}`), nil
+}
 func (s *stubLlmClient) Complete(context.Context, string, string, string, any) (json.RawMessage, error) {
 	return json.RawMessage(`{"content":"ok"}`), nil
 }
@@ -89,7 +101,7 @@ func TestListLlmUsageHandler_OK(t *testing.T) {
 
 func TestCreateLlmProviderHandler_OK(t *testing.T) {
 	e := echo.New()
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/core/llm/providers", strings.NewReader(`{"name":"openai","providerType":"openai","apiKeyEnvRef":"OPENAI_KEEPGUARD_API_KEY"}`))
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/core/llm/providers", strings.NewReader(`{"name":"openai","providerType":"openai","apiKey":"sk-live-secret"}`))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
