@@ -42,9 +42,6 @@ type LlmClient interface {
 	UpdateAlertRule(ctx context.Context, tenantID, correlationID, id string, body any) (json.RawMessage, error)
 	SetAlertRuleEnabled(ctx context.Context, tenantID, correlationID, id string, enabled bool) (json.RawMessage, error)
 	ListAlertFirings(ctx context.Context, tenantID, correlationID string, query map[string]string) (json.RawMessage, error)
-	ListClientAPIKeys(ctx context.Context, tenantID, correlationID string) (json.RawMessage, error)
-	CreateClientAPIKey(ctx context.Context, tenantID, correlationID string, body any) (json.RawMessage, error)
-	SetClientAPIKeyEnabled(ctx context.Context, tenantID, correlationID, id string, enabled bool) (json.RawMessage, error)
 }
 
 type BillingScope struct {

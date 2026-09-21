@@ -74,36 +74,6 @@ func (h *LlmHandlers) SetLlmProviderDefaultHandler(c echo.Context) error {
 	})
 }
 
-func (h *LlmHandlers) ListLlmClientAPIKeysHandler(c echo.Context) error {
-	return h.proxyRaw(c, http.StatusOK, func(ctx echo.Context, query llm.TenantQuery) (json.RawMessage, error) {
-		return h.llm.ListClientAPIKeys(ctx.Request().Context(), query)
-	})
-}
-
-func (h *LlmHandlers) CreateLlmClientAPIKeyHandler(c echo.Context) error {
-	body, err := bindJSON(c)
-	if err != nil {
-		return err
-	}
-	return h.proxyRaw(c, http.StatusCreated, func(ctx echo.Context, query llm.TenantQuery) (json.RawMessage, error) {
-		return h.llm.CreateClientAPIKey(ctx.Request().Context(), llm.ClientAPIKeyCommand{TenantQuery: query, Body: body})
-	})
-}
-
-func (h *LlmHandlers) EnableLlmClientAPIKeyHandler(c echo.Context) error {
-	id := c.Param("id")
-	return h.proxyRaw(c, http.StatusOK, func(ctx echo.Context, query llm.TenantQuery) (json.RawMessage, error) {
-		return h.llm.SetClientAPIKeyEnabled(ctx.Request().Context(), llm.ClientAPIKeyCommand{TenantQuery: query, ID: id, Enabled: true})
-	})
-}
-
-func (h *LlmHandlers) DisableLlmClientAPIKeyHandler(c echo.Context) error {
-	id := c.Param("id")
-	return h.proxyRaw(c, http.StatusOK, func(ctx echo.Context, query llm.TenantQuery) (json.RawMessage, error) {
-		return h.llm.SetClientAPIKeyEnabled(ctx.Request().Context(), llm.ClientAPIKeyCommand{TenantQuery: query, ID: id, Enabled: false})
-	})
-}
-
 func (h *LlmHandlers) CompleteLlmHandler(c echo.Context) error {
 	body, err := bindJSON(c)
 	if err != nil {
@@ -249,10 +219,9 @@ func (h *LlmHandlers) guard(c echo.Context) (llm.TenantQuery, error) {
 			CorrelationID: correlationID,
 		})
 	}
-	if token := middlewarePkg.GetTokenFromContext(c); token != "" {
-		ctx := port.WithBearerToken(c.Request().Context(), token)
-		c.SetRequest(c.Request().WithContext(ctx))
-	}
+	// O token de quem está logado não é repassado ao gateway: o BFF já autorizou
+	// a pessoa nas middlewares de rota e chama o gateway com a própria identidade
+	// de serviço (client OAuth bff-core).
 	return llm.TenantQuery{TenantID: tenantID, CorrelationID: correlationID}, nil
 }
 

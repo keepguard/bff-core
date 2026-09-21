@@ -342,7 +342,7 @@ func main() {
 		appknowledge.NewKnowledgePort(knowledgeClient, collectorClient, companyClient, serviceTokenClient, zapLogger),
 		zapLogger,
 	)
-	llmClient := llmdecorator.New(httpclient.NewLlmClient(cfg, zapLogger), zapLogger, metricsInstance, "srv-llm-gateway")
+	llmClient := llmdecorator.New(httpclient.NewLlmClient(cfg, serviceTokenClient, zapLogger), zapLogger, metricsInstance, "srv-llm-gateway")
 	llmHandlers := handlersPkg.NewLlmHandlers(appllm.NewLlmPort(llmClient), zapLogger)
 	billingClient := billingdecorator.New(httpclient.NewBillingClient(cfg, zapLogger), zapLogger, metricsInstance, "ms-billing")
 	billingHandlers := handlersPkg.NewBillingHandlers(appbilling.NewBillingPort(billingClient), zapLogger).WithUsers(userClient)

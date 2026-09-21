@@ -17,10 +17,11 @@ import (
 type llmClient struct {
 	httpClient *resty.Client
 	baseURL    string
+	tokens     domainclient.ServiceTokenClient
 	logger     *zap.Logger
 }
 
-func NewLlmClient(cfg *config.Config, logger *zap.Logger) domainclient.LlmClient {
+func NewLlmClient(cfg *config.Config, tokens domainclient.ServiceTokenClient, logger *zap.Logger) domainclient.LlmClient {
 	timeout := cfg.Services.Llm.Timeout
 	if timeout <= 0 {
 		timeout = 60 * time.Second
@@ -29,16 +30,47 @@ func NewLlmClient(cfg *config.Config, logger *zap.Logger) domainclient.LlmClient
 	httpClient.SetTimeout(timeout)
 	httpClient.SetRetryCount(1)
 	httpClient.SetRetryWaitTime(200 * time.Millisecond)
-	return &llmClient{httpClient: httpClient, baseURL: cfg.Services.Llm.BaseURL, logger: logger}
+	return &llmClient{httpClient: httpClient, baseURL: cfg.Services.Llm.BaseURL, tokens: tokens, logger: logger}
 }
 
-func (c *llmClient) headers(ctx context.Context, req *resty.Request, tenantID, correlationID string) *resty.Request {
+// headers monta a request com a identidade de serviço do BFF: o gateway LLM
+// autoriza pelas authorities do client OAuth bff-core (llm:read/llm:write), não
+// pelo token de quem está logado no backoffice — esse já foi autorizado nas
+// middlewares de entrada.
+func (c *llmClient) headers(ctx context.Context, req *resty.Request, tenantID, correlationID string) (*resty.Request, error) {
 	req.SetContext(ctx)
 	req.SetHeader("X-Tenant-Id", tenantID).SetHeader("X-Correlation-ID", correlationID)
-	if token := strings.TrimSpace(domainclient.BearerTokenFromContext(ctx)); token != "" {
-		req.SetHeader("Authorization", "Bearer "+strings.TrimPrefix(token, "Bearer "))
+	bearer, err := c.serviceBearer(ctx)
+	if err != nil {
+		return nil, err
 	}
-	return req
+	req.SetHeader("Authorization", bearer)
+	return req, nil
+}
+
+func (c *llmClient) serviceBearer(ctx context.Context) (string, error) {
+	if c.tokens == nil {
+		return "", MapHTTPError(503, []byte(`{"message":"Token de serviço do BFF indisponível"}`), "llm gateway")
+	}
+	companyID := companyHeader(ctx)
+	if strings.TrimSpace(companyID) == "" {
+		return "", MapHTTPError(400, []byte(`{"message":"company não resolvida para o tenant informado"}`), "llm gateway")
+	}
+	token, err := c.tokens.GetToken(ctx, companyID)
+	if err != nil {
+		if c.logger != nil {
+			c.logger.Error("Erro ao obter token OAuth do BFF para o gateway LLM", zap.Error(err))
+		}
+		return "", MapHTTPError(503, []byte(`{"message":"Gateway LLM indisponível"}`), "llm gateway")
+	}
+	token = strings.TrimSpace(token)
+	if token == "" {
+		return "", MapHTTPError(503, []byte(`{"message":"Gateway LLM indisponível"}`), "llm gateway")
+	}
+	if !strings.HasPrefix(strings.ToLower(token), "bearer ") {
+		token = "Bearer " + token
+	}
+	return token, nil
 }
 
 func (c *llmClient) ListProviders(ctx context.Context, tenantID, correlationID string) (json.RawMessage, error) {
@@ -65,26 +97,12 @@ func (c *llmClient) SetProviderDefault(ctx context.Context, tenantID, correlatio
 	return c.sendJSON(ctx, tenantID, correlationID, "POST", fmt.Sprintf("/api/v1/llm/providers/%s/default", id), nil, 200)
 }
 
-func (c *llmClient) ListClientAPIKeys(ctx context.Context, tenantID, correlationID string) (json.RawMessage, error) {
-	return c.getRaw(ctx, tenantID, correlationID, "/api/v1/llm/api-keys", nil)
-}
-
-func (c *llmClient) CreateClientAPIKey(ctx context.Context, tenantID, correlationID string, body any) (json.RawMessage, error) {
-	return c.sendJSON(ctx, tenantID, correlationID, "POST", "/api/v1/llm/api-keys", body, 201)
-}
-
-func (c *llmClient) SetClientAPIKeyEnabled(ctx context.Context, tenantID, correlationID, id string, enabled bool) (json.RawMessage, error) {
-	action := "enable"
-	if !enabled {
-		action = "disable"
-	}
-	return c.sendJSON(ctx, tenantID, correlationID, "POST", fmt.Sprintf("/api/v1/llm/api-keys/%s/%s", id, action), nil, 200)
-}
-
 func (c *llmClient) Complete(ctx context.Context, tenantID, companyID, correlationID string, body any) (json.RawMessage, error) {
-	req := c.headers(ctx, c.httpClient.R(), tenantID, correlationID).
-		SetHeader("X-Company-Id", companyID).
-		SetBody(body)
+	req, err := c.headers(ctx, c.httpClient.R(), tenantID, correlationID)
+	if err != nil {
+		return nil, err
+	}
+	req.SetHeader("X-Company-Id", companyID).SetBody(body)
 	resp, err := req.Post(c.baseURL + "/api/v1/llm/complete")
 	if err != nil {
 		return nil, MapNetworkError(err, "llm gateway")
@@ -97,7 +115,11 @@ func (c *llmClient) Complete(ctx context.Context, tenantID, companyID, correlati
 
 func (c *llmClient) ListUsage(ctx context.Context, tenantID, correlationID string, query map[string]string) (appdto.PaginatedLlmUsageResponse, error) {
 	var out appdto.PaginatedLlmUsageResponse
-	req := c.headers(ctx, c.httpClient.R(), tenantID, correlationID).SetResult(&out)
+	req, err := c.headers(ctx, c.httpClient.R(), tenantID, correlationID)
+	if err != nil {
+		return appdto.PaginatedLlmUsageResponse{}, err
+	}
+	req.SetResult(&out)
 	for key, value := range query {
 		if value != "" {
 			req.SetQueryParam(key, value)
@@ -115,9 +137,11 @@ func (c *llmClient) ListUsage(ctx context.Context, tenantID, correlationID strin
 
 func (c *llmClient) GetUsage(ctx context.Context, tenantID, correlationID, id string) (appdto.LlmUsageResponse, error) {
 	var out appdto.LlmUsageResponse
-	resp, err := c.headers(ctx, c.httpClient.R(), tenantID, correlationID).
-		SetResult(&out).
-		Get(c.baseURL + "/api/v1/llm/usage/" + id)
+	req, err := c.headers(ctx, c.httpClient.R(), tenantID, correlationID)
+	if err != nil {
+		return appdto.LlmUsageResponse{}, err
+	}
+	resp, err := req.SetResult(&out).Get(c.baseURL + "/api/v1/llm/usage/" + id)
 	if err != nil {
 		return appdto.LlmUsageResponse{}, MapNetworkError(err, "llm gateway")
 	}
@@ -152,7 +176,10 @@ func (c *llmClient) ListAlertFirings(ctx context.Context, tenantID, correlationI
 }
 
 func (c *llmClient) getRaw(ctx context.Context, tenantID, correlationID, path string, query map[string]string) (json.RawMessage, error) {
-	req := c.headers(ctx, c.httpClient.R(), tenantID, correlationID)
+	req, err := c.headers(ctx, c.httpClient.R(), tenantID, correlationID)
+	if err != nil {
+		return nil, err
+	}
 	for key, value := range query {
 		if value != "" {
 			req.SetQueryParam(key, value)
@@ -169,12 +196,14 @@ func (c *llmClient) getRaw(ctx context.Context, tenantID, correlationID, path st
 }
 
 func (c *llmClient) sendJSON(ctx context.Context, tenantID, correlationID, method, path string, body any, want int) (json.RawMessage, error) {
-	req := c.headers(ctx, c.httpClient.R(), tenantID, correlationID)
+	req, err := c.headers(ctx, c.httpClient.R(), tenantID, correlationID)
+	if err != nil {
+		return nil, err
+	}
 	if body != nil {
 		req.SetBody(body)
 	}
 	var resp *resty.Response
-	var err error
 	url := c.baseURL + path
 	switch method {
 	case "POST":

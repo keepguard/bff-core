@@ -12,7 +12,18 @@ import (
 	"go.uber.org/zap"
 )
 
-func TestLlmClientForwardsInboundBearer(t *testing.T) {
+type stubServiceTokens struct {
+	token     string
+	err       error
+	companyID string
+}
+
+func (s *stubServiceTokens) GetToken(_ context.Context, companyID string) (string, error) {
+	s.companyID = companyID
+	return s.token, s.err
+}
+
+func TestLlmClientSendsServiceToken(t *testing.T) {
 	var gotAuth string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotAuth = r.Header.Get("Authorization")
@@ -24,16 +35,38 @@ func TestLlmClientForwardsInboundBearer(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
+	tokens := &stubServiceTokens{token: "Bearer bff-service-jwt"}
 	c := httpclient.NewLlmClient(&config.Config{
 		Services: config.ServicesConfig{Llm: config.ServiceConfig{BaseURL: srv.URL}},
-	}, zap.NewNop())
+	}, tokens, zap.NewNop())
 
+	// O token de quem está logado no backoffice não vai para o gateway.
 	ctx := domainclient.WithBearerToken(context.Background(), "user-jwt")
+	ctx = domainclient.WithCompanyID(ctx, "company-1")
 	_, err := c.ListProviders(ctx, "tenant-1", "corr-1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if gotAuth != "Bearer user-jwt" {
+	if gotAuth != "Bearer bff-service-jwt" {
 		t.Fatalf("Authorization=%q", gotAuth)
+	}
+	if tokens.companyID != "company-1" {
+		t.Fatalf("companyID=%q", tokens.companyID)
+	}
+}
+
+func TestLlmClientFailsWithoutCompanyInContext(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		t.Error("gateway não deveria ser chamado sem company resolvida")
+		w.WriteHeader(http.StatusOK)
+	}))
+	t.Cleanup(srv.Close)
+
+	c := httpclient.NewLlmClient(&config.Config{
+		Services: config.ServicesConfig{Llm: config.ServiceConfig{BaseURL: srv.URL}},
+	}, &stubServiceTokens{token: "Bearer x"}, zap.NewNop())
+
+	if _, err := c.ListProviders(context.Background(), "tenant-1", "corr-1"); err == nil {
+		t.Fatal("esperava erro sem company no contexto")
 	}
 }

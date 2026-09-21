@@ -35,15 +35,6 @@ func (s *stubLlmClient) SetProviderEnabled(context.Context, string, string, stri
 func (s *stubLlmClient) SetProviderDefault(context.Context, string, string, string) (json.RawMessage, error) {
 	return json.RawMessage(`{"id":"p1","isDefault":true}`), nil
 }
-func (s *stubLlmClient) ListClientAPIKeys(context.Context, string, string) (json.RawMessage, error) {
-	return json.RawMessage(`[]`), nil
-}
-func (s *stubLlmClient) CreateClientAPIKey(context.Context, string, string, any) (json.RawMessage, error) {
-	return json.RawMessage(`{"id":"k1","apiKey":"kg_test"}`), nil
-}
-func (s *stubLlmClient) SetClientAPIKeyEnabled(context.Context, string, string, string, bool) (json.RawMessage, error) {
-	return json.RawMessage(`{"id":"k1","enabled":true}`), nil
-}
 func (s *stubLlmClient) Complete(context.Context, string, string, string, any) (json.RawMessage, error) {
 	return json.RawMessage(`{"content":"ok"}`), nil
 }
@@ -125,7 +116,9 @@ func (s *capturingLlmClient) CreateProvider(ctx context.Context, _, _ string, _ 
 	return json.RawMessage(`{"id":"p1"}`), nil
 }
 
-func TestCreateLlmProviderHandler_ForwardsInboundBearer(t *testing.T) {
+// O gateway LLM é chamado com a identidade de serviço do BFF, então o token de
+// quem está logado não pode vazar no contexto do client de saída.
+func TestCreateLlmProviderHandler_DoesNotForwardInboundBearer(t *testing.T) {
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/core/llm/providers", strings.NewReader(`{"name":"openai"}`))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
@@ -138,7 +131,7 @@ func TestCreateLlmProviderHandler_ForwardsInboundBearer(t *testing.T) {
 	if err := h.CreateLlmProviderHandler(c); err != nil {
 		t.Fatal(err)
 	}
-	if stub.gotBearer != "user-jwt" {
+	if stub.gotBearer != "" {
 		t.Fatalf("bearer=%q", stub.gotBearer)
 	}
 }

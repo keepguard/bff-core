@@ -52,13 +52,6 @@ type ListAlertFiringsQuery struct {
 	Filters map[string]string
 }
 
-type ClientAPIKeyCommand struct {
-	TenantQuery
-	ID      string
-	Enabled bool
-	Body    any
-}
-
 type LlmPort interface {
 	ListProviders(ctx context.Context, query TenantQuery) (json.RawMessage, error)
 	CreateProvider(ctx context.Context, cmd ProviderIDCommand) (json.RawMessage, error)
@@ -73,9 +66,6 @@ type LlmPort interface {
 	UpdateAlertRule(ctx context.Context, cmd AlertRuleCommand) (json.RawMessage, error)
 	SetAlertRuleEnabled(ctx context.Context, cmd AlertRuleCommand) (json.RawMessage, error)
 	ListAlertFirings(ctx context.Context, query ListAlertFiringsQuery) (json.RawMessage, error)
-	ListClientAPIKeys(ctx context.Context, query TenantQuery) (json.RawMessage, error)
-	CreateClientAPIKey(ctx context.Context, cmd ClientAPIKeyCommand) (json.RawMessage, error)
-	SetClientAPIKeyEnabled(ctx context.Context, cmd ClientAPIKeyCommand) (json.RawMessage, error)
 }
 
 type service struct {
@@ -185,25 +175,4 @@ func (s *service) ListAlertFirings(ctx context.Context, query ListAlertFiringsQu
 		return nil, err
 	}
 	return s.client.ListAlertFirings(ctx, query.TenantID, query.CorrelationID, query.Filters)
-}
-
-func (s *service) ListClientAPIKeys(ctx context.Context, query TenantQuery) (json.RawMessage, error) {
-	if err := s.require(); err != nil {
-		return nil, err
-	}
-	return s.client.ListClientAPIKeys(ctx, query.TenantID, query.CorrelationID)
-}
-
-func (s *service) CreateClientAPIKey(ctx context.Context, cmd ClientAPIKeyCommand) (json.RawMessage, error) {
-	if err := s.require(); err != nil {
-		return nil, err
-	}
-	return s.client.CreateClientAPIKey(ctx, cmd.TenantID, cmd.CorrelationID, cmd.Body)
-}
-
-func (s *service) SetClientAPIKeyEnabled(ctx context.Context, cmd ClientAPIKeyCommand) (json.RawMessage, error) {
-	if err := s.require(); err != nil {
-		return nil, err
-	}
-	return s.client.SetClientAPIKeyEnabled(ctx, cmd.TenantID, cmd.CorrelationID, cmd.ID, cmd.Enabled)
 }

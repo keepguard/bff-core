@@ -53,24 +53,6 @@ func (d *decorated) SetProviderDefault(ctx context.Context, tenantID, correlatio
 	})
 }
 
-func (d *decorated) ListClientAPIKeys(ctx context.Context, tenantID, correlationID string) (json.RawMessage, error) {
-	return observe.Call(d.cfg, "ListClientAPIKeys", "GET", "/llm/api-keys", correlationID, func() (json.RawMessage, error) {
-		return d.inner.ListClientAPIKeys(ctx, tenantID, correlationID)
-	})
-}
-
-func (d *decorated) CreateClientAPIKey(ctx context.Context, tenantID, correlationID string, body any) (json.RawMessage, error) {
-	return observe.Call(d.cfg, "CreateClientAPIKey", "POST", "/llm/api-keys", correlationID, func() (json.RawMessage, error) {
-		return d.inner.CreateClientAPIKey(ctx, tenantID, correlationID, body)
-	})
-}
-
-func (d *decorated) SetClientAPIKeyEnabled(ctx context.Context, tenantID, correlationID, id string, enabled bool) (json.RawMessage, error) {
-	return observe.Call(d.cfg, "SetClientAPIKeyEnabled", "POST", "/llm/api-keys/{id}/enabled", correlationID, func() (json.RawMessage, error) {
-		return d.inner.SetClientAPIKeyEnabled(ctx, tenantID, correlationID, id, enabled)
-	})
-}
-
 func (d *decorated) Complete(ctx context.Context, tenantID, companyID, correlationID string, body any) (json.RawMessage, error) {
 	return observe.Call(d.cfg, "Complete", "POST", "/llm/complete", correlationID, func() (json.RawMessage, error) {
 		return d.inner.Complete(ctx, tenantID, companyID, correlationID, body)

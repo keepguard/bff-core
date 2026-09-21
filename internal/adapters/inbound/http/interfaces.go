@@ -70,10 +70,6 @@ type Handler interface {
 	EnableLlmProviderHandler(c echo.Context) error
 	DisableLlmProviderHandler(c echo.Context) error
 	SetLlmProviderDefaultHandler(c echo.Context) error
-	ListLlmClientAPIKeysHandler(c echo.Context) error
-	CreateLlmClientAPIKeyHandler(c echo.Context) error
-	EnableLlmClientAPIKeyHandler(c echo.Context) error
-	DisableLlmClientAPIKeyHandler(c echo.Context) error
 	CompleteLlmHandler(c echo.Context) error
 	ListLlmUsageHandler(c echo.Context) error
 	GetLlmUsageHandler(c echo.Context) error
