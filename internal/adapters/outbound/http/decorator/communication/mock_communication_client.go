@@ -2,6 +2,7 @@ package communication
 
 import (
 	"context"
+
 	appdto "github.com/keepguard/bff-core/internal/application/dto"
 
 	communicationDto "github.com/keepguard/bff-core/internal/adapters/outbound/http/dto/communication"

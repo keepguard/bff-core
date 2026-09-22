@@ -6,7 +6,7 @@ import (
 
 	middlewarePkg "github.com/keepguard/bff-core/internal/adapters/inbound/http/middleware"
 	client "github.com/keepguard/bff-core/internal/application/port"
-	auditport "github.com/keepguard/bff-core/internal/domain/ports/audit"
+	outport "github.com/keepguard/bff-core/internal/application/port/out"
 	"github.com/keepguard/bff-core/internal/infrastructure/clientip"
 	"github.com/keepguard/bff-core/internal/infrastructure/config"
 	"github.com/keepguard/bff-core/internal/infrastructure/logger"
@@ -42,7 +42,7 @@ func NewServer(
 	rateLimiter *middlewarePkg.RateLimiterMiddleware,
 	redisClient *redis.Client,
 	companyClient client.CompanyClient,
-	auditPublisher auditport.EventPublisher,
+	auditPublisher outport.EventPublisher,
 ) Server {
 	e := echo.New()
 	e.HideBanner = true

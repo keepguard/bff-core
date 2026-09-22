@@ -183,4 +183,3 @@ func DefaultConfig(service string) CircuitBreakerConfig {
 		},
 	}
 }
-

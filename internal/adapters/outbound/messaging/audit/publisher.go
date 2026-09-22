@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	auditport "github.com/keepguard/bff-core/internal/domain/ports/audit"
+	outport "github.com/keepguard/bff-core/internal/application/port/out"
 	"github.com/keepguard/bff-core/internal/infrastructure/config"
 	"github.com/wagslane/go-rabbitmq"
 	"go.uber.org/zap"
@@ -19,7 +19,7 @@ type publisher struct {
 	logger    *zap.Logger
 }
 
-func NewPublisher(cfg *config.RabbitMQConfig, logger *zap.Logger) (auditport.EventPublisher, error) {
+func NewPublisher(cfg *config.RabbitMQConfig, logger *zap.Logger) (outport.EventPublisher, error) {
 	if cfg == nil || !cfg.Audit.Enabled || cfg.Audit.Exchange == "" {
 		return noopPublisher{}, nil
 	}
@@ -56,12 +56,12 @@ func NewPublisher(cfg *config.RabbitMQConfig, logger *zap.Logger) (auditport.Eve
 	}
 	routing := cfg.Audit.RoutingKey
 	if routing == "" {
-		routing = "audit.event"
+		routing = "outport.event"
 	}
 	return &publisher{publisher: pub, conn: conn, exchange: cfg.Audit.Exchange, routing: routing, logger: logger}, nil
 }
 
-func (p *publisher) Publish(_ context.Context, event auditport.Event) {
+func (p *publisher) Publish(_ context.Context, event outport.Event) {
 	go func() {
 		body, err := json.Marshal(event)
 		if err != nil {
@@ -100,5 +100,5 @@ func (p *publisher) Close() error {
 
 type noopPublisher struct{}
 
-func (noopPublisher) Publish(context.Context, auditport.Event) {}
-func (noopPublisher) Close() error                             { return nil }
+func (noopPublisher) Publish(context.Context, outport.Event) {}
+func (noopPublisher) Close() error                           { return nil }

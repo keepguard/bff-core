@@ -196,4 +196,3 @@ func (m *Metrics) Handler() http.Handler {
 		DisableCompression: true,
 	})
 }
-

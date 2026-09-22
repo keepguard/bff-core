@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/keepguard/bff-core/internal/domain/ports/messaging"
+	outport "github.com/keepguard/bff-core/internal/application/port/out"
 	"github.com/keepguard/bff-core/internal/infrastructure/config"
 	"github.com/wagslane/go-rabbitmq"
 	"go.uber.org/zap"
@@ -19,7 +19,7 @@ type messagePublisher struct {
 }
 
 // NewMessagePublisher cria uma nova instância do MessagePublisher
-func NewMessagePublisher(cfg *config.RabbitMQConfig, logger *zap.Logger) (messaging.MessagePublisher, error) {
+func NewMessagePublisher(cfg *config.RabbitMQConfig, logger *zap.Logger) (outport.MessagePublisher, error) {
 	// Configurar conexão RabbitMQ
 	conn, err := rabbitmq.NewConn(
 		fmt.Sprintf("amqp://%s:%s@%s:%d%s", cfg.User, cfg.Password, cfg.Host, cfg.Port, cfg.VHost),
@@ -61,7 +61,7 @@ func NewMessagePublisher(cfg *config.RabbitMQConfig, logger *zap.Logger) (messag
 }
 
 // PublishMessage publica uma mensagem na fila RabbitMQ
-func (p *messagePublisher) PublishMessage(ctx context.Context, message messaging.MessageDTO) error {
+func (p *messagePublisher) PublishMessage(ctx context.Context, message outport.MessageDTO) error {
 	// Serializar mensagem para JSON
 	messageBytes, err := json.Marshal(message)
 	if err != nil {

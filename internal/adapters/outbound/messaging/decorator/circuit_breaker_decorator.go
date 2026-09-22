@@ -5,17 +5,17 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/sony/gobreaker"
 	communicationDto "github.com/keepguard/bff-core/internal/adapters/outbound/http/dto/communication"
 	client "github.com/keepguard/bff-core/internal/application/port"
-	"github.com/keepguard/bff-core/internal/domain/ports/messaging"
+	outport "github.com/keepguard/bff-core/internal/application/port/out"
 	"github.com/keepguard/bff-core/internal/infrastructure/resilience"
+	"github.com/sony/gobreaker"
 	"go.uber.org/zap"
 )
 
 // circuitBreakerDecorator implementa MessagePublisher com circuit breaker e fallback HTTP
 type circuitBreakerDecorator struct {
-	inner               messaging.MessagePublisher
+	inner               outport.MessagePublisher
 	circuitBreaker      *gobreaker.CircuitBreaker
 	communicationClient client.CommunicationClient
 	logger              *zap.Logger
@@ -23,12 +23,12 @@ type circuitBreakerDecorator struct {
 
 // NewCircuitBreakerDecorator cria um novo decorator de circuit breaker
 func NewCircuitBreakerDecorator(
-	inner messaging.MessagePublisher,
+	inner outport.MessagePublisher,
 	cbManager *resilience.CircuitBreakerManager,
 	communicationClient client.CommunicationClient,
 	logger *zap.Logger,
-) messaging.MessagePublisher {
-	
+) outport.MessagePublisher {
+
 	// Configurar circuit breaker específico para RabbitMQ
 	cbConfig := resilience.CircuitBreakerConfig{
 		Name:        "rabbitmq-message-publisher",
@@ -53,7 +53,7 @@ func NewCircuitBreakerDecorator(
 }
 
 // PublishMessage implementa PublishMessage com circuit breaker e fallback
-func (d *circuitBreakerDecorator) PublishMessage(ctx context.Context, message messaging.MessageDTO) error {
+func (d *circuitBreakerDecorator) PublishMessage(ctx context.Context, message outport.MessageDTO) error {
 	// Tentar publicar via RabbitMQ primeiro
 	result, err := d.circuitBreaker.Execute(func() (interface{}, error) {
 		return nil, d.inner.PublishMessage(ctx, message)
@@ -82,7 +82,7 @@ func (d *circuitBreakerDecorator) PublishMessage(ctx context.Context, message me
 }
 
 // publishViaHTTPFallback publica mensagem via HTTP como fallback
-func (d *circuitBreakerDecorator) publishViaHTTPFallback(ctx context.Context, message messaging.MessageDTO) error {
+func (d *circuitBreakerDecorator) publishViaHTTPFallback(ctx context.Context, message outport.MessageDTO) error {
 	// Converter MessageDTO para SendMessageRequestDTO
 	request := communicationDto.SendMessageRequestDTO{
 		MessageType:       message.MessageType,

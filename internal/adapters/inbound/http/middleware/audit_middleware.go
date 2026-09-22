@@ -8,12 +8,12 @@ import (
 	"time"
 
 	client "github.com/keepguard/bff-core/internal/application/port"
-	auditport "github.com/keepguard/bff-core/internal/domain/ports/audit"
+	outport "github.com/keepguard/bff-core/internal/application/port/out"
 	"github.com/keepguard/bff-core/internal/pkg"
 	"github.com/labstack/echo/v4"
 )
 
-func AuditMiddleware(publisher auditport.EventPublisher, sourceService string) echo.MiddlewareFunc {
+func AuditMiddleware(publisher outport.EventPublisher, sourceService string) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			err := next(c)
@@ -40,7 +40,7 @@ func AuditMiddleware(publisher auditport.EventPublisher, sourceService string) e
 				outcome = "DENIED"
 			}
 			codeUser, tenantID, companyID, deviceID := auditIdentity(c)
-			event := auditport.Event{
+			event := outport.Event{
 				EventID:       newAuditUUID(),
 				OccurredAt:    time.Now().UTC().Format(time.RFC3339),
 				SchemaVersion: 1,
@@ -49,24 +49,24 @@ func AuditMiddleware(publisher auditport.EventPublisher, sourceService string) e
 				RequestID:     c.Response().Header().Get(echo.HeaderXRequestID),
 				TenantID:      tenantID,
 				CompanyID:     companyID,
-				Actor: auditport.Actor{
+				Actor: outport.Actor{
 					Type:     actorType(codeUser),
 					CodeUser: codeUser,
 					ClientIP: c.RealIP(),
 					DeviceID: deviceID,
 				},
 				Action:   mapAuditAction(c.Request().Method, path),
-				Resource: auditport.Resource{Type: "HTTP", ID: path},
+				Resource: outport.Resource{Type: "HTTP", ID: path},
 				Outcome:  outcome,
 				Metadata: map[string]any{"method": c.Request().Method, "status": status},
 			}
 			if strings.Contains(path, "/core/audits/") || strings.HasPrefix(path, "/api/v1/audits/") {
 				event.Action = "AUDIT_READ"
-				event.Resource = auditport.Resource{Type: "AUDIT_EVENT", ID: strings.TrimSpace(c.Param("eventId"))}
+				event.Resource = outport.Resource{Type: "AUDIT_EVENT", ID: strings.TrimSpace(c.Param("eventId"))}
 			}
 			if strings.Contains(path, "/oauth/clients/") && c.Request().Method == http.MethodGet {
 				event.Action = "OAUTH_CLIENT_READ"
-				event.Resource = auditport.Resource{Type: "OAUTH_CLIENT", ID: strings.TrimSpace(c.Param("id"))}
+				event.Resource = outport.Resource{Type: "OAUTH_CLIENT", ID: strings.TrimSpace(c.Param("id"))}
 			}
 			publisher.Publish(c.Request().Context(), event)
 			return err

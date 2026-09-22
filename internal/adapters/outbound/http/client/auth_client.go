@@ -150,7 +150,7 @@ func (c *authClient) CreateUser(ctx context.Context, req authDto.AuthUserCreateR
 		CodeUser:       req.CodeUser,
 		CompanyID:      req.CompanyID,
 		CompanyCode:    req.CompanyCode,
-		TenantId:   req.TenantId,
+		TenantId:       req.TenantId,
 	}
 
 	resp, err := c.httpClient.R().

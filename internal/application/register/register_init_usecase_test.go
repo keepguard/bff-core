@@ -8,7 +8,7 @@ import (
 	companyDto "github.com/keepguard/bff-core/internal/adapters/outbound/http/dto/company"
 	userDto "github.com/keepguard/bff-core/internal/adapters/outbound/http/dto/user"
 	appdto "github.com/keepguard/bff-core/internal/application/dto"
-	"github.com/keepguard/bff-core/internal/domain/ports/messaging"
+	outport "github.com/keepguard/bff-core/internal/application/port/out"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"go.uber.org/zap"
@@ -324,8 +324,8 @@ func TestRegisterInitUseCase_Execute_VerifyRequestData(t *testing.T) {
 	}), "test-app", "corr-123").Return(registerResponse, nil)
 
 	// Capture the message request to verify template variables
-	var capturedMessage messaging.MessageDTO
-	mockMessagePublisher.On("PublishMessage", mock.Anything, mock.MatchedBy(func(req messaging.MessageDTO) bool {
+	var capturedMessage outport.MessageDTO
+	mockMessagePublisher.On("PublishMessage", mock.Anything, mock.MatchedBy(func(req outport.MessageDTO) bool {
 		capturedMessage = req
 		return req.MessageType == "EMAIL" &&
 			req.CommunicationType == "EMAIL" &&

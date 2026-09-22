@@ -102,4 +102,3 @@ func (c *consentDocumentClient) FindAllPublished(ctx context.Context, token, ten
 
 	return documents, nil
 }
-

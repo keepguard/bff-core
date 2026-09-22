@@ -70,4 +70,3 @@ func UserAgent(userAgent string) zap.Field {
 func ResponseSize(size int) zap.Field {
 	return zap.Int("responseSize", size)
 }
-

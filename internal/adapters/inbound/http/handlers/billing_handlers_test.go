@@ -564,5 +564,3 @@ func TestDeleteBillingPlanHandler_Success(t *testing.T) {
 		t.Fatalf("expected status 204, got %d", rec.Code)
 	}
 }
-
-

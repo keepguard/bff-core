@@ -4,18 +4,18 @@ import (
 	"context"
 	"time"
 
-	"github.com/keepguard/bff-core/internal/domain/ports/messaging"
+	outport "github.com/keepguard/bff-core/internal/application/port/out"
 	"go.uber.org/zap"
 )
 
 // loggingDecorator implementa MessagePublisher com logging
 type loggingDecorator struct {
-	inner  messaging.MessagePublisher
+	inner  outport.MessagePublisher
 	logger *zap.Logger
 }
 
 // NewLoggingDecorator cria um novo decorator de logging
-func NewLoggingDecorator(inner messaging.MessagePublisher, logger *zap.Logger) messaging.MessagePublisher {
+func NewLoggingDecorator(inner outport.MessagePublisher, logger *zap.Logger) outport.MessagePublisher {
 	return &loggingDecorator{
 		inner:  inner,
 		logger: logger,
@@ -23,7 +23,7 @@ func NewLoggingDecorator(inner messaging.MessagePublisher, logger *zap.Logger) m
 }
 
 // PublishMessage implementa PublishMessage com logging
-func (d *loggingDecorator) PublishMessage(ctx context.Context, message messaging.MessageDTO) error {
+func (d *loggingDecorator) PublishMessage(ctx context.Context, message outport.MessageDTO) error {
 	start := time.Now()
 
 	d.logger.Info("Iniciando publicação de mensagem",

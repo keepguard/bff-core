@@ -3,8 +3,9 @@ package client
 import (
 	"context"
 	"fmt"
-	appdto "github.com/keepguard/bff-core/internal/application/dto"
 	"time"
+
+	appdto "github.com/keepguard/bff-core/internal/application/dto"
 
 	"github.com/go-resty/resty/v2"
 	communicationDto "github.com/keepguard/bff-core/internal/adapters/outbound/http/dto/communication"

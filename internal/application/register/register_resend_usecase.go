@@ -6,8 +6,8 @@ import (
 
 	appdto "github.com/keepguard/bff-core/internal/application/dto"
 	client "github.com/keepguard/bff-core/internal/application/port"
+	outport "github.com/keepguard/bff-core/internal/application/port/out"
 	"github.com/keepguard/bff-core/internal/domain/enums"
-	"github.com/keepguard/bff-core/internal/domain/ports/messaging"
 	"go.uber.org/zap"
 )
 
@@ -19,7 +19,7 @@ type registerResendUseCaseImpl struct {
 	userClient          client.UserClient
 	companyClient       client.CompanyClient
 	communicationClient client.CommunicationClient
-	messagePublisher    messaging.MessagePublisher
+	messagePublisher    outport.MessagePublisher
 	logger              *zap.Logger
 }
 
@@ -27,7 +27,7 @@ func NewRegisterResendUseCase(
 	userClient client.UserClient,
 	companyClient client.CompanyClient,
 	communicationClient client.CommunicationClient,
-	messagePublisher messaging.MessagePublisher,
+	messagePublisher outport.MessagePublisher,
 	logger *zap.Logger,
 ) RegisterResendUseCase {
 	return &registerResendUseCaseImpl{
@@ -76,7 +76,7 @@ func (uc *registerResendUseCaseImpl) Execute(ctx context.Context, command appdto
 	}
 
 	// Passo 4: Enviar email com token usando novo template RESEND
-	messageReq := messaging.MessageDTO{
+	messageReq := outport.MessageDTO{
 		TenantId:          command.TenantId,
 		CorrelationID:     command.CorrelationID,
 		XCorrelationID:    command.CorrelationID,

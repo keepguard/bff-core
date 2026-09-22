@@ -3,7 +3,7 @@ package register
 import (
 	"context"
 
-	"github.com/keepguard/bff-core/internal/domain/ports/messaging"
+	outport "github.com/keepguard/bff-core/internal/application/port/out"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -13,7 +13,7 @@ type MockMessagePublisher struct {
 }
 
 // PublishMessage implementa MessagePublisher.PublishMessage
-func (m *MockMessagePublisher) PublishMessage(ctx context.Context, message messaging.MessageDTO) error {
+func (m *MockMessagePublisher) PublishMessage(ctx context.Context, message outport.MessageDTO) error {
 	args := m.Called(ctx, message)
 	return args.Error(0)
 }

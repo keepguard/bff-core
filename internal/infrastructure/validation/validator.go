@@ -208,4 +208,3 @@ func getValidationMessage(fe validator.FieldError) string {
 		return fmt.Sprintf("%s é inválido", fe.Field())
 	}
 }
-
