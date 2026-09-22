@@ -5,8 +5,8 @@ import (
 	"errors"
 	"testing"
 
-	companyDto "github.com/keepguard/bff-core/internal/adapters/outbound/http/dto/company"
-	userDto "github.com/keepguard/bff-core/internal/adapters/outbound/http/dto/user"
+	companyDto "github.com/keepguard/bff-core/internal/adapters/out/http/dto/company"
+	userDto "github.com/keepguard/bff-core/internal/adapters/out/http/dto/user"
 	appdto "github.com/keepguard/bff-core/internal/application/dto"
 	outport "github.com/keepguard/bff-core/internal/application/port/out"
 	"github.com/stretchr/testify/assert"
