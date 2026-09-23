@@ -34,6 +34,11 @@
 #   O build roda emulado em amd64 e leva minutos. Antes ele acontecia em toda
 #   execução, inclusive quando você só queria versionar. Agora só roda quando
 #   você pede — ou quando é necessário (prod/up).
+#
+# AMBIENTE DE BUILD
+#   O script cuida sozinho: quando precisa buildar, sobe a VM que compila
+#   amd64 (vz + Rosetta), prepara o builder e devolve o contexto Docker no
+#   fim — inclusive se der erro no meio. Você não precisa rodar nada antes.
 # =============================================================================
 
 set -euo pipefail
@@ -96,6 +101,47 @@ restore_branch() {
     fi
 }
 trap restore_branch EXIT
+
+# O build precisa de uma VM que compile amd64. A VM de desenvolvimento usa
+# QEMU e o compilador Go emulado sobre ela corrompe a memoria — o build morre
+# com erro diferente a cada execucao. Por isso trocamos para o perfil `build`
+# (vz + Rosetta) e devolvemos o contexto no fim.
+CONTEXTO_ORIGINAL=""
+
+preparar_ambiente_build() {
+    CONTEXTO_ORIGINAL=$(docker context show 2>/dev/null || echo "")
+
+    if ! colima status --profile build >/dev/null 2>&1; then
+        log_step "Subindo o ambiente de build (vz + Rosetta)..."
+        colima start --profile build \
+            --cpu 6 --memory 8 --disk 60 \
+            --arch aarch64 --vm-type vz --vz-rosetta \
+            --mount-type virtiofs --dns 8.8.8.8 >/dev/null
+    fi
+
+    docker context use colima-build >/dev/null 2>&1
+
+    # O builder do buildx fica preso no contexto antigo quando a VM muda
+    # ("unable to parse docker host"). Recria se estiver quebrado ou sem amd64.
+    if ! docker buildx inspect keepguard-multiarch >/dev/null 2>&1 || \
+       ! docker buildx inspect keepguard-multiarch 2>/dev/null | grep -q "linux/amd64"; then
+        docker buildx rm keepguard-multiarch >/dev/null 2>&1 || true
+        docker run --privileged --rm tonistiigi/binfmt:latest --install all >/dev/null 2>&1 || true
+        docker buildx create --name keepguard-multiarch \
+            --driver docker-container \
+            --platform linux/amd64,linux/arm64 \
+            --use --bootstrap >/dev/null 2>&1 || true
+    fi
+
+    log_info "Ambiente de build pronto."
+}
+
+restaurar_contexto() {
+    if [ -n "$CONTEXTO_ORIGINAL" ] && [ "$CONTEXTO_ORIGINAL" != "colima-build" ]; then
+        docker context use "$CONTEXTO_ORIGINAL" >/dev/null 2>&1 || true
+        log_info "Contexto Docker devolvido para '${CONTEXTO_ORIGINAL}'."
+    fi
+}
 
 # -----------------------------------------------------------------------------
 # 1. Commit e push na branch ativa
@@ -186,13 +232,15 @@ echo
 # 4. Build e push da imagem
 # -----------------------------------------------------------------------------
 if [ "$DO_BUILD" = true ]; then
+    preparar_ambiente_build
+
     # O build sai de um snapshot do COMMIT (git archive), não da árvore de
     # trabalho. Sem isso, o script já voltou para a branch de trabalho antes
     # de buildar e publicaria uma imagem etiquetada com o SHA da main
     # contendo o código da develop.
     BUILD_CTX=$(mktemp -d)
     # shellcheck disable=SC2064
-    trap "rm -rf '${BUILD_CTX}'; restore_branch" EXIT
+    trap "rm -rf '${BUILD_CTX}'; restaurar_contexto; restore_branch" EXIT
 
     log_step "3/5 Preparando contexto a partir de ${BUILD_REF} (${BUILD_SHA})..."
     git archive "${BUILD_REF}" | tar -x -C "${BUILD_CTX}"
@@ -219,7 +267,7 @@ if [ "$DO_BUILD" = true ]; then
     log_success "Publicado no GHCR"
 
     rm -rf "${BUILD_CTX}"
-    trap restore_branch EXIT
+    trap 'restaurar_contexto; restore_branch' EXIT
 else
     log_info "Build de imagem não solicitado. Use 'build', 'up' ou 'prod' para construir."
 fi
