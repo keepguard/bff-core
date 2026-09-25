@@ -230,8 +230,54 @@ func (h *BillingHandlers) LookupBillingUserHandler(c echo.Context) error {
 
 func (h *BillingHandlers) CancelBillingSubscriptionHandler(c echo.Context) error {
 	id := c.Param("id")
+	// Corte imediato é decisão de operação; o titular sempre agenda para o fim da vigência.
+	immediate := strings.EqualFold(strings.TrimSpace(c.QueryParam("immediate")), "true")
 	return h.proxy(c, http.StatusOK, func(ctx echo.Context, scope port.BillingScope) (json.RawMessage, error) {
-		return h.billing.CancelSubscription(ctx.Request().Context(), scope, id)
+		return h.billing.CancelSubscription(ctx.Request().Context(), scope, id, immediate && scope.Admin)
+	})
+}
+
+func (h *BillingHandlers) PreviewBillingPlanChangeHandler(c echo.Context) error {
+	id := c.Param("id")
+	query := billingListQuery(c, "planCode", "interval")
+	return h.proxy(c, http.StatusOK, func(ctx echo.Context, scope port.BillingScope) (json.RawMessage, error) {
+		return h.billing.PreviewPlanChange(ctx.Request().Context(), scope, id, query)
+	})
+}
+
+func (h *BillingHandlers) ChangeBillingPlanHandler(c echo.Context) error {
+	body, err := bindBillingJSON(c)
+	if err != nil {
+		return err
+	}
+	if c.Response().Committed {
+		return nil
+	}
+	id := c.Param("id")
+	scope, unavailable := h.guard(c)
+	if unavailable != nil {
+		return unavailable
+	}
+	claims := middlewarePkg.GetClaimsFromContext(c)
+	// Mesma regra do subscribe: quem só opera a organização não troca plano de ninguém.
+	if claims != nil && pkg.HasAnyRole(claims.Roles, "MANAGER") && !pkg.HasAnyRole(claims.Roles, "ADMIN", "SYSTEM") {
+		return handleError(c, pkg.NewAppError(
+			"BILLING_PAYER_OPS",
+			"Quem opera a organização não troca de plano",
+			http.StatusForbidden,
+		), scope.CorrelationID)
+	}
+	result, callErr := h.billing.ChangePlan(c.Request().Context(), scope, id, body)
+	if callErr != nil {
+		return handleError(c, callErr, scope.CorrelationID)
+	}
+	return writeRaw(c, http.StatusOK, result)
+}
+
+func (h *BillingHandlers) ClearBillingScheduledChangeHandler(c echo.Context) error {
+	id := c.Param("id")
+	return h.proxy(c, http.StatusOK, func(ctx echo.Context, scope port.BillingScope) (json.RawMessage, error) {
+		return h.billing.ClearScheduledChange(ctx.Request().Context(), scope, id)
 	})
 }
 

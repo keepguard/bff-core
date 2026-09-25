@@ -106,8 +106,24 @@ func (c *billingClient) GrantLifetimeSubscription(ctx context.Context, scope dom
 	return c.send(ctx, scope, "POST", "/api/v1/billing/subscriptions/grant-lifetime", body, 201)
 }
 
-func (c *billingClient) CancelSubscription(ctx context.Context, scope domainclient.BillingScope, id string) (json.RawMessage, error) {
-	return c.send(ctx, scope, "POST", "/api/v1/billing/subscriptions/"+id+"/cancel", nil, 200)
+func (c *billingClient) CancelSubscription(ctx context.Context, scope domainclient.BillingScope, id string, immediate bool) (json.RawMessage, error) {
+	path := "/api/v1/billing/subscriptions/" + id + "/cancel"
+	if immediate {
+		path += "?immediate=true"
+	}
+	return c.send(ctx, scope, "POST", path, nil, 200)
+}
+
+func (c *billingClient) PreviewPlanChange(ctx context.Context, scope domainclient.BillingScope, id string, query map[string]string) (json.RawMessage, error) {
+	return c.get(ctx, scope, "/api/v1/billing/subscriptions/"+id+"/change-preview", query)
+}
+
+func (c *billingClient) ChangePlan(ctx context.Context, scope domainclient.BillingScope, id string, body any) (json.RawMessage, error) {
+	return c.send(ctx, scope, "POST", "/api/v1/billing/subscriptions/"+id+"/change-plan", body, 200)
+}
+
+func (c *billingClient) ClearScheduledChange(ctx context.Context, scope domainclient.BillingScope, id string) (json.RawMessage, error) {
+	return c.send(ctx, scope, "DELETE", "/api/v1/billing/subscriptions/"+id+"/scheduled-change", nil, 200)
 }
 
 func (c *billingClient) ListInvoices(ctx context.Context, scope domainclient.BillingScope, query map[string]string) (json.RawMessage, error) {

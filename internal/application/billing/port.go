@@ -23,7 +23,10 @@ type BillingPort interface {
 	GetSubscription(ctx context.Context, scope port.BillingScope) (json.RawMessage, error)
 	CreateSubscription(ctx context.Context, scope port.BillingScope, body any) (json.RawMessage, int, error)
 	GrantLifetimeSubscription(ctx context.Context, scope port.BillingScope, body any) (json.RawMessage, error)
-	CancelSubscription(ctx context.Context, scope port.BillingScope, id string) (json.RawMessage, error)
+	CancelSubscription(ctx context.Context, scope port.BillingScope, id string, immediate bool) (json.RawMessage, error)
+	PreviewPlanChange(ctx context.Context, scope port.BillingScope, id string, query map[string]string) (json.RawMessage, error)
+	ChangePlan(ctx context.Context, scope port.BillingScope, id string, body any) (json.RawMessage, error)
+	ClearScheduledChange(ctx context.Context, scope port.BillingScope, id string) (json.RawMessage, error)
 	ListInvoices(ctx context.Context, scope port.BillingScope, query map[string]string) (json.RawMessage, error)
 	ListEntitlements(ctx context.Context, scope port.BillingScope, query map[string]string) (json.RawMessage, error)
 	GetInvoice(ctx context.Context, scope port.BillingScope, id string) (json.RawMessage, error)
@@ -147,11 +150,32 @@ func (s *service) GrantLifetimeSubscription(ctx context.Context, scope port.Bill
 	return s.client.GrantLifetimeSubscription(ctx, scope, body)
 }
 
-func (s *service) CancelSubscription(ctx context.Context, scope port.BillingScope, id string) (json.RawMessage, error) {
+func (s *service) CancelSubscription(ctx context.Context, scope port.BillingScope, id string, immediate bool) (json.RawMessage, error) {
 	if err := s.require(); err != nil {
 		return nil, err
 	}
-	return s.client.CancelSubscription(ctx, scope, id)
+	return s.client.CancelSubscription(ctx, scope, id, immediate)
+}
+
+func (s *service) PreviewPlanChange(ctx context.Context, scope port.BillingScope, id string, query map[string]string) (json.RawMessage, error) {
+	if err := s.require(); err != nil {
+		return nil, err
+	}
+	return s.client.PreviewPlanChange(ctx, scope, id, query)
+}
+
+func (s *service) ChangePlan(ctx context.Context, scope port.BillingScope, id string, body any) (json.RawMessage, error) {
+	if err := s.require(); err != nil {
+		return nil, err
+	}
+	return s.client.ChangePlan(ctx, scope, id, body)
+}
+
+func (s *service) ClearScheduledChange(ctx context.Context, scope port.BillingScope, id string) (json.RawMessage, error) {
+	if err := s.require(); err != nil {
+		return nil, err
+	}
+	return s.client.ClearScheduledChange(ctx, scope, id)
 }
 
 func (s *service) ListInvoices(ctx context.Context, scope port.BillingScope, query map[string]string) (json.RawMessage, error) {

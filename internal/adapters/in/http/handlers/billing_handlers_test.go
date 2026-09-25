@@ -84,8 +84,17 @@ func (s *stubBillingClient) CreateSubscription(_ context.Context, _ port.Billing
 func (s *stubBillingClient) GrantLifetimeSubscription(context.Context, port.BillingScope, any) (json.RawMessage, error) {
 	return json.RawMessage(`{"status":"active","planCode":"VIP","interval":"lifetime"}`), nil
 }
-func (s *stubBillingClient) CancelSubscription(context.Context, port.BillingScope, string) (json.RawMessage, error) {
+func (s *stubBillingClient) CancelSubscription(context.Context, port.BillingScope, string, bool) (json.RawMessage, error) {
 	return json.RawMessage(`{"status":"canceled"}`), nil
+}
+func (s *stubBillingClient) PreviewPlanChange(context.Context, port.BillingScope, string, map[string]string) (json.RawMessage, error) {
+	return json.RawMessage(`{"type":"upgrade","chargeCents":1000,"creditCents":900}`), nil
+}
+func (s *stubBillingClient) ChangePlan(context.Context, port.BillingScope, string, any) (json.RawMessage, error) {
+	return json.RawMessage(`{"status":"active"}`), nil
+}
+func (s *stubBillingClient) ClearScheduledChange(context.Context, port.BillingScope, string) (json.RawMessage, error) {
+	return json.RawMessage(`{"status":"active"}`), nil
 }
 func (s *stubBillingClient) ListInvoices(context.Context, port.BillingScope, map[string]string) (json.RawMessage, error) {
 	return json.RawMessage(`{"items":[],"page":0,"size":20,"totalElements":0,"totalPages":0}`), nil

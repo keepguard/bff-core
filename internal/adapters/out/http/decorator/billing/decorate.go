@@ -116,9 +116,27 @@ func (d *decorated) GrantLifetimeSubscription(ctx context.Context, scope port.Bi
 	})
 }
 
-func (d *decorated) CancelSubscription(ctx context.Context, scope port.BillingScope, id string) (json.RawMessage, error) {
+func (d *decorated) CancelSubscription(ctx context.Context, scope port.BillingScope, id string, immediate bool) (json.RawMessage, error) {
 	return observe.Call(d.cfg, "CancelSubscription", "POST", "/billing/subscriptions/{id}/cancel", scope.CorrelationID, func() (json.RawMessage, error) {
-		return d.inner.CancelSubscription(ctx, scope, id)
+		return d.inner.CancelSubscription(ctx, scope, id, immediate)
+	})
+}
+
+func (d *decorated) PreviewPlanChange(ctx context.Context, scope port.BillingScope, id string, query map[string]string) (json.RawMessage, error) {
+	return observe.Call(d.cfg, "PreviewPlanChange", "GET", "/billing/subscriptions/{id}/change-preview", scope.CorrelationID, func() (json.RawMessage, error) {
+		return d.inner.PreviewPlanChange(ctx, scope, id, query)
+	})
+}
+
+func (d *decorated) ChangePlan(ctx context.Context, scope port.BillingScope, id string, body any) (json.RawMessage, error) {
+	return observe.Call(d.cfg, "ChangePlan", "POST", "/billing/subscriptions/{id}/change-plan", scope.CorrelationID, func() (json.RawMessage, error) {
+		return d.inner.ChangePlan(ctx, scope, id, body)
+	})
+}
+
+func (d *decorated) ClearScheduledChange(ctx context.Context, scope port.BillingScope, id string) (json.RawMessage, error) {
+	return observe.Call(d.cfg, "ClearScheduledChange", "DELETE", "/billing/subscriptions/{id}/scheduled-change", scope.CorrelationID, func() (json.RawMessage, error) {
+		return d.inner.ClearScheduledChange(ctx, scope, id)
 	})
 }
 

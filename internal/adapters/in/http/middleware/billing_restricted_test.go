@@ -59,7 +59,16 @@ func (m *mockBillingClientForMiddleware) CreateSubscription(ctx context.Context,
 func (m *mockBillingClientForMiddleware) GrantLifetimeSubscription(ctx context.Context, scope domainclient.BillingScope, body any) (json.RawMessage, error) {
 	return nil, nil
 }
-func (m *mockBillingClientForMiddleware) CancelSubscription(ctx context.Context, scope domainclient.BillingScope, id string) (json.RawMessage, error) {
+func (m *mockBillingClientForMiddleware) CancelSubscription(ctx context.Context, scope domainclient.BillingScope, id string, immediate bool) (json.RawMessage, error) {
+	return nil, nil
+}
+func (m *mockBillingClientForMiddleware) PreviewPlanChange(ctx context.Context, scope domainclient.BillingScope, id string, query map[string]string) (json.RawMessage, error) {
+	return nil, nil
+}
+func (m *mockBillingClientForMiddleware) ChangePlan(ctx context.Context, scope domainclient.BillingScope, id string, body any) (json.RawMessage, error) {
+	return nil, nil
+}
+func (m *mockBillingClientForMiddleware) ClearScheduledChange(ctx context.Context, scope domainclient.BillingScope, id string) (json.RawMessage, error) {
 	return nil, nil
 }
 func (m *mockBillingClientForMiddleware) ListInvoices(ctx context.Context, scope domainclient.BillingScope, query map[string]string) (json.RawMessage, error) {
