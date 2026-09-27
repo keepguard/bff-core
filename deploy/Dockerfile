@@ -8,13 +8,15 @@ RUN apk add --no-cache git
 
 # Copiar arquivos de dependências
 COPY go.mod go.sum ./
-RUN go mod download
+RUN --mount=type=cache,target=/go/pkg/mod go mod download
 
 # Copiar código fonte
 COPY . .
 
 # Build da aplicação e do utilitário de healthcheck
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -installsuffix cgo -o bff-core cmd/bff-core/main.go \
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -installsuffix cgo -o bff-core cmd/bff-core/main.go \
     && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -installsuffix cgo -o healthcheck deploy/healthcheck/main.go
 
 # Runtime stage

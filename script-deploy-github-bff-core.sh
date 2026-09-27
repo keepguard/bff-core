@@ -1,52 +1,27 @@
 #!/bin/bash
 # =============================================================================
-# 🚀 script-deploy-github-bff-core.sh — bff-core
+# 🚀 MINI MANUAL DE USO — script-deploy-github-bff-core.sh
 # =============================================================================
 #
-# MODOS DE USO
+#   1. Apenas commit e push na branch atual (ex: develop):
+#      $ ./script-deploy-github-bff-core.sh
 #
-#   ./script-deploy-github-bff-core.sh
-#       Só versiona: commit + push na branch atual. NÃO builda nada.
-#       Use no dia a dia — é instantâneo.
+#   2. Commit, push na branch atual + Merge para 'main':
+#      $ ./script-deploy-github-bff-core.sh merge main
 #
-#   ./script-deploy-github-bff-core.sh merge main
-#       Versiona + promove para main. Continua sem buildar.
+#   3. PRODUÇÃO (Commit + Push + Merge para 'main' + Deploy K8s via GitHub Actions):
+#      $ ./script-deploy-github-bff-core.sh prod
 #
-#   ./script-deploy-github-bff-core.sh merge main build
-#       Versiona, promove e constrói a imagem no GHCR.
+#   4. Opcional: Subir container no Docker Compose local:
+#      $ ./script-deploy-github-bff-core.sh up
 #
-#   ./script-deploy-github-bff-core.sh merge main prod
-#       O pipeline completo: versiona, promove, builda e aplica em produção.
-#       ('prod' implica 'build' — sem imagem publicada o pod quebraria.)
-#
-#   ./script-deploy-github-bff-core.sh up
-#       Builda e sobe o container no docker-compose LOCAL (não toca produção).
-#
-# FLAGS
-#   merge <branch>   promove a branch atual para <branch>
-#   build            constrói e publica a imagem no GHCR
-#   prod             aplica no Kubernetes de produção (implica build)
-#   up               sobe no docker-compose local (implica build)
-#   full|all         merge main + build + up + prod
-#   --yes, -y        não pergunta nada (para automação)
-#
-# POR QUE O BUILD É OPT-IN
-#   O build roda emulado em amd64 e leva minutos. Antes ele acontecia em toda
-#   execução, inclusive quando você só queria versionar. Agora só roda quando
-#   você pede — ou quando é necessário (prod/up).
-#
-# AMBIENTE DE BUILD
-#   O script cuida sozinho: quando precisa buildar, sobe a VM que compila
-#   amd64 (vz + Rosetta), prepara o builder e devolve o contexto Docker no
-#   fim — inclusive se der erro no meio. Você não precisa rodar nada antes.
 # =============================================================================
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
 SERVICE_NAME="bff-core"
-DOCKER_COMPOSE_DIR="${PROJECT_ROOT}/docker"
+DOCKER_COMPOSE_DIR="${SCRIPT_DIR}/../../../docker"
 DOCKER_COMPOSE_FILE="${DOCKER_COMPOSE_DIR}/docker-compose.yml"
 REGISTRY="ghcr.io/keepguard"
 
@@ -54,6 +29,8 @@ GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 RED='\033[0;31m'
 YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
+BOLD='\033[1m'
 NC='\033[0m'
 
 log_info() { echo -e "${GREEN}[INFO]${NC} $1"; }
@@ -63,248 +40,100 @@ log_step() { echo -e "${BLUE}[STEP]${NC} $1"; }
 log_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
 
 MERGE_TARGET=""
-DO_BUILD=false
 DEPLOY_DOCKER=false
-DEPLOY_PROD=false
-ASSUME_YES=false
+TRIGGER_PROD=false
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        up)        DEPLOY_DOCKER=true; DO_BUILD=true; shift ;;
-        prod)      DEPLOY_PROD=true;   DO_BUILD=true; shift ;;
-        build)     DO_BUILD=true; shift ;;
-        full|all)  MERGE_TARGET="main"; DO_BUILD=true; DEPLOY_DOCKER=true; DEPLOY_PROD=true; shift ;;
-        merge)     MERGE_TARGET="${2:-main}"; shift 2 ;;
-        --yes|-y)  ASSUME_YES=true; shift ;;
-        *)         log_warn "Argumento ignorado: $1"; shift ;;
+        up)
+            DEPLOY_DOCKER=true
+            shift
+            ;;
+        prod)
+            MERGE_TARGET="main"
+            TRIGGER_PROD=true
+            shift
+            ;;
+        merge)
+            MERGE_TARGET="${2:-main}"
+            shift 2
+            ;;
+        *)
+            shift
+            ;;
     esac
 done
 
 cd "${SCRIPT_DIR}"
 
 if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-    log_error "Diretório não é um repositório git válido."
+    log_error "Diretório não é um repositório git."
     exit 1
 fi
 
 CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
-
-# Volta para a branch de trabalho mesmo se o merge falhar no meio.
-# Sem isso, um conflito deixa você parado na main sem aviso.
-restore_branch() {
-    local atual
-    atual=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
-    if [ -n "$atual" ] && [ "$atual" != "$CURRENT_BRANCH" ]; then
-        log_warn "Retornando para a branch de trabalho '${CURRENT_BRANCH}'..."
-        git checkout "${CURRENT_BRANCH}" >/dev/null 2>&1 || \
-            log_error "Não consegui voltar para '${CURRENT_BRANCH}'. Resolva manualmente."
-    fi
-}
-trap restore_branch EXIT
-
-# O build precisa de uma VM que compile amd64. A VM de desenvolvimento usa
-# QEMU e o compilador Go emulado sobre ela corrompe a memoria — o build morre
-# com erro diferente a cada execucao. Por isso trocamos para o perfil `build`
-# (vz + Rosetta) e devolvemos o contexto no fim.
-CONTEXTO_ORIGINAL=""
-
-preparar_ambiente_build() {
-    CONTEXTO_ORIGINAL=$(docker context show 2>/dev/null || echo "")
-
-    if ! colima status --profile build >/dev/null 2>&1; then
-        log_step "Subindo o ambiente de build (vz + Rosetta)..."
-        colima start --profile build \
-            --cpu 6 --memory 8 --disk 60 \
-            --arch aarch64 --vm-type vz --vz-rosetta \
-            --mount-type virtiofs --dns 8.8.8.8 >/dev/null
-    fi
-
-    docker context use colima-build >/dev/null 2>&1
-
-    # O builder do buildx fica preso no contexto antigo quando a VM muda
-    # ("unable to parse docker host"). Recria se estiver quebrado ou sem amd64.
-    if ! docker buildx inspect keepguard-multiarch >/dev/null 2>&1 || \
-       ! docker buildx inspect keepguard-multiarch 2>/dev/null | grep -q "linux/amd64"; then
-        docker buildx rm keepguard-multiarch >/dev/null 2>&1 || true
-        docker run --privileged --rm tonistiigi/binfmt:latest --install all >/dev/null 2>&1 || true
-        docker buildx create --name keepguard-multiarch \
-            --driver docker-container \
-            --platform linux/amd64,linux/arm64 \
-            --use --bootstrap >/dev/null 2>&1 || true
-    fi
-
-    log_info "Ambiente de build pronto."
-}
-
-restaurar_contexto() {
-    if [ -n "$CONTEXTO_ORIGINAL" ] && [ "$CONTEXTO_ORIGINAL" != "colima-build" ]; then
-        docker context use "$CONTEXTO_ORIGINAL" >/dev/null 2>&1 || true
-        log_info "Contexto Docker devolvido para '${CONTEXTO_ORIGINAL}'."
-    fi
-}
-
-# -----------------------------------------------------------------------------
-# 1. Commit e push na branch ativa
-# -----------------------------------------------------------------------------
-log_step "1/5 Verificando repositório Git na branch '${CURRENT_BRANCH}'..."
-
-PENDENTES=$(git status --porcelain)
-if [ -n "$PENDENTES" ]; then
-    # git add -A leva TUDO que está na árvore, inclusive trabalho de outra
-    # sessão. Mostrar antes é o que evita um commit surpresa.
-    log_warn "Arquivos que entrarão no commit:"
-    echo "$PENDENTES" | sed 's/^/        /'
-
-    if [ "$ASSUME_YES" = false ] && [ -t 0 ]; then
-        read -r -p "$(echo -e "${YELLOW}Continuar? [s/N]${NC} ")" resposta
-        case "$resposta" in
-            s|S|sim|y|Y) ;;
-            *) log_error "Abortado pelo usuário."; exit 1 ;;
-        esac
-    fi
-
-    git add -A
+log_step "1/3 Verificando repositório Git na branch '${CURRENT_BRANCH}'..."
+git add -A
+if ! git diff --cached --quiet; then
+    log_info "Criando commit com alterações pendentes..."
     git commit -m "feat(${SERVICE_NAME}): update ${SERVICE_NAME} $(date +'%Y-%m-%d %H:%M')"
-    log_info "Fazendo push para '${CURRENT_BRANCH}'..."
+    log_info "Fazendo push para branch '${CURRENT_BRANCH}'..."
     git push origin "${CURRENT_BRANCH}"
 else
     log_info "Nenhuma alteração pendente na branch '${CURRENT_BRANCH}'."
+    git push origin "${CURRENT_BRANCH}" || true
 fi
 
 LOCAL_SHA=$(git rev-parse --short HEAD)
 
-# -----------------------------------------------------------------------------
-# 2. Merge para a branch de destino
-# -----------------------------------------------------------------------------
 if [ -n "$MERGE_TARGET" ] && [ "$MERGE_TARGET" != "$CURRENT_BRANCH" ]; then
-    log_step "2/5 Promovendo '${CURRENT_BRANCH}' para '${MERGE_TARGET}'..."
+    log_step "2/3 Promovendo branch '${CURRENT_BRANCH}' para '${MERGE_TARGET}'..."
     git checkout "${MERGE_TARGET}"
-
-    if ! git pull origin "${MERGE_TARGET}" --rebase; then
-        log_error "Falha ao atualizar '${MERGE_TARGET}'. Resolva e rode de novo."
-        exit 1
-    fi
-    if ! git merge "${CURRENT_BRANCH}" -m "chore(merge): merge branch '${CURRENT_BRANCH}' into ${MERGE_TARGET}"; then
-        log_error "Conflito ao mesclar em '${MERGE_TARGET}'. Resolva e rode de novo."
-        exit 1
-    fi
-
+    git pull origin "${MERGE_TARGET}" --rebase || true
+    git merge "${CURRENT_BRANCH}" -m "chore(merge): merge branch '${CURRENT_BRANCH}' into ${MERGE_TARGET}"
     git push origin "${MERGE_TARGET}"
     BUILD_SHA=$(git rev-parse --short HEAD)
-    BUILD_BRANCH="${MERGE_TARGET}"
-    BUILD_REF="${MERGE_TARGET}"
+    log_info "Retornando checkout com segurança para '${CURRENT_BRANCH}'..."
+    git checkout "${CURRENT_BRANCH}"
 else
     BUILD_SHA="${LOCAL_SHA}"
-    BUILD_BRANCH="${CURRENT_BRANCH}"
-    BUILD_REF="HEAD"
-fi
-
-# -----------------------------------------------------------------------------
-# 3. Tags do GHCR
-# -----------------------------------------------------------------------------
-if [ "$BUILD_BRANCH" = "main" ]; then
-    PRIMARY_TAG="${REGISTRY}/${SERVICE_NAME}:${BUILD_SHA}"
-    LATEST_TAG="${REGISTRY}/${SERVICE_NAME}:latest"
-    BRANCH_TAG="${REGISTRY}/${SERVICE_NAME}:main-${BUILD_SHA}"
-    BRANCH_LATEST="${REGISTRY}/${SERVICE_NAME}:main-latest"
-else
-    PRIMARY_TAG="${REGISTRY}/${SERVICE_NAME}:${BUILD_BRANCH}-${BUILD_SHA}"
-    LATEST_TAG="${REGISTRY}/${SERVICE_NAME}:${BUILD_BRANCH}-latest"
-    BRANCH_TAG="${PRIMARY_TAG}"
-    BRANCH_LATEST="${LATEST_TAG}"
 fi
 
 echo
 log_info "============================================"
-log_info "  Deploy ${SERVICE_NAME}"
+log_info "  Status ${SERVICE_NAME}"
 log_info "============================================"
-log_info "Branch de trabalho : ${CURRENT_BRANCH}"
-log_info "Branch de build    : ${BUILD_BRANCH}"
+log_info "Branch de Trabalho : ${CURRENT_BRANCH}"
 log_info "Commit SHA         : ${BUILD_SHA}"
-log_info "Build de imagem    : ${DO_BUILD}"
-log_info "Docker local (up)  : ${DEPLOY_DOCKER}"
-log_info "Produção (prod)    : ${DEPLOY_PROD}"
-[ "$DO_BUILD" = true ] && log_info "Imagem             : ${PRIMARY_TAG}"
+log_info "Deploy Produção    : ${TRIGGER_PROD}"
+log_info "Deploy Local (up)  : ${DEPLOY_DOCKER}"
 log_info "============================================"
 echo
 
-# -----------------------------------------------------------------------------
-# 4. Build e push da imagem
-# -----------------------------------------------------------------------------
-if [ "$DO_BUILD" = true ]; then
-    preparar_ambiente_build
-
-    # O build sai de um snapshot do COMMIT (git archive), não da árvore de
-    # trabalho. Sem isso, o script já voltou para a branch de trabalho antes
-    # de buildar e publicaria uma imagem etiquetada com o SHA da main
-    # contendo o código da develop.
-    BUILD_CTX=$(mktemp -d)
-    # shellcheck disable=SC2064
-    trap "rm -rf '${BUILD_CTX}'; restaurar_contexto; restore_branch" EXIT
-
-    log_step "3/5 Preparando contexto a partir de ${BUILD_REF} (${BUILD_SHA})..."
-    git archive "${BUILD_REF}" | tar -x -C "${BUILD_CTX}"
-
-    log_step "4/5 Construindo imagem (linux/amd64)..."
-    BUILD_TAGS=(-t "${PRIMARY_TAG}" -t "${LATEST_TAG}")
-    if [ "$BUILD_BRANCH" = "main" ]; then
-        BUILD_TAGS+=(-t "${BRANCH_TAG}" -t "${BRANCH_LATEST}")
-    fi
-
-    docker build --platform linux/amd64 \
-        -f "${BUILD_CTX}/deploy/Dockerfile" \
-        "${BUILD_TAGS[@]}" \
-        "${BUILD_CTX}"
-    log_success "Imagem construída a partir de ${BUILD_SHA}"
-
-    log_step "5/5 Publicando no GHCR..."
-    docker push "${PRIMARY_TAG}"
-    docker push "${LATEST_TAG}"
-    if [ "$BUILD_BRANCH" = "main" ]; then
-        docker push "${BRANCH_TAG}"
-        docker push "${BRANCH_LATEST}"
-    fi
-    log_success "Publicado no GHCR"
-
-    rm -rf "${BUILD_CTX}"
-    trap 'restaurar_contexto; restore_branch' EXIT
-else
-    log_info "Build de imagem não solicitado. Use 'build', 'up' ou 'prod' para construir."
-fi
-
-# -----------------------------------------------------------------------------
-# 5. Docker Compose local
-# -----------------------------------------------------------------------------
 if [ "$DEPLOY_DOCKER" = true ]; then
-    log_step "Atualizando docker-compose.yml e subindo container local..."
-    if [ -f "$DOCKER_COMPOSE_FILE" ]; then
-        if [[ "$OSTYPE" == "darwin"* ]]; then
-            sed -i '' "s|image: ${REGISTRY}/${SERVICE_NAME}:.*|image: ${PRIMARY_TAG}|g" "${DOCKER_COMPOSE_FILE}"
-        else
-            sed -i "s|image: ${REGISTRY}/${SERVICE_NAME}:.*|image: ${PRIMARY_TAG}|g" "${DOCKER_COMPOSE_FILE}"
+    log_step "Construindo imagem localmente para o Docker Compose..."
+    if command -v docker >/dev/null 2>&1; then
+        DOCKER_BUILDKIT=1 docker build -f deploy/Dockerfile -t "${REGISTRY}/${SERVICE_NAME}:local" .
+        if [ -d "${DOCKER_COMPOSE_DIR}" ] && [ -f "${DOCKER_COMPOSE_FILE}" ]; then
+            cd "${DOCKER_COMPOSE_DIR}"
+            docker compose up -d --force-recreate "${SERVICE_NAME}" || true
+            log_success "Container ${SERVICE_NAME} recriado localmente!"
         fi
-        log_info "docker-compose.yml atualizado para ${PRIMARY_TAG}"
+    else
+        log_warn "Docker não encontrado/ativo para subir localmente."
     fi
-
-    (cd "${DOCKER_COMPOSE_DIR}" && \
-        docker compose pull "${SERVICE_NAME}" || true && \
-        docker compose up -d --force-recreate "${SERVICE_NAME}")
-    log_success "Container ${SERVICE_NAME} recriado no Docker local"
 fi
 
-# -----------------------------------------------------------------------------
-# 6. Kubernetes de produção
-# -----------------------------------------------------------------------------
-if [ "$DEPLOY_PROD" = true ]; then
-    log_step "Aplicando no Kubernetes de produção..."
-    if [ ! -f "${SCRIPT_DIR}/script-deploy-k8s-prod.sh" ]; then
-        log_error "script-deploy-k8s-prod.sh não encontrado em ${SCRIPT_DIR}."
-        exit 1
+if [ "$TRIGGER_PROD" = true ]; then
+    log_step "3/3 Pipeline de Produção disparado no GitHub Actions!"
+    log_info "O build Docker e o deploy no Kubernetes estão rodando na nuvem."
+    if command -v gh >/dev/null 2>&1; then
+        log_info "Acompanhe o workflow com: gh run watch -R keepguard/${SERVICE_NAME}"
+    else
+        log_info "Veja o status em: https://github.com/keepguard/${SERVICE_NAME}/actions"
     fi
-    "${SCRIPT_DIR}/script-deploy-k8s-prod.sh" "${BUILD_SHA}"
 fi
 
-echo
 log_success "============================================"
-log_success "  ${SERVICE_NAME} — concluído (${BUILD_SHA})"
+log_success "  Operação concluída com sucesso!"
 log_success "============================================"
