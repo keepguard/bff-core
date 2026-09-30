@@ -62,6 +62,11 @@ spec:
             secretKeyRef:
               name: keepguard-secret
               key: AUTH_CLIENT_SECRET_BASE
+        - name: BFF_CORE_JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: keepguard-secret
+              key: JWT_SECRET
         - name: KEEPGUARD_VALIDATION_MODERATION_ENABLED
           value: "false"
         ports:

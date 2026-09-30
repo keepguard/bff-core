@@ -76,7 +76,7 @@ rabbitmq:
     durable: true
 
 jwt:
-  secret: "Q2FjaG9ycm8gU2VndXJhbmNhIFByb2pldG8gS2VlcEd1YXJkIQ=="
+  # secret vem só de env BFF_CORE_JWT_SECRET (Secret K8s), nunca hardcoded aqui
   issuer: "keepguard"
   audience: "keepguard-api"
 
