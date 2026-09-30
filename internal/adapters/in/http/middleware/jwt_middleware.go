@@ -95,28 +95,58 @@ func (j *JWTMiddleware) Middleware() echo.MiddlewareFunc {
 				codeUserNorm := strings.ToLower(strings.TrimSpace(codeUser))
 
 				if codeUserNorm != "" {
-					// 1. Checar se o token ainda existe no Redis (se foi deslogado/revogado)
-					loginTokenKey := fmt.Sprintf("tokenlogin:%s:%s", codeUserNorm, token)
-					ctx, cancel := context.WithTimeout(c.Request().Context(), 500*time.Millisecond)
-					exists, err := j.redisClient.Exists(ctx, loginTokenKey).Result()
-					cancel()
-					if err != nil {
-						j.logger.Warn("Falha ao consultar tokenlogin no Redis (bypass ativo)",
-							zap.String("correlationId", correlationID),
-							zap.String("codeUser", codeUser),
-							zap.Error(err),
-						)
-					} else if exists == 0 {
-						j.logger.Warn("Requisição rejeitada pelo BFF: Token revogado ou inexistente no Redis",
-							zap.String("correlationId", correlationID),
-							zap.String("codeUser", codeUser),
-							zap.String("path", c.Path()),
-						)
-						return c.JSON(http.StatusUnauthorized, pkg.ErrorResponse{
-							Error:         "TOKEN_REVOKED",
-							Message:       "Sessão revogada ou expirada. Por favor, realize login novamente.",
-							CorrelationID: correlationID,
-						})
+					if claims.SID != "" {
+						// Sessão nova (Fase 1): revogação é por sid, não por token exato.
+						// Isso permite que outras abas com o mesmo access token continuem
+						// válidas até o JWT expirar (15min), mesmo depois de um refresh
+						// em outra aba — só logout/revogação explícita derruba a sessão.
+						sessionRevokedKey := fmt.Sprintf("session:revoked:%s", claims.SID)
+						ctx, cancel := context.WithTimeout(c.Request().Context(), 500*time.Millisecond)
+						revoked, err := j.redisClient.Exists(ctx, sessionRevokedKey).Result()
+						cancel()
+						if err != nil {
+							j.logger.Warn("Falha ao consultar revogação de sessão no Redis (bypass ativo)",
+								zap.String("correlationId", correlationID),
+								zap.String("codeUser", codeUser),
+								zap.Error(err),
+							)
+						} else if revoked > 0 {
+							j.logger.Warn("Requisição rejeitada pelo BFF: Sessão revogada",
+								zap.String("correlationId", correlationID),
+								zap.String("codeUser", codeUser),
+								zap.String("sid", claims.SID),
+								zap.String("path", c.Path()),
+							)
+							return c.JSON(http.StatusUnauthorized, pkg.ErrorResponse{
+								Error:         "TOKEN_REVOKED",
+								Message:       "Sessão revogada ou expirada. Por favor, realize login novamente.",
+								CorrelationID: correlationID,
+							})
+						}
+					} else {
+						// Fluxo legado (JWT sem claim sid): mantém a checagem por token exato.
+						loginTokenKey := fmt.Sprintf("tokenlogin:%s:%s", codeUserNorm, token)
+						ctx, cancel := context.WithTimeout(c.Request().Context(), 500*time.Millisecond)
+						exists, err := j.redisClient.Exists(ctx, loginTokenKey).Result()
+						cancel()
+						if err != nil {
+							j.logger.Warn("Falha ao consultar tokenlogin no Redis (bypass ativo)",
+								zap.String("correlationId", correlationID),
+								zap.String("codeUser", codeUser),
+								zap.Error(err),
+							)
+						} else if exists == 0 {
+							j.logger.Warn("Requisição rejeitada pelo BFF: Token revogado ou inexistente no Redis",
+								zap.String("correlationId", correlationID),
+								zap.String("codeUser", codeUser),
+								zap.String("path", c.Path()),
+							)
+							return c.JSON(http.StatusUnauthorized, pkg.ErrorResponse{
+								Error:         "TOKEN_REVOKED",
+								Message:       "Sessão revogada ou expirada. Por favor, realize login novamente.",
+								CorrelationID: correlationID,
+							})
+						}
 					}
 
 					// 2. Checar se o dispositivo está na Blacklist
@@ -227,6 +257,9 @@ func (j *JWTMiddleware) validateTokenLocal(tokenString, tenantIdHeader string) (
 	}
 	if jti, ok := mapClaims["jti"].(string); ok {
 		claims.JTI = jti
+	}
+	if sid, ok := mapClaims["sid"].(string); ok {
+		claims.SID = sid
 	}
 	claims.Roles = stringSliceFromClaim(mapClaims["roles"])
 	claims.Authorities = stringSliceFromClaim(mapClaims["authorities"])
