@@ -168,9 +168,9 @@ log_success "Binários compilados com sucesso em .bin/"
 # 3. Build da Imagem Docker (linux/amd64)
 log_step "3/5 Construindo imagem Docker (linux/amd64)..."
 if [ "$BUILD_BRANCH" = "main" ]; then
-    docker build --platform linux/amd64 -f deploy/Dockerfile.local -t "${PRIMARY_TAG}" -t "${LATEST_TAG}" -t "${BRANCH_TAG}" -t "${BRANCH_LATEST}" .
+    docker build -f deploy/Dockerfile.local -t "${PRIMARY_TAG}" -t "${LATEST_TAG}" -t "${BRANCH_TAG}" -t "${BRANCH_LATEST}" .
 else
-    docker build --platform linux/amd64 -f deploy/Dockerfile.local -t "${PRIMARY_TAG}" -t "${LATEST_TAG}" .
+    docker build -f deploy/Dockerfile.local -t "${PRIMARY_TAG}" -t "${LATEST_TAG}" .
 fi
 log_success "Imagem Docker construída com sucesso"
 
