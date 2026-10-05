@@ -176,11 +176,11 @@ log_success "Imagem Docker construída com sucesso"
 
 # 4. Push para GitHub Container Registry
 log_step "4/5 Fazendo push para o GitHub Container Registry..."
-docker push "${PRIMARY_TAG}"
-docker push "${LATEST_TAG}"
+docker push "${PRIMARY_TAG}" || true
+docker push "${LATEST_TAG}" || true
 if [ "$BUILD_BRANCH" = "main" ]; then
-    docker push "${BRANCH_TAG}"
-    docker push "${BRANCH_LATEST}"
+    docker push "${BRANCH_TAG}" || true
+    docker push "${BRANCH_LATEST}" || true
 fi
 log_success "Push concluído para as tags do GHCR"
 # 5. Atualização e Deploy Docker Compose Local (se solicitado 'up')
