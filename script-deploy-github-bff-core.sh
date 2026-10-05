@@ -158,11 +158,14 @@ log_info "Deploy Docker Local: ${DEPLOY_DOCKER}"
 log_info "Imagem Tag         : ${PRIMARY_TAG}"
 log_info "Imagem Latest      : ${LATEST_TAG}"
 log_info "============================================"
+# Em 'up' (Docker local) compila na arquitetura do host para evitar QEMU; demais modos seguem amd64 (K8s).
+GO_ARCH=amd64
+[ "$DEPLOY_DOCKER" = true ] && GO_ARCH=$(go env GOHOSTARCH)
 # 2. Compilação dos binários nativamente em linux/amd64
 log_step "2/5 Compilando binários Go (linux/amd64)..."
 mkdir -p .bin
-CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o .bin/bff-core cmd/bff-core/main.go
-CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o .bin/healthcheck deploy/healthcheck/main.go
+CGO_ENABLED=0 GOOS=linux GOARCH=${GO_ARCH} go build -o .bin/bff-core cmd/bff-core/main.go
+CGO_ENABLED=0 GOOS=linux GOARCH=${GO_ARCH} go build -o .bin/healthcheck deploy/healthcheck/main.go
 log_success "Binários compilados com sucesso em .bin/"
 
 # 3. Build da Imagem Docker (linux/amd64)
