@@ -78,6 +78,7 @@ func TestMiddleware_Security(t *testing.T) {
 	req.Header.Set("X-Caller-Admin", "true")
 	req.Header.Set("X-Client-IP", "1.2.3.4")
 	req.Header.Set("X-Public-IP", "5.6.7.8")
+	req.Header.Set("X-User-ID", "forjado-pelo-cliente")
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 
@@ -91,6 +92,9 @@ func TestMiddleware_Security(t *testing.T) {
 		}
 		if c.Request().Header.Get("X-Public-IP") != "" {
 			t.Fatal("expected X-Public-IP to be stripped")
+		}
+		if GetUserID(c) != "" {
+			t.Fatal("expected X-User-ID to be stripped (só vale vindo de JWT validado)")
 		}
 		return c.String(http.StatusOK, "ok")
 	})

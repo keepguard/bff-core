@@ -327,7 +327,9 @@ func TestRegisterInitUseCase_Execute_VerifyRequestData(t *testing.T) {
 	var capturedMessage outport.MessageDTO
 	mockMessagePublisher.On("PublishMessage", mock.Anything, mock.MatchedBy(func(req outport.MessageDTO) bool {
 		capturedMessage = req
-		return req.MessageType == "EMAIL" &&
+		// companyId = id da company resolvida ("company-123"), nunca o tenantId ("test-app")
+		return req.CompanyID == "company-123" &&
+			req.MessageType == "EMAIL" &&
 			req.CommunicationType == "EMAIL" &&
 			req.TemplateType == "AUTENTICACAO_EMAIL_TOKEN" &&
 			req.Recipient == "test@example.com" &&

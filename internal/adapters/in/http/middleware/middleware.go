@@ -213,6 +213,10 @@ func (m *middlewareImpl) SecurityMiddleware() echo.MiddlewareFunc {
 			c.Request().Header.Del("X-Caller-Admin")
 			c.Request().Header.Del("X-Client-IP")
 			c.Request().Header.Del("X-Public-IP")
+			// X-User-ID só vale quando vem de um JWT validado (SetUserID): aceito do
+			// cliente, virava a chave do rate limit e trocar o valor furava o limite
+			// de login/cadastro.
+			c.Request().Header.Del("X-User-ID")
 
 			// Adiciona headers de segurança
 			c.Response().Header().Set("X-Content-Type-Options", "nosniff")

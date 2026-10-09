@@ -9,7 +9,8 @@
 # binários compilados
 *-linux-amd64
 bff-core
-.bin/
+# .bin/ NÃO entra aqui: o script de deploy compila os binários em .bin/ e o
+# deploy/Dockerfile.local copia de lá (fluxo mantido no merge de 2026-10-09).
 bin/
 *.exe
 *.so

@@ -112,7 +112,7 @@ func (uc *registerInitUseCaseImpl) Execute(ctx context.Context, command appdto.R
 					emailVars["token"] = emailToken
 
 					emailReq := outport.MessageDTO{
-						TenantId:          command.TenantId,
+						CompanyID:         company.ID,
 						CorrelationID:     command.CorrelationID,
 						XCorrelationID:    command.CorrelationID,
 						MessageType:       enums.MessageTypeEmail.String(),
@@ -138,7 +138,7 @@ func (uc *registerInitUseCaseImpl) Execute(ctx context.Context, command appdto.R
 					smsVars["token"] = smsToken
 
 					smsReq := outport.MessageDTO{
-						TenantId:          command.TenantId,
+						CompanyID:         company.ID,
 						CorrelationID:     command.CorrelationID,
 						XCorrelationID:    command.CorrelationID,
 						MessageType:       enums.MessageTypeSMS.String(),
@@ -164,7 +164,7 @@ func (uc *registerInitUseCaseImpl) Execute(ctx context.Context, command appdto.R
 					whatsVars["token"] = whatsToken
 
 					whatsReq := outport.MessageDTO{
-						TenantId:          command.TenantId,
+						CompanyID:         company.ID,
 						CorrelationID:     command.CorrelationID,
 						XCorrelationID:    command.CorrelationID,
 						MessageType:       enums.MessageTypeWhatsApp.String(),
@@ -182,7 +182,7 @@ func (uc *registerInitUseCaseImpl) Execute(ctx context.Context, command appdto.R
 		// Fallback default: Envia EMAIL
 		requiredChannels = append(requiredChannels, "EMAIL")
 		messageReq := outport.MessageDTO{
-			TenantId:          command.TenantId,
+			CompanyID:         company.ID,
 			CorrelationID:     command.CorrelationID,
 			XCorrelationID:    command.CorrelationID,
 			MessageType:       enums.MessageTypeEmail.String(),

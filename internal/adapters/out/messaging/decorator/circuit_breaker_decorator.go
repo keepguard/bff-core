@@ -95,8 +95,10 @@ func (d *circuitBreakerDecorator) publishViaHTTPFallback(ctx context.Context, me
 		Variables:         message.Variables,
 	}
 
-	// Chamar HTTP client
-	_, err := d.communicationClient.SendMessage(ctx, request, message.TenantId, message.XCorrelationID)
+	// O client HTTP lê o X-Company-Id do contexto; o publisher pode ser chamado
+	// sem a company no contexto (ex.: registro), então ela vem da própria mensagem.
+	ctx = client.WithCompanyID(ctx, message.CompanyID)
+	_, err := d.communicationClient.SendMessage(ctx, request, message.CompanyID, message.XCorrelationID)
 	if err != nil {
 		d.logger.Error("Falha no fallback HTTP",
 			zap.String("correlationID", message.XCorrelationID),

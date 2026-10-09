@@ -10,9 +10,11 @@ type MessagePublisher interface {
 	Close() error
 }
 
-// MessageDTO representa uma mensagem a ser enviada
+// MessageDTO representa uma mensagem a ser enviada. Contrato da fila
+// communication.message.send do ms-communication: CompanyID é o id da company
+// já resolvido pelo BFF (nunca o tenantId) — mensagem sem companyId é descartada.
 type MessageDTO struct {
-	TenantId          string                 `json:"tenantId"`
+	CompanyID         string                 `json:"companyId"`
 	CorrelationID     string                 `json:"correlationId,omitempty"`
 	XCorrelationID    string                 `json:"xCorrelationId"`
 	MessageType       string                 `json:"messageType"`

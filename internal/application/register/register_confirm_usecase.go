@@ -315,7 +315,7 @@ func (uc *registerConfirmUseCaseImpl) sendWelcomeEmail(ctx context.Context, saga
 	}
 
 	messageReq := outport.MessageDTO{
-		TenantId:          tenantId,
+		CompanyID:         company.ID,
 		CorrelationID:     correlationID,
 		XCorrelationID:    correlationID,
 		MessageType:       enums.MessageTypeEmail.String(),
