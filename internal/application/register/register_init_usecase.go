@@ -6,8 +6,8 @@ import (
 
 	appdto "github.com/keepguard/bff-core/internal/application/dto"
 	client "github.com/keepguard/bff-core/internal/application/port"
+	outport "github.com/keepguard/bff-core/internal/application/port/out"
 	"github.com/keepguard/bff-core/internal/domain/enums"
-	"github.com/keepguard/bff-core/internal/domain/ports/messaging"
 	"go.uber.org/zap"
 )
 
@@ -17,7 +17,7 @@ type registerInitUseCaseImpl struct {
 	userClient          client.UserClient
 	companyClient       client.CompanyClient
 	communicationClient client.CommunicationClient
-	messagePublisher    messaging.MessagePublisher
+	messagePublisher    outport.MessagePublisher
 	logger              *zap.Logger
 }
 
@@ -27,7 +27,7 @@ func NewRegisterInitUseCase(
 	userClient client.UserClient,
 	companyClient client.CompanyClient,
 	communicationClient client.CommunicationClient,
-	messagePublisher messaging.MessagePublisher,
+	messagePublisher outport.MessagePublisher,
 	logger *zap.Logger,
 ) RegisterInitUseCase {
 	return &registerInitUseCaseImpl{
@@ -111,7 +111,7 @@ func (uc *registerInitUseCaseImpl) Execute(ctx context.Context, command appdto.R
 					}
 					emailVars["token"] = emailToken
 
-					emailReq := messaging.MessageDTO{
+					emailReq := outport.MessageDTO{
 						TenantId:          command.TenantId,
 						CorrelationID:     command.CorrelationID,
 						XCorrelationID:    command.CorrelationID,
@@ -137,7 +137,7 @@ func (uc *registerInitUseCaseImpl) Execute(ctx context.Context, command appdto.R
 					}
 					smsVars["token"] = smsToken
 
-					smsReq := messaging.MessageDTO{
+					smsReq := outport.MessageDTO{
 						TenantId:          command.TenantId,
 						CorrelationID:     command.CorrelationID,
 						XCorrelationID:    command.CorrelationID,
@@ -163,7 +163,7 @@ func (uc *registerInitUseCaseImpl) Execute(ctx context.Context, command appdto.R
 					}
 					whatsVars["token"] = whatsToken
 
-					whatsReq := messaging.MessageDTO{
+					whatsReq := outport.MessageDTO{
 						TenantId:          command.TenantId,
 						CorrelationID:     command.CorrelationID,
 						XCorrelationID:    command.CorrelationID,
@@ -181,7 +181,7 @@ func (uc *registerInitUseCaseImpl) Execute(ctx context.Context, command appdto.R
 	} else {
 		// Fallback default: Envia EMAIL
 		requiredChannels = append(requiredChannels, "EMAIL")
-		messageReq := messaging.MessageDTO{
+		messageReq := outport.MessageDTO{
 			TenantId:          command.TenantId,
 			CorrelationID:     command.CorrelationID,
 			XCorrelationID:    command.CorrelationID,

@@ -1,49 +1,58 @@
-# Binaries for programs and plugins
+# ==========================================================
+# .gitignore padrão — serviços Go do monorepo KeepGuard
+# Ver: docs/architecture/go-standard.md (regra 6)
+# bff-core é substituído pelo nome do serviço
+# ==========================================================
+
+# --- Binários compilados (NUNCA versionar) ---
 *.exe
 *.exe~
 *.dll
 *.so
 *.dylib
 /bff-core
+/bff-core-linux-amd64
 .bin/
+bin/
 
-# Test binary, built with `go test -c`
+# --- Artefatos de teste e cobertura ---
 *.test
-
-# Output of the go coverage tool
 *.out
 coverage*.out
 
-# Dependency directories
+# --- Dependências e workspace ---
 vendor/
-
-# Go workspace file
 go.work
+go.work.sum
 
-# IDE
+# --- IDE ---
 .idea/
+*.iml
 .vscode/
 *.swp
 *.swo
 *~
 
-# OS
+# --- Sistema operacional ---
 .DS_Store
 Thumbs.db
 
-# Logs
+# --- Logs ---
 *.log
 
-# Environment files
+# --- Ambiente e segredos ---
 .env
 .env.local
 .env.*.local
+secure/
+*.pem
+credentials.json
+token.json
 
-# Docs gerados
+# --- Backups do script de deploy ---
+.deploy-backup/
+
+# --- Documentação gerada (swagger) ---
 docs/swagger.json
 docs/swagger.yaml
 docs/docs.go
-
-
-# Deploy script backups
-.deploy-backup/

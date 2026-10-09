@@ -7,8 +7,8 @@ import (
 
 	appdto "github.com/keepguard/bff-core/internal/application/dto"
 	client "github.com/keepguard/bff-core/internal/application/port"
+	outport "github.com/keepguard/bff-core/internal/application/port/out"
 	"github.com/keepguard/bff-core/internal/domain/enums"
-	"github.com/keepguard/bff-core/internal/domain/ports/messaging"
 	"github.com/keepguard/bff-core/internal/domain/saga"
 	"go.uber.org/zap"
 )
@@ -20,7 +20,7 @@ type registerConfirmUseCaseImpl struct {
 	authClient          client.AuthClient
 	userConsentClient   client.UserConsentClient
 	communicationClient client.CommunicationClient
-	messagePublisher    messaging.MessagePublisher
+	messagePublisher    outport.MessagePublisher
 	sagaExecutor        *saga.InMemorySagaExecutor
 	logger              *zap.Logger
 }
@@ -32,7 +32,7 @@ func NewRegisterConfirmUseCase(
 	authClient client.AuthClient,
 	userConsentClient client.UserConsentClient,
 	communicationClient client.CommunicationClient,
-	messagePublisher messaging.MessagePublisher,
+	messagePublisher outport.MessagePublisher,
 	logger *zap.Logger,
 ) RegisterConfirmUseCase {
 	return &registerConfirmUseCaseImpl{
@@ -314,7 +314,7 @@ func (uc *registerConfirmUseCaseImpl) sendWelcomeEmail(ctx context.Context, saga
 		interfaceVariables[k] = v
 	}
 
-	messageReq := messaging.MessageDTO{
+	messageReq := outport.MessageDTO{
 		TenantId:          tenantId,
 		CorrelationID:     correlationID,
 		XCorrelationID:    correlationID,

@@ -1,0 +1,39 @@
+# Contexto de build: só o que o Dockerfile precisa.
+# Sem isso o Docker envia .git, binários e caches — build mais lento e risco
+# de arquivo indesejado entrar na imagem.
+
+.git
+.gitignore
+.github
+
+# binários compilados
+*-linux-amd64
+bff-core
+.bin/
+bin/
+*.exe
+*.so
+*.dylib
+
+# artefatos de teste (os *_test.go ficam: o go build os ignora sozinho,
+# e excluir arquivo .go do contexto pode quebrar a compilacao do pacote)
+*.test
+*.out
+coverage*.out
+
+# deploy nao entra na imagem
+script-deploy-*.sh
+.deploy-backup/
+helm/
+README.md
+
+# docs/ FICA: o main.go importa o pacote docs (swagger) e o Dockerfile
+# copia a pasta. So a documentacao de arquitetura sai.
+docs/architecture/
+
+# ambiente
+.env
+.env.*
+.idea/
+.vscode/
+.DS_Store

@@ -42,9 +42,6 @@ type LlmClient interface {
 	UpdateAlertRule(ctx context.Context, tenantID, correlationID, id string, body any) (json.RawMessage, error)
 	SetAlertRuleEnabled(ctx context.Context, tenantID, correlationID, id string, enabled bool) (json.RawMessage, error)
 	ListAlertFirings(ctx context.Context, tenantID, correlationID string, query map[string]string) (json.RawMessage, error)
-	ListClientAPIKeys(ctx context.Context, tenantID, correlationID string) (json.RawMessage, error)
-	CreateClientAPIKey(ctx context.Context, tenantID, correlationID string, body any) (json.RawMessage, error)
-	SetClientAPIKeyEnabled(ctx context.Context, tenantID, correlationID, id string, enabled bool) (json.RawMessage, error)
 }
 
 type BillingScope struct {
@@ -69,7 +66,10 @@ type BillingClient interface {
 	GetSubscription(ctx context.Context, scope BillingScope) (json.RawMessage, error)
 	CreateSubscription(ctx context.Context, scope BillingScope, body any) (json.RawMessage, int, error)
 	GrantLifetimeSubscription(ctx context.Context, scope BillingScope, body any) (json.RawMessage, error)
-	CancelSubscription(ctx context.Context, scope BillingScope, id string) (json.RawMessage, error)
+	CancelSubscription(ctx context.Context, scope BillingScope, id string, immediate bool) (json.RawMessage, error)
+	PreviewPlanChange(ctx context.Context, scope BillingScope, id string, query map[string]string) (json.RawMessage, error)
+	ChangePlan(ctx context.Context, scope BillingScope, id string, body any) (json.RawMessage, error)
+	ClearScheduledChange(ctx context.Context, scope BillingScope, id string) (json.RawMessage, error)
 	ListInvoices(ctx context.Context, scope BillingScope, query map[string]string) (json.RawMessage, error)
 	ListEntitlements(ctx context.Context, scope BillingScope, query map[string]string) (json.RawMessage, error)
 	GetInvoice(ctx context.Context, scope BillingScope, id string) (json.RawMessage, error)

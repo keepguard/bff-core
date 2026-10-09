@@ -33,11 +33,12 @@
   - **OAuth clients:** CRUD + block/unblock + service-roles (`oauth:read|write`).
   - **Collector:** agents, data-sources, executions/payloads, incidents, bulk ops (`collector:read|write`).
   - **Knowledge:** `POST /core/knowledge/ask` (`knowledge:read`).
-  - **LLM:** providers, complete, usage, alert-rules/firings (`llm:read|write`).
+  - **LLM:** providers, complete, usage, alert-rules/firings (`llm:read|write` da pessoa logada; downstream com token de serviço do BFF).
   - **Billing:** entitlement, plans, gateway-accounts, subscriptions, invoices, entitlements, users/lookup (`billing:read|write` / org-read para gestores).
+  - **Billing — troca de plano:** `GET /core/billing/subscriptions/:id/change-preview`, `POST .../change-plan`, `DELETE .../scheduled-change` (`billing:read`). O `change-plan` repete a regra `BILLING_PAYER_OPS` do subscribe: MANAGER sem ADMIN/SYSTEM recebe 403, porque quem opera a organização não troca plano de ninguém. `POST .../cancel` aceita `?immediate=true`, mas o BFF só repassa o flag quando o caller é admin — para o titular o cancelamento é sempre agendado.
 - **Dependências Externas:**
   - **HTTP downstream:** `ms-auth`, `ms-user`, `ms-company`, `ms-communication`, `ms-user-consents` (+ consent documents), `ms-billing`, `ms-ai-guardian`, `ms-knowledge`, `srv-audit`, `srv-data-collector`, `srv-llm-gateway`; config prevê `ms-user-profile` (8091).
-  - **Token de serviço:** OAuth client_id `bff-core` via `ms-auth` (para knowledge/collector quando necessário).
+  - **Token de serviço:** OAuth client_id `bff-core` via `ms-auth` (`client_credentials`, client cadastrado em System > Clients) — usado em knowledge/collector e em **todas** as chamadas ao `srv-llm-gateway`. As authorities do token vêm da service role `ROLE_SERVICE_BFF_CORE` (`knowledge:read`, `llm:read`, `llm:write`): é lá que se concede acesso ao LLM, não no gateway. O JWT de quem está logado não é repassado ao gateway — a autorização da pessoa acontece nas middlewares de rota do BFF.
   - **Infra:** Redis, RabbitMQ; probes de health agregam dezenas de serviços (front, BFFs, MSs, SRVs, MinIO, Prometheus, Grafana) apenas para a tela Conexões.
   - **Gateways de pagamento:** webhooks Asaas/Stripe recebidos no BFF e encaminhados ao `ms-billing`.
 

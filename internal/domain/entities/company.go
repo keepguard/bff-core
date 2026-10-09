@@ -9,14 +9,14 @@ import (
 
 // Company representa uma empresa no domínio
 type Company struct {
-	id           string
-	tenantId string
-	name         string
-	legalName    string
-	cnpj         valueobjects.CNPJ
-	status       CompanyStatus
-	createdAt    time.Time
-	updatedAt    time.Time
+	id        string
+	tenantId  string
+	name      string
+	legalName string
+	cnpj      valueobjects.CNPJ
+	status    CompanyStatus
+	createdAt time.Time
+	updatedAt time.Time
 }
 
 // CompanyStatus representa o status da empresa
@@ -45,14 +45,14 @@ func NewCompany(tenantId, name, legalName string, cnpj valueobjects.CNPJ) (*Comp
 
 	now := time.Now()
 	return &Company{
-		id:           generateCompanyID(),
-		tenantId: tenantId,
-		name:         name,
-		legalName:    legalName,
-		cnpj:         cnpj,
-		status:       CompanyStatusActive,
-		createdAt:    now,
-		updatedAt:    now,
+		id:        generateCompanyID(),
+		tenantId:  tenantId,
+		name:      name,
+		legalName: legalName,
+		cnpj:      cnpj,
+		status:    CompanyStatusActive,
+		createdAt: now,
+		updatedAt: now,
 	}, nil
 }
 

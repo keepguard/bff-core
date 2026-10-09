@@ -109,4 +109,3 @@ func (l *zapLogger) Sync() error {
 func (l *zapLogger) GetZapLogger() *zap.Logger {
 	return l.logger
 }
-
