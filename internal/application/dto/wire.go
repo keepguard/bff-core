@@ -2,16 +2,26 @@ package dto
 
 import (
 	"encoding/json"
+	"fmt"
 	"time"
 )
 
 // CustomTime faz parse de datas ISO com ou sem timezone (contrato dos ms-*).
+// null vira data zero: o ms-company-go escreve null quando a data não existe,
+// e antes um null derrubava o decode da empresa inteira.
 type CustomTime struct {
 	time.Time
 }
 
 func (ct *CustomTime) UnmarshalJSON(b []byte) error {
 	s := string(b)
+	if s == "null" {
+		ct.Time = time.Time{}
+		return nil
+	}
+	if len(s) < 2 || s[0] != '"' || s[len(s)-1] != '"' {
+		return fmt.Errorf("data deve ser texto JSON, veio %s", s)
+	}
 	s = s[1 : len(s)-1]
 	formats := []string{
 		time.RFC3339Nano,
