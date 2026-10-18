@@ -516,18 +516,15 @@ func bindBillingJSON(c echo.Context) (map[string]any, error) {
 	}
 	method := strings.ToLower(strings.TrimSpace(stringifyJSON(body["paymentMethod"])))
 	if method == "credit_card" || method == "creditcard" {
-		token := strings.TrimSpace(stringifyJSON(body["creditCardToken"]))
-		if token == "" {
-			return nil, c.JSON(http.StatusUnprocessableEntity, pkg.ErrorResponse{
-				Error:         "CARD_TOKEN_MISSING",
-				Message:       "Informe o token do cartão (Asaas)",
-				CorrelationID: correlationID,
-			})
-		}
 		body["paymentMethod"] = "credit_card"
-		body["creditCardToken"] = token
-		if remote := clientRemoteIP(c); remote != "" {
-			body["remoteIp"] = remote
+		token := strings.TrimSpace(stringifyJSON(body["creditCardToken"]))
+		if token != "" {
+			body["creditCardToken"] = token
+			if remote := clientRemoteIP(c); remote != "" {
+				body["remoteIp"] = remote
+			}
+		} else {
+			delete(body, "creditCardToken")
 		}
 	}
 	return body, nil

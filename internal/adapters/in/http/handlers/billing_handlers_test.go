@@ -147,6 +147,33 @@ func TestCreateSubscriptionRejectsCardNumber(t *testing.T) {
 	}
 }
 
+func TestCreateSubscriptionAllowsCreditCardWithoutToken(t *testing.T) {
+	c, rec := billingContext(http.MethodPost, "/api/v1/core/billing/subscriptions", `{"planCode":"basic","interval":"month","paymentMethod":"credit_card"}`, &pkg.JWTClaims{
+		UserID: "user-1", Roles: []string{"USER"},
+	})
+	stub := &stubBillingClient{created: json.RawMessage(`{"status":"active"}`), createdCode: 201}
+	h := NewBillingHandlers(appbilling.NewBillingPort(stub), zap.NewNop())
+	if err := h.CreateBillingSubscriptionHandler(c); err != nil {
+		t.Fatal(err)
+	}
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("status %d body %s", rec.Code, rec.Body.String())
+	}
+	if stub.createCalls != 1 {
+		t.Fatalf("esperado 1 chamada para CreateSubscription, obteve %d", stub.createCalls)
+	}
+	bodyMap, ok := stub.createBody.(map[string]any)
+	if !ok {
+		t.Fatalf("corpo esperado map[string]any, obteve %T", stub.createBody)
+	}
+	if bodyMap["paymentMethod"] != "credit_card" {
+		t.Fatalf("paymentMethod esperado credit_card, obteve %v", bodyMap["paymentMethod"])
+	}
+	if _, hasToken := bodyMap["creditCardToken"]; hasToken {
+		t.Fatalf("não deve ter creditCardToken no body")
+	}
+}
+
 func TestWebhookIgnoresTenantHeaderAndForwardsToken(t *testing.T) {
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/core/billing/webhooks/asaas", strings.NewReader(`{"id":"evt_1","event":"PAYMENT_CREATED"}`))
