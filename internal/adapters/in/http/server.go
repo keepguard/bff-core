@@ -51,7 +51,7 @@ func NewServer(
 		if ip := clientip.FromRequest(req); ip != "" {
 			return ip
 		}
-		return echo.ExtractIPFromXFFHeader()(req)
+		return echo.ExtractIPFromRealIPHeader()(req)
 	}
 
 	// Middlewares
