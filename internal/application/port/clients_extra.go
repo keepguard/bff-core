@@ -67,6 +67,7 @@ type BillingClient interface {
 	CreateSubscription(ctx context.Context, scope BillingScope, body any) (json.RawMessage, int, error)
 	GrantLifetimeSubscription(ctx context.Context, scope BillingScope, body any) (json.RawMessage, error)
 	CancelSubscription(ctx context.Context, scope BillingScope, id string, immediate bool) (json.RawMessage, error)
+	ReactivateSubscription(ctx context.Context, scope BillingScope, id string) (json.RawMessage, error)
 	PreviewPlanChange(ctx context.Context, scope BillingScope, id string, query map[string]string) (json.RawMessage, error)
 	ChangePlan(ctx context.Context, scope BillingScope, id string, body any) (json.RawMessage, error)
 	ClearScheduledChange(ctx context.Context, scope BillingScope, id string) (json.RawMessage, error)

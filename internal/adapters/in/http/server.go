@@ -290,6 +290,7 @@ func (s *serverImpl) SetupRoutes(handlers Handler) {
 	userGroup.POST("/core/billing/subscriptions", handlers.CreateBillingSubscriptionHandler, billingRead...)
 	userGroup.POST("/core/billing/subscriptions/grant-lifetime", handlers.GrantLifetimeBillingSubscriptionHandler, billingWrite...)
 	userGroup.POST("/core/billing/subscriptions/:id/cancel", handlers.CancelBillingSubscriptionHandler, billingRead...)
+	userGroup.POST("/core/billing/subscriptions/:id/reactivate", handlers.ReactivateBillingSubscriptionHandler, billingRead...)
 	userGroup.GET("/core/billing/subscriptions/:id/change-preview", handlers.PreviewBillingPlanChangeHandler, billingRead...)
 	userGroup.POST("/core/billing/subscriptions/:id/change-plan", handlers.ChangeBillingPlanHandler, billingRead...)
 	userGroup.DELETE("/core/billing/subscriptions/:id/scheduled-change", handlers.ClearBillingScheduledChangeHandler, billingRead...)

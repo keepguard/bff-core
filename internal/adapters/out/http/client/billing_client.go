@@ -114,6 +114,10 @@ func (c *billingClient) CancelSubscription(ctx context.Context, scope domainclie
 	return c.send(ctx, scope, "POST", path, nil, 200)
 }
 
+func (c *billingClient) ReactivateSubscription(ctx context.Context, scope domainclient.BillingScope, id string) (json.RawMessage, error) {
+	return c.send(ctx, scope, "POST", "/api/v1/billing/subscriptions/"+id+"/reactivate", nil, 200)
+}
+
 func (c *billingClient) PreviewPlanChange(ctx context.Context, scope domainclient.BillingScope, id string, query map[string]string) (json.RawMessage, error) {
 	return c.get(ctx, scope, "/api/v1/billing/subscriptions/"+id+"/change-preview", query)
 }

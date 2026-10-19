@@ -87,6 +87,9 @@ func (s *stubBillingClient) GrantLifetimeSubscription(context.Context, port.Bill
 func (s *stubBillingClient) CancelSubscription(context.Context, port.BillingScope, string, bool) (json.RawMessage, error) {
 	return json.RawMessage(`{"status":"canceled"}`), nil
 }
+func (s *stubBillingClient) ReactivateSubscription(context.Context, port.BillingScope, string) (json.RawMessage, error) {
+	return json.RawMessage(`{"status":"active","cancelAtPeriodEnd":false}`), nil
+}
 func (s *stubBillingClient) PreviewPlanChange(context.Context, port.BillingScope, string, map[string]string) (json.RawMessage, error) {
 	return json.RawMessage(`{"type":"upgrade","chargeCents":1000,"creditCents":900}`), nil
 }
@@ -598,5 +601,27 @@ func TestDeleteBillingPlanHandler_Success(t *testing.T) {
 	}
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("expected status 204, got %d", rec.Code)
+	}
+}
+
+func TestReactivateBillingSubscriptionHandler_Success(t *testing.T) {
+	h := NewBillingHandlers(appbilling.NewBillingPort(&stubBillingClient{}), zap.NewNop())
+	c, rec := billingContext(http.MethodPost, "/api/v1/core/billing/subscriptions/sub-123/reactivate", "", &pkg.JWTClaims{
+		UserID:      "user-1",
+		TenantId:    "company-1",
+		Roles:       []string{"ROLE_USER"},
+		Authorities: []string{"billing:read"},
+	})
+	c.SetParamNames("id")
+	c.SetParamValues("sub-123")
+
+	if err := h.ReactivateBillingSubscriptionHandler(c); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d body %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"cancelAtPeriodEnd":false`) {
+		t.Fatalf("unexpected body: %s", rec.Body.String())
 	}
 }

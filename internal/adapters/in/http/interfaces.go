@@ -93,6 +93,7 @@ type Handler interface {
 	CreateBillingSubscriptionHandler(c echo.Context) error
 	GrantLifetimeBillingSubscriptionHandler(c echo.Context) error
 	CancelBillingSubscriptionHandler(c echo.Context) error
+	ReactivateBillingSubscriptionHandler(c echo.Context) error
 	PreviewBillingPlanChangeHandler(c echo.Context) error
 	ChangeBillingPlanHandler(c echo.Context) error
 	ClearBillingScheduledChangeHandler(c echo.Context) error

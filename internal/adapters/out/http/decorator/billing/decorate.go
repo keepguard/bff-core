@@ -122,6 +122,12 @@ func (d *decorated) CancelSubscription(ctx context.Context, scope port.BillingSc
 	})
 }
 
+func (d *decorated) ReactivateSubscription(ctx context.Context, scope port.BillingScope, id string) (json.RawMessage, error) {
+	return observe.Call(d.cfg, "ReactivateSubscription", "POST", "/billing/subscriptions/{id}/reactivate", scope.CorrelationID, func() (json.RawMessage, error) {
+		return d.inner.ReactivateSubscription(ctx, scope, id)
+	})
+}
+
 func (d *decorated) PreviewPlanChange(ctx context.Context, scope port.BillingScope, id string, query map[string]string) (json.RawMessage, error) {
 	return observe.Call(d.cfg, "PreviewPlanChange", "GET", "/billing/subscriptions/{id}/change-preview", scope.CorrelationID, func() (json.RawMessage, error) {
 		return d.inner.PreviewPlanChange(ctx, scope, id, query)

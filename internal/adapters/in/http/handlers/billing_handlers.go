@@ -237,6 +237,13 @@ func (h *BillingHandlers) CancelBillingSubscriptionHandler(c echo.Context) error
 	})
 }
 
+func (h *BillingHandlers) ReactivateBillingSubscriptionHandler(c echo.Context) error {
+	id := c.Param("id")
+	return h.proxy(c, http.StatusOK, func(ctx echo.Context, scope port.BillingScope) (json.RawMessage, error) {
+		return h.billing.ReactivateSubscription(ctx.Request().Context(), scope, id)
+	})
+}
+
 func (h *BillingHandlers) PreviewBillingPlanChangeHandler(c echo.Context) error {
 	id := c.Param("id")
 	query := billingListQuery(c, "planCode", "interval")
