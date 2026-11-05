@@ -158,24 +158,23 @@ log_info "Deploy Docker Local: ${DEPLOY_DOCKER}"
 log_info "Imagem Tag         : ${PRIMARY_TAG}"
 log_info "Imagem Latest      : ${LATEST_TAG}"
 log_info "============================================"
-# Em 'up' (Docker local) compila na arquitetura do host para evitar QEMU; demais modos seguem amd64 (K8s).
+# Produção (GHCR/K8s) SEMPRE exige linux/amd64.
 GO_ARCH=amd64
-[ "$DEPLOY_DOCKER" = true ] && GO_ARCH=$(go env GOHOSTARCH)
 # 2. Compilação dos binários nativamente em linux/amd64
 log_step "2/5 Compilando binários Go (linux/amd64)..."
 mkdir -p .bin
-CGO_ENABLED=0 GOOS=linux GOARCH=${GO_ARCH} go build -o .bin/bff-core cmd/bff-core/main.go
-CGO_ENABLED=0 GOOS=linux GOARCH=${GO_ARCH} go build -o .bin/healthcheck deploy/healthcheck/main.go
-log_success "Binários compilados com sucesso em .bin/"
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o .bin/bff-core cmd/bff-core/main.go
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o .bin/healthcheck deploy/healthcheck/main.go
+log_success "Binários compilados com sucesso em .bin/ (linux/amd64)"
 
 # 3. Build da Imagem Docker (linux/amd64)
-# --platform é obrigatório: sem ele o Docker do Mac (arm64) puxa a base distroless
-# arm64 e o nó amd64 de produção falha com "no match for platform in manifest".
+# --platform linux/amd64 é obrigatório: sem ele o Docker do Mac (arm64) puxa base arm64
+# e o nó amd64 de produção cai em ImagePullBackOff com "no match for platform in manifest".
 log_step "3/5 Construindo imagem Docker (linux/amd64)..."
 if [ "$BUILD_BRANCH" = "main" ]; then
-    docker build --platform "linux/${GO_ARCH}" -f deploy/Dockerfile.local -t "${PRIMARY_TAG}" -t "${LATEST_TAG}" -t "${BRANCH_TAG}" -t "${BRANCH_LATEST}" .
+    docker build --platform linux/amd64 -f deploy/Dockerfile.local -t "${PRIMARY_TAG}" -t "${LATEST_TAG}" -t "${BRANCH_TAG}" -t "${BRANCH_LATEST}" .
 else
-    docker build --platform "linux/${GO_ARCH}" -f deploy/Dockerfile.local -t "${PRIMARY_TAG}" -t "${LATEST_TAG}" .
+    docker build --platform linux/amd64 -f deploy/Dockerfile.local -t "${PRIMARY_TAG}" -t "${LATEST_TAG}" .
 fi
 log_success "Imagem Docker construída com sucesso"
 
@@ -210,12 +209,18 @@ fi
 
 # 6. Deploy no Kubernetes de Produção (se solicitado 'prod' ou 'full')
 if [ "$DEPLOY_PROD" = true ]; then
-    log_step "Executando deploy automático no Kubernetes de Produção (VPS Hostinger)..."
-    if [ -f "${SCRIPT_DIR}/script-deploy-k8s-prod.sh" ]; then
-        "${SCRIPT_DIR}/script-deploy-k8s-prod.sh" "${BUILD_SHA}"
-    else
-        log_error "script-deploy-k8s-prod.sh não encontrado em ${SCRIPT_DIR}."
-        exit 1
+    log_step "Atualizando helm/values.yaml (tag: \"${BUILD_SHA}\") e aplicando via SSH (porta 22)..."
+    sed -i '' "s|^[[:space:]]*tag:.*|  tag: \"${BUILD_SHA}\"|g" "${SCRIPT_DIR}/helm/values.yaml"
+    git add "${SCRIPT_DIR}/helm/values.yaml"
+    if ! git diff --cached --quiet; then
+        git commit -q -m "chore(helm): bump ${SERVICE_NAME} image tag to ${BUILD_SHA}"
+        git push origin "${CURRENT_BRANCH}" || true
+    fi
+    helm template "${SERVICE_NAME}" "${SCRIPT_DIR}/helm" -n keepguard \
+        | ssh -o BatchMode=yes root@31.97.175.92 "kubectl apply -n keepguard -f -"
+    ssh -o BatchMode=yes root@31.97.175.92 "kubectl rollout status deployment/${SERVICE_NAME} -n keepguard --timeout=300s"
+    if [ -x "${SCRIPT_DIR}/../../../scripts/verificar-infra.sh" ]; then
+        "${SCRIPT_DIR}/../../../scripts/verificar-infra.sh"
     fi
 fi
 

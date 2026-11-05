@@ -29,6 +29,22 @@ spec:
           value: {{ .Values.env.bffCoreEnv | quote }}
         - name: BFF_CORE_RABBITMQ_HOST
           value: {{ .Values.env.rabbitmqHost | quote }}
+        - name: BFF_CORE_RABBITMQ_USER
+          valueFrom:
+            configMapKeyRef:
+              name: keepguard-config
+              key: RABBITMQ_DEFAULT_USER
+        - name: BFF_CORE_RABBITMQ_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: keepguard-secret
+              key: RABBITMQ_DEFAULT_PASS
+        - name: BFF_CORE_RABBITMQ_VHOST
+          valueFrom:
+            configMapKeyRef:
+              name: keepguard-config
+              key: RABBITMQ_VHOST
+              optional: true
         - name: BFF_CORE_REDIS_HOST
           value: "redis"
         - name: BFF_CORE_SERVICES_COMPANY_BASE_URL

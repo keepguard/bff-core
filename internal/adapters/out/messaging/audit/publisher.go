@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
+	"strings"
 
 	outport "github.com/keepguard/bff-core/internal/application/port/out"
 	"github.com/keepguard/bff-core/internal/infrastructure/config"
@@ -26,15 +28,15 @@ func NewPublisher(cfg *config.RabbitMQConfig, logger *zap.Logger) (outport.Event
 	if logger == nil {
 		logger = zap.NewNop()
 	}
-	vhost := cfg.VHost
-	if vhost == "" {
-		vhost = "/"
-	}
-	if vhost[0] != '/' {
-		vhost = "/" + vhost
-	}
+	vh := strings.TrimPrefix(strings.TrimSpace(cfg.VHost), "/")
+	amqpURL := (&url.URL{
+		Scheme: "amqp",
+		User:   url.UserPassword(cfg.User, cfg.Password),
+		Host:   fmt.Sprintf("%s:%d", cfg.Host, cfg.Port),
+		Path:   "/" + vh,
+	}).String()
 	conn, err := rabbitmq.NewConn(
-		fmt.Sprintf("amqp://%s:%s@%s:%d%s", cfg.User, cfg.Password, cfg.Host, cfg.Port, vhost),
+		amqpURL,
 		rabbitmq.WithConnectionOptionsLogging,
 	)
 	if err != nil {
@@ -73,6 +75,7 @@ func (p *publisher) Publish(_ context.Context, event outport.Event) {
 			[]string{p.routing},
 			rabbitmq.WithPublishOptionsContentType("application/json"),
 			rabbitmq.WithPublishOptionsExchange(p.exchange),
+			rabbitmq.WithPublishOptionsMandatory,
 			rabbitmq.WithPublishOptionsPersistentDelivery,
 			rabbitmq.WithPublishOptionsHeaders(rabbitmq.Table{
 				"X-Correlation-ID": event.CorrelationID,

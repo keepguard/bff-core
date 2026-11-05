@@ -1,6 +1,6 @@
 image:
   repository: ghcr.io/keepguard/bff-core
-  tag: "1.0.82"
+  tag: "8247a07"
   pullPolicy: IfNotPresent
 
 service:
@@ -14,7 +14,7 @@ resources:
     memory: 128Mi
 
 env:
-  bffCoreEnv: dev
+  bffCoreEnv: prod
   rabbitmqHost: "rabbitmq-service"
   companyServiceUrl: "http://ms-company:8083"
   userServiceUrl: "http://ms-user:8085"

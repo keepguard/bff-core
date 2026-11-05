@@ -60,11 +60,11 @@ oauth:
   token_renew_before_sec: 600
 
 rabbitmq:
-  host: "rabbit-1"
+  host: "rabbitmq-service"
   port: 5672
-  user: "guest"
-  password: "guest"
-  vhost: "/"
+  user: "keepguard"
+  password: ""
+  vhost: "/keepguard"
   exchange: "ms-communication-exchange-prod"
   routing_key: "communication.message.send"
   durable: true
@@ -81,9 +81,9 @@ jwt:
   audience: "keepguard-api"
 
 redis:
-  host: ${REDIS_HOST:redis}
+  host: "redis"
   port: 6379
-  password: ${REDIS_PASSWORD:}
+  password: ""
   db: 0
 
 rate_limit:

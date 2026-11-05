@@ -60,8 +60,8 @@ oauth:
 rabbitmq:
   host: "localhost"
   port: 5672
-  user: "guest"
-  password: "guest"
+  user: "${RABBITMQ_USER:kg_bff_core}"
+  password: "${RABBITMQ_PASSWORD}"
   vhost: "/"
   exchange: "ms-communication-exchange-local"
   routing_key: "communication.message.send"
