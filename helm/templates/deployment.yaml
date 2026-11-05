@@ -29,6 +29,10 @@ spec:
           value: {{ .Values.env.bffCoreEnv | quote }}
         - name: BFF_CORE_RABBITMQ_HOST
           value: {{ .Values.env.rabbitmqHost | quote }}
+        # O Service "rabbitmq" injeta RABBITMQ_PORT=tcp://<ip>:5672 em todo pod (service links) e a config lê
+        # rabbitmq.port (BFF_CORE_RABBITMQ_PORT, senão RABBITMQ_PORT) como inteiro: porta explícita (05/11/2026).
+        - name: BFF_CORE_RABBITMQ_PORT
+          value: "5672"
         - name: BFF_CORE_RABBITMQ_USER
           valueFrom:
             configMapKeyRef:
