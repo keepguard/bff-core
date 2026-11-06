@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -474,5 +475,62 @@ func TestBillingSettingsExposesCoreWriteState(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// Códigos novos do ms-billing chegam com o status, o código e a mensagem dele, nas rotas novas e
+// nas de hoje.
+func TestNewBillingCodesPassThroughUnchanged(t *testing.T) {
+	upstream := newFakeBilling(t)
+	base := startBillingRouter(t, baseConfigWithKey(upstream.server.URL), listedGuard())
+	operator := operatorToken(t)
+	subscriber := signToken(t, testUser, []string{"ROLE_USER"}, []string{"billing:read", "billing:self-write"}, map[string]any{"sid": "sid-1"})
+	sub := "/subscriptions/" + testSubID
+	cases := []struct {
+		code    string
+		status  int
+		message string
+		method  string
+		path    string
+		body    string
+		token   string
+	}{
+		{"REFUND_UPGRADE_PENDING", http.StatusConflict, "Esta fatura paga um upgrade em aberto. Cancele o upgrade antes de estornar.", http.MethodPost, "/invoices/" + testSubID + "/refunds", `{"amountCents":1,"reason":"x"}`, operator},
+		{"DISPUTE_OPEN", http.StatusConflict, "Há contestação aberta nesta conta.", http.MethodPost, "/entitlements/" + testOther + "/release-restriction", `{"reason":"x"}`, operator},
+		{"DISPUTE_OPEN", http.StatusConflict, "Há contestação aberta nesta conta.", http.MethodPost, sub + "/reactivate", "", subscriber},
+		{"DISPUTE_OPEN", http.StatusConflict, "Há contestação aberta nesta conta.", http.MethodPost, sub + "/change-plan", `{"planCode":"PRO","interval":"year"}`, subscriber},
+		{"PAYER_ONLY", http.StatusForbidden, "Só quem paga a assinatura pode fazer isto.", http.MethodPost, "/subscriptions", `{"planCode":"PRO","interval":"month","paymentMethod":"credit_card","cardDebitConsent":{"textVersion":"v1"}}`, subscriber},
+		{"PAYER_ONLY", http.StatusForbidden, "Só quem paga a assinatura pode fazer isto.", http.MethodPost, sub + "/cancel", "", subscriber},
+		{"PAYER_ONLY", http.StatusForbidden, "Só quem paga a assinatura pode fazer isto.", http.MethodDelete, sub + "/card", "", subscriber},
+	}
+	for _, tc := range cases {
+		t.Run(tc.code+" "+tc.method+" "+tc.path, func(t *testing.T) {
+			key := tc.method + " /api/v1/billing" + tc.path
+			upstream.replies[key] = fakeReply{tc.status, `{"timestamp":"x","status":` + strconv.Itoa(tc.status) + `,"error":"` + tc.code + `","message":"` + tc.message + `"}`}
+			defer delete(upstream.replies, key)
+			status, _, body := doRequest(t, base, goldenCase{method: tc.method, path: coreBase + tc.path, body: tc.body, token: tc.token, headers: map[string]string{"Idempotency-Key": "k"}})
+			var response map[string]any
+			if err := json.Unmarshal([]byte(body), &response); err != nil {
+				t.Fatalf("corpo %s: %v", body, err)
+			}
+			if status != tc.status || response["error"] != tc.code || response["message"] != tc.message {
+				t.Fatalf("status %d corpo %s", status, body)
+			}
+			upstream.drain()
+		})
+	}
+}
+
+// convert-recurrence é só de credencial de produto (contrato C3, §7.1): o bff-core não a expõe,
+// e o ms-billing recusa a chave dele.
+func TestConvertRecurrenceIsNotExposed(t *testing.T) {
+	upstream := newFakeBilling(t)
+	base := startBillingRouter(t, baseConfigWithKey(upstream.server.URL), listedGuard())
+	status, _, body := doRequest(t, base, goldenCase{method: http.MethodPost, path: coreBase + "/subscriptions/" + testSubID + "/convert-recurrence", body: `{"reason":"x"}`, token: operatorToken(t)})
+	if status != http.StatusNotFound {
+		t.Fatalf("status %d corpo %s", status, body)
+	}
+	if calls := upstream.drain(); len(calls) != 0 {
+		t.Fatalf("não pode chegar ao ms-billing: %+v", calls)
 	}
 }
