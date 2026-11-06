@@ -11,6 +11,7 @@ import (
 
 	"github.com/keepguard/bff-core/internal/infrastructure/logger"
 	"github.com/keepguard/bff-core/internal/infrastructure/metrics"
+	"github.com/keepguard/bff-core/internal/pkg/ipmask"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"go.uber.org/zap"
@@ -114,7 +115,8 @@ func (m *middlewareImpl) LoggingMiddleware() echo.MiddlewareFunc {
 				zap.Int64("latencyMs", duration.Milliseconds()),
 				zap.String("duration", duration.String()),
 				zap.String("userAgent", userAgent),
-				zap.String("ip", remoteIP),
+				// IP truncado, para todos (contrato C2 §13, exceção global da §11).
+				zap.String("ip", ipmask.Truncate(remoteIP)),
 				zap.Int64("responseSize", responseSize),
 				zap.String("component", "bff-core"),
 				zap.String("service", "bff-core"),
@@ -141,7 +143,7 @@ func (m *middlewareImpl) RecoveryMiddleware() echo.MiddlewareFunc {
 				zap.String("path", c.Path()),
 				zap.String("uri", c.Request().RequestURI),
 				zap.String("userAgent", c.Request().UserAgent()),
-				zap.String("ip", c.RealIP()),
+				zap.String("ip", ipmask.Truncate(c.RealIP())),
 				zap.String("userId", userID),
 				zap.Error(err),
 				zap.String("stack", string(stack)),

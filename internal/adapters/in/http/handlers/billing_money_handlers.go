@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 
 	middlewarePkg "github.com/keepguard/bff-core/internal/adapters/in/http/middleware"
@@ -39,9 +40,50 @@ func (h *BillingHandlers) RemoveBillingCardHandler(c echo.Context) error {
 	})
 }
 
-// GetBillingSettingsHandler é GET /billing-settings, de Operador.
+// GetBillingSettingsHandler é GET /billing-settings, de Operador. Acrescenta coreWriteEnabled,
+// para a tela saber pelo servidor se a escrita está ligada. Quem trava segue sendo o
+// 403 CORE_WRITE_DISABLED.
 func (h *BillingHandlers) GetBillingSettingsHandler(c echo.Context) error {
-	return h.forward(c, port.BillingCall{Operation: "GetBillingSettings", Method: http.MethodGet, Path: billingAPIBase + "/billing-settings", Endpoint: "/billing/billing-settings"})
+	scope, unavailable := h.guard(c)
+	if unavailable != nil {
+		return unavailable
+	}
+	resp, err := h.billing.Forward(c.Request().Context(), scope, port.BillingCall{Operation: "GetBillingSettings", Method: http.MethodGet, Path: billingAPIBase + "/billing-settings", Endpoint: "/billing/billing-settings"})
+	if err != nil {
+		return handleError(c, err, scope.CorrelationID)
+	}
+	return writeRaw(c, resp.Status, withCoreWriteState(resp.Body, middlewarePkg.CoreWriteEnabled(c)))
+}
+
+// withCoreWriteState grava o campo sem decodificar os demais valores. Corpo que não é objeto
+// segue como veio: sem o campo, a tela trata como desligado.
+func withCoreWriteState(raw json.RawMessage, enabled bool) json.RawMessage {
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &fields); err != nil || fields == nil {
+		return raw
+	}
+	fields["coreWriteEnabled"] = json.RawMessage(strconv.FormatBool(enabled))
+	encoded, err := json.Marshal(fields)
+	if err != nil {
+		return raw
+	}
+	return encoded
+}
+
+// ListBillingRefundsHandler é GET /invoices/:id/refunds, de Operador.
+func (h *BillingHandlers) ListBillingRefundsHandler(c echo.Context) error {
+	return h.forward(c, port.BillingCall{
+		Operation: "ListRefunds", Method: http.MethodGet,
+		Path: billingAPIBase + "/invoices/" + url.PathEscape(c.Param("id")) + "/refunds", Endpoint: "/billing/invoices/{id}/refunds",
+	})
+}
+
+// GetBillingAccountHandler é GET /billing-accounts/:userId, de Operador.
+func (h *BillingHandlers) GetBillingAccountHandler(c echo.Context) error {
+	return h.forward(c, port.BillingCall{
+		Operation: "GetBillingAccount", Method: http.MethodGet,
+		Path: billingAPIBase + "/billing-accounts/" + url.PathEscape(c.Param("userId")), Endpoint: "/billing/billing-accounts/{userId}",
+	})
 }
 
 // ListBillingReviewsHandler é GET /billing-reviews, de Operador.

@@ -1,13 +1,16 @@
 package http
 
 import (
+	"bytes"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 func TestMiddleware_RequestID(t *testing.T) {
@@ -255,5 +258,43 @@ func TestSetTenantId(t *testing.T) {
 	tenantId := c.Request().Header.Get("X-Tenant-Id")
 	if tenantId != "app-456" {
 		t.Fatalf("expected app-456, got %s", tenantId)
+	}
+}
+
+// §13 e §11: log de requisição e log de panic com IP truncado.
+func TestLogsTruncateIP(t *testing.T) {
+	cases := []struct {
+		name   string
+		realIP string
+		want   string
+	}{
+		{"IPv4", "203.0.113.77", `"ip":"203.0.113.0"`},
+		{"IPv6", "2001:db8:1:2:3:4:5:6", `"ip":"2001:db8:1::"`},
+	}
+	run := func(t *testing.T, realIP string, wrap func(Middleware) echo.MiddlewareFunc, handler echo.HandlerFunc) string {
+		t.Helper()
+		var buffer bytes.Buffer
+		core := zapcore.NewCore(zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig()), zapcore.AddSync(&buffer), zapcore.DebugLevel)
+		e := echo.New()
+		req := httptest.NewRequest(http.MethodGet, "/test", nil)
+		req.Header.Set("X-Real-IP", realIP)
+		c := e.NewContext(req, httptest.NewRecorder())
+		_ = wrap(NewMiddleware(zap.New(core)))(handler)(c)
+		return buffer.String()
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			for name, logged := range map[string]string{
+				"requisicao": run(t, tc.realIP, Middleware.LoggingMiddleware, func(c echo.Context) error { return c.String(http.StatusOK, "ok") }),
+				"panic":      run(t, tc.realIP, Middleware.RecoveryMiddleware, func(echo.Context) error { panic("boom") }),
+			} {
+				if !strings.Contains(logged, tc.want) {
+					t.Fatalf("%s: esperado %s em %s", name, tc.want, logged)
+				}
+				if strings.Contains(logged, tc.realIP) {
+					t.Fatalf("%s: IP completo em log: %s", name, logged)
+				}
+			}
+		})
 	}
 }

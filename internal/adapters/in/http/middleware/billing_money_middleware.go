@@ -18,6 +18,7 @@ const (
 	AuthorityBillingAdmin = "billing:admin"
 
 	coreWriteDisabledCode = "CORE_WRITE_DISABLED"
+	coreWriteStateKey     = "billingCoreWriteEnabled"
 	sessionCheckTimeout   = 500 * time.Millisecond
 )
 
@@ -110,13 +111,40 @@ func (g *BillingMoneyGuard) Chain() []echo.MiddlewareFunc {
 	return []echo.MiddlewareFunc{RequireBillingAdmin(), g.requireListedCompany(), g.requireActiveSession()}
 }
 
+// allowsCompany é o único cálculo da lista: decide a trava e o que a tela mostra.
+func (g *BillingMoneyGuard) allowsCompany(c echo.Context) bool {
+	if g == nil {
+		return false
+	}
+	companyID := strings.ToLower(strings.TrimSpace(client.CompanyIDFromContext(c.Request().Context())))
+	_, listed := g.companies[companyID]
+	return companyID != "" && listed
+}
+
+// ExposeCoreWriteState põe no contexto se a company está liberada, para a resposta de
+// GET /billing-settings. Só informa a tela: quem trava é a corrente de escrita.
+func (g *BillingMoneyGuard) ExposeCoreWriteState() echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			c.Set(coreWriteStateKey, g.allowsCompany(c))
+			return next(c)
+		}
+	}
+}
+
+// CoreWriteEnabled lê o que ExposeCoreWriteState gravou. Sem valor, desligado.
+func CoreWriteEnabled(c echo.Context) bool {
+	enabled, _ := c.Get(coreWriteStateKey).(bool)
+	return enabled
+}
+
 func (g *BillingMoneyGuard) requireListedCompany() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			companyID := strings.ToLower(strings.TrimSpace(client.CompanyIDFromContext(c.Request().Context())))
-			if _, listed := g.companies[companyID]; companyID != "" && listed {
+			if g.allowsCompany(c) {
 				return next(c)
 			}
+			companyID := client.CompanyIDFromContext(c.Request().Context())
 			g.logger.Warn("Escrita de Operador recusada: company fora da lista",
 				zap.String("correlationId", GetCorrelationID(c)),
 				zap.String("companyId", companyID),

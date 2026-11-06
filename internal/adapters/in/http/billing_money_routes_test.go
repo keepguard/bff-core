@@ -266,6 +266,8 @@ func TestReadAndSubscriberRoutesForward(t *testing.T) {
 		{"remover cartao", http.MethodDelete, "/subscriptions/" + testSubID + "/card", subscriber, http.StatusNoContent, "/api/v1/billing/subscriptions/" + testSubID + "/card"},
 		{"configuracao de operador", http.MethodGet, "/billing-settings", operator, http.StatusOK, "/api/v1/billing/billing-settings"},
 		{"revisoes de operador", http.MethodGet, "/billing-reviews?status=OPEN", operator, http.StatusOK, "/api/v1/billing/billing-reviews?status=OPEN"},
+		{"estornos da fatura", http.MethodGet, "/invoices/" + testSubID + "/refunds", operator, http.StatusOK, "/api/v1/billing/invoices/" + testSubID + "/refunds"},
+		{"conta do assinante", http.MethodGet, "/billing-accounts/" + testOther, operator, http.StatusOK, "/api/v1/billing/billing-accounts/" + testOther},
 		{"previa de estorno", http.MethodGet, "/invoices/" + testSubID + "/refund-preview?amountCents=100&method=GATEWAY", operator, http.StatusOK, "/api/v1/billing/invoices/" + testSubID + "/refund-preview?amountCents=100&method=GATEWAY"},
 	}
 	for _, tc := range cases {
@@ -285,7 +287,7 @@ func TestReadAndSubscriberRoutesForward(t *testing.T) {
 			}
 		})
 	}
-	for _, path := range []string{"/billing-settings", "/billing-reviews", "/invoices/" + testSubID + "/refund-preview"} {
+	for _, path := range []string{"/billing-settings", "/billing-reviews", "/invoices/" + testSubID + "/refund-preview", "/invoices/" + testSubID + "/refunds", "/billing-accounts/" + testOther} {
 		status, _, _ := doRequest(t, base, goldenCase{method: http.MethodGet, path: coreBase + path, token: subscriber})
 		if status != http.StatusForbidden {
 			t.Fatalf("%s de assinante: %d", path, status)
@@ -424,5 +426,53 @@ func TestWebhooksForwardRawBytes(t *testing.T) {
 			t.Fatalf("%s: corpo alterado: %+v", tc.path, calls)
 		}
 		assertHeader(t, calls[0], http.CanonicalHeaderKey(tc.header), tc.value)
+	}
+}
+
+// coreWriteEnabled vem do servidor, pela mesma lista da trava (decisão do maestro). Valor vindo
+// do billing não vale, e os demais campos seguem intactos.
+func TestBillingSettingsExposesCoreWriteState(t *testing.T) {
+	sessions := sessionsStub{entries: []port.ActiveSession{{SID: "sid-1", CodeUser: testUser, CompanyID: testCompany}}}
+	access := accessStub{access: port.UserAccess{Active: true, Roles: []string{"ROLE_ADMIN"}}}
+	withGuard := func(companies []string, keyConfigured bool) func(httpserver.Server) httpserver.Server {
+		guard := middlewarePkg.NewBillingMoneyGuard(companies, keyConfigured, sessions, access, nil)
+		return func(server httpserver.Server) httpserver.Server { return server.WithBillingMoneyGuard(guard) }
+	}
+	identity := func(server httpserver.Server) httpserver.Server { return server }
+	cases := []struct {
+		name   string
+		option func(httpserver.Server) httpserver.Server
+		want   bool
+	}{
+		{"sem guard", identity, false},
+		{"lista vazia", withGuard(nil, true), false},
+		{"outra company", withGuard([]string{testTenant}, true), false},
+		{"sem a chave", withGuard([]string{testCompany}, false), false},
+		{"company na lista", withGuard([]string{testCompany}, true), true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			upstream := newFakeBilling(t)
+			upstream.replies["GET /api/v1/billing/billing-settings"] = fakeReply{http.StatusOK, `{"financialMode":"OFF","dailyCreditCapCents":99999999999999999,"coreWriteEnabled":` + map[bool]string{true: "false", false: "true"}[tc.want] + `}`}
+			base := startBillingRouter(t, baseConfigWithKey(upstream.server.URL), tc.option)
+			status, _, body := doRequest(t, base, goldenCase{method: http.MethodGet, path: coreBase + "/billing-settings", token: operatorToken(t)})
+			if status != http.StatusOK {
+				t.Fatalf("status %d body %s", status, body)
+			}
+			want := `"coreWriteEnabled":false`
+			if tc.want {
+				want = `"coreWriteEnabled":true`
+			}
+			if !strings.Contains(body, want) || !strings.Contains(body, `"dailyCreditCapCents":99999999999999999`) || !strings.Contains(body, `"financialMode":"OFF"`) {
+				t.Fatalf("corpo %s", body)
+			}
+			// A trava não depende do campo: fora da lista, a escrita segue recusada.
+			if !tc.want {
+				status, _, body = doRequest(t, base, goldenCase{method: http.MethodPost, path: coreBase + "/credits", body: `{"amountCents":1}`, token: operatorToken(t)})
+				if status != http.StatusForbidden || !strings.Contains(body, "CORE_WRITE_DISABLED") {
+					t.Fatalf("status %d body %s", status, body)
+				}
+			}
+		})
 	}
 }
