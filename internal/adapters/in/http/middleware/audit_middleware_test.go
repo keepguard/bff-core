@@ -2,6 +2,7 @@ package http
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -135,6 +136,46 @@ func TestAuditMiddlewareAuditReadPublishes(t *testing.T) {
 	require.Equal(t, "u-1", rec.events[0].Actor.CodeUser)
 	require.Equal(t, "t-1", rec.events[0].TenantID)
 	require.Equal(t, "evt-1", rec.events[0].Resource.ID)
+}
+
+// §13 e §11: evento de auditoria com IP truncado e sem aparelho, mesmo com o aparelho no
+// token e no cabeçalho. O evento serializado também não leva o IP completo.
+func TestAuditMiddlewareTruncatesIPAndDropsDevice(t *testing.T) {
+	cases := []struct {
+		name   string
+		realIP string
+		want   string
+	}{
+		{"IPv4", "203.0.113.77", "203.0.113.0"},
+		{"IPv6", "2001:db8:1:2:3:4:5:6", "2001:db8:1::"},
+		{"cabecalho que nao e IP", "nao-e-ip", ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			rec := &recPub{}
+			e := echo.New()
+			req := httptest.NewRequest(http.MethodPost, "/api/v1/core/billing/credits", nil)
+			req.Header.Set("X-Real-IP", tc.realIP)
+			req.Header.Set("X-Device-Id", "dev-cabecalho")
+			rr := httptest.NewRecorder()
+			c := e.NewContext(req, rr)
+			c.SetPath("/api/v1/core/billing/credits")
+			c.Set("claims", &pkg.JWTClaims{CodeUser: "u-1", TenantId: "t-1", DeviceID: "dev-token"})
+
+			err := AuditMiddleware(rec, "bff-core")(func(c echo.Context) error {
+				return c.NoContent(http.StatusForbidden)
+			})(c)
+			require.NoError(t, err)
+			require.Len(t, rec.events, 1)
+			require.Equal(t, tc.want, rec.events[0].Actor.ClientIP)
+			require.Empty(t, rec.events[0].Actor.DeviceID)
+			raw, err := json.Marshal(rec.events[0])
+			require.NoError(t, err)
+			require.NotContains(t, string(raw), "dev-")
+			require.NotContains(t, string(raw), "deviceId")
+			require.NotContains(t, string(raw), tc.realIP)
+		})
+	}
 }
 
 func TestShouldSkipProductGet(t *testing.T) {

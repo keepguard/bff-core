@@ -10,6 +10,7 @@ import (
 	client "github.com/keepguard/bff-core/internal/application/port"
 	outport "github.com/keepguard/bff-core/internal/application/port/out"
 	"github.com/keepguard/bff-core/internal/pkg"
+	"github.com/keepguard/bff-core/internal/pkg/ipmask"
 	"github.com/labstack/echo/v4"
 )
 
@@ -39,7 +40,7 @@ func AuditMiddleware(publisher outport.EventPublisher, sourceService string) ech
 			if denied {
 				outcome = "DENIED"
 			}
-			codeUser, tenantID, companyID, deviceID := auditIdentity(c)
+			codeUser, tenantID, companyID := auditIdentity(c)
 			event := outport.Event{
 				EventID:       newAuditUUID(),
 				OccurredAt:    time.Now().UTC().Format(time.RFC3339),
@@ -52,8 +53,8 @@ func AuditMiddleware(publisher outport.EventPublisher, sourceService string) ech
 				Actor: outport.Actor{
 					Type:     actorType(codeUser),
 					CodeUser: codeUser,
-					ClientIP: c.RealIP(),
-					DeviceID: deviceID,
+					// IP truncado e sem aparelho, para todos (contrato C2 §13, exceção global da §11).
+					ClientIP: ipmask.Truncate(c.RealIP()),
 				},
 				Action:   mapAuditAction(c.Request().Method, path),
 				Resource: outport.Resource{Type: "HTTP", ID: path},
@@ -141,7 +142,7 @@ func mapAuditAction(method, path string) string {
 	}
 }
 
-func auditIdentity(c echo.Context) (codeUser, tenantID, companyID, deviceID string) {
+func auditIdentity(c echo.Context) (codeUser, tenantID, companyID string) {
 	claims := GetClaimsFromContext(c)
 	if claims == nil {
 		authHeader := c.Request().Header.Get("Authorization")
@@ -152,7 +153,6 @@ func auditIdentity(c echo.Context) (codeUser, tenantID, companyID, deviceID stri
 	if claims != nil {
 		codeUser = firstNonBlank(claims.CodeUser, claims.Sub, claims.UserID)
 		tenantID = strings.TrimSpace(claims.TenantId)
-		deviceID = strings.TrimSpace(claims.DeviceID)
 	}
 	if codeUser == "" {
 		codeUser = strings.TrimSpace(GetUserIDFromContext(c))
@@ -164,10 +164,7 @@ func auditIdentity(c echo.Context) (codeUser, tenantID, companyID, deviceID stri
 	if companyID == "" {
 		companyID = strings.TrimSpace(c.Request().Header.Get("X-Company-Id"))
 	}
-	if deviceID == "" {
-		deviceID = strings.TrimSpace(c.Request().Header.Get("X-Device-Id"))
-	}
-	return codeUser, tenantID, companyID, deviceID
+	return codeUser, tenantID, companyID
 }
 
 func firstNonBlank(values ...string) string {
