@@ -1,6 +1,9 @@
 package logger
 
-import "go.uber.org/zap"
+import (
+	"github.com/keepguard/bff-core/internal/pkg/ipmask"
+	"go.uber.org/zap"
+)
 
 // Helper functions para campos comuns
 func TraceID(traceID string) zap.Field {
@@ -59,8 +62,9 @@ func Duration(duration string) zap.Field {
 	return zap.String("duration", duration)
 }
 
+// IP grava o IP truncado (contrato C2 §13): nenhum chamador consegue logar o completo.
 func IP(ip string) zap.Field {
-	return zap.String("ip", ip)
+	return zap.String("ip", ipmask.Truncate(ip))
 }
 
 func UserAgent(userAgent string) zap.Field {

@@ -10,6 +10,7 @@ import (
 	"github.com/keepguard/bff-core/internal/infrastructure/config"
 	metricsPkg "github.com/keepguard/bff-core/internal/infrastructure/metrics"
 	"github.com/keepguard/bff-core/internal/pkg"
+	"github.com/keepguard/bff-core/internal/pkg/ipmask"
 	"github.com/labstack/echo/v4"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
@@ -73,7 +74,12 @@ func (r *RateLimiterMiddleware) Limit(action string, rule config.RateLimitRule) 
 				identifierType = "user"
 			}
 
+			// A chave de limite usa o IP completo. Em log, só truncado (contrato C2 §13, §11).
 			redisKey := fmt.Sprintf("rl:bff-core:%s:%s", action, keyIdentifier)
+			logIdentifier := keyIdentifier
+			if identifierType == "ip" {
+				logIdentifier = maskedIPIdentifier(keyIdentifier)
+			}
 			ctx, cancel := context.WithTimeout(c.Request().Context(), 500*time.Millisecond)
 			defer cancel()
 
@@ -91,7 +97,8 @@ func (r *RateLimiterMiddleware) Limit(action string, rule config.RateLimitRule) 
 			count, err := incrExpireLua.Run(ctx, r.redisClient, []string{redisKey}, ttlSeconds).Int64()
 			if err != nil {
 				r.logger.Warn("Erro ao consultar Redis para RateLimit (fail-open)",
-					zap.String("key", redisKey),
+					zap.String("action", action),
+					zap.String("identifier", logIdentifier),
 					zap.Error(err),
 				)
 				return next(c)
@@ -121,7 +128,7 @@ func (r *RateLimiterMiddleware) Limit(action string, rule config.RateLimitRule) 
 
 				r.logger.Warn("🚨 [BFF-Core Rate Limit Excedido]",
 					zap.String("action", action),
-					zap.String("identifier", keyIdentifier),
+					zap.String("identifier", logIdentifier),
 					zap.Int64("count", count),
 					zap.Int("limit", rule.Limit),
 					zap.Int("retryAfter", retrySeconds),
@@ -137,4 +144,12 @@ func (r *RateLimiterMiddleware) Limit(action string, rule config.RateLimitRule) 
 			return next(c)
 		}
 	}
+}
+
+// maskedIPIdentifier trunca o IP para log. O "unknown" da chave segue como está.
+func maskedIPIdentifier(identifier string) string {
+	if identifier == "unknown" {
+		return identifier
+	}
+	return ipmask.Truncate(identifier)
 }
