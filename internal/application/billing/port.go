@@ -24,7 +24,7 @@ type BillingPort interface {
 	CreateSubscription(ctx context.Context, scope port.BillingScope, body any) (json.RawMessage, int, error)
 	GrantLifetimeSubscription(ctx context.Context, scope port.BillingScope, body any) (json.RawMessage, error)
 	CancelSubscription(ctx context.Context, scope port.BillingScope, id string, immediate bool) (json.RawMessage, error)
-	ReactivateSubscription(ctx context.Context, scope port.BillingScope, id string) (json.RawMessage, error)
+	ReactivateSubscription(ctx context.Context, scope port.BillingScope, id string, body any) (json.RawMessage, error)
 	PreviewPlanChange(ctx context.Context, scope port.BillingScope, id string, query map[string]string) (json.RawMessage, error)
 	ChangePlan(ctx context.Context, scope port.BillingScope, id string, body any) (json.RawMessage, error)
 	ClearScheduledChange(ctx context.Context, scope port.BillingScope, id string) (json.RawMessage, error)
@@ -33,6 +33,7 @@ type BillingPort interface {
 	GetInvoice(ctx context.Context, scope port.BillingScope, id string) (json.RawMessage, error)
 	ForwardAsaasWebhook(ctx context.Context, accessToken string, body []byte) (json.RawMessage, int, error)
 	ForwardStripeWebhook(ctx context.Context, token string, body []byte) (json.RawMessage, int, error)
+	Forward(ctx context.Context, scope port.BillingScope, call port.BillingCall) (port.BillingResponse, error)
 }
 
 type service struct {
@@ -158,11 +159,11 @@ func (s *service) CancelSubscription(ctx context.Context, scope port.BillingScop
 	return s.client.CancelSubscription(ctx, scope, id, immediate)
 }
 
-func (s *service) ReactivateSubscription(ctx context.Context, scope port.BillingScope, id string) (json.RawMessage, error) {
+func (s *service) ReactivateSubscription(ctx context.Context, scope port.BillingScope, id string, body any) (json.RawMessage, error) {
 	if err := s.require(); err != nil {
 		return nil, err
 	}
-	return s.client.ReactivateSubscription(ctx, scope, id)
+	return s.client.ReactivateSubscription(ctx, scope, id, body)
 }
 
 func (s *service) PreviewPlanChange(ctx context.Context, scope port.BillingScope, id string, query map[string]string) (json.RawMessage, error) {
@@ -219,4 +220,11 @@ func (s *service) ForwardStripeWebhook(ctx context.Context, token string, body [
 		return nil, 0, err
 	}
 	return s.client.ForwardStripeWebhook(ctx, token, body)
+}
+
+func (s *service) Forward(ctx context.Context, scope port.BillingScope, call port.BillingCall) (port.BillingResponse, error) {
+	if err := s.require(); err != nil {
+		return port.BillingResponse{}, err
+	}
+	return s.client.Forward(ctx, scope, call)
 }

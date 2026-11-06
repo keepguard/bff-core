@@ -20,7 +20,17 @@ type Config struct {
 	RateLimit         RateLimitConfig         `mapstructure:"rate_limit"`
 	ConnectionsHealth ConnectionsHealthConfig `mapstructure:"connections_health"`
 	OAuth             OAuthConfig             `mapstructure:"oauth"`
+	BillingCore       BillingCoreConfig       `mapstructure:"-"`
 	Env               string                  `mapstructure:"env"`
+}
+
+// BillingCoreConfig é a escrita de Operador pelo bff-core (Cobrança, contrato C2 §3). Vem só
+// de variável de ambiente, nunca de arquivo. Sem as duas, toda escrita recusa.
+type BillingCoreConfig struct {
+	// WriteCompanyIDs é a lista explícita de companies, separada por vírgula. Vazia em produção.
+	WriteCompanyIDs string
+	// ServiceKey é o valor cuja entrada "bff-core" está em BILLING_SERVICE_KEYS do ms-billing.
+	ServiceKey string
 }
 
 // RedisConfig configurações de conexão com Redis
@@ -203,6 +213,10 @@ func Load() (*Config, error) {
 	}
 	if v := strings.TrimSpace(os.Getenv("AUTH_CLIENT_SECRET_BASE")); v != "" {
 		config.OAuth.SecretBase = v
+	}
+	config.BillingCore = BillingCoreConfig{
+		WriteCompanyIDs: strings.TrimSpace(os.Getenv("BILLING_CORE_WRITE_COMPANY_IDS")),
+		ServiceKey:      strings.TrimSpace(os.Getenv("BILLING_CORE_SERVICE_KEY")),
 	}
 
 	return &config, nil

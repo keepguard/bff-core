@@ -49,6 +49,12 @@ type BillingScope struct {
 	UserID        string
 	CorrelationID string
 	Admin         bool
+	// IdempotencyKey vai ao billing como veio; vazia, o cabeçalho não sai.
+	IdempotencyKey string
+	// OperatorID e ClientIP só em escrita de Operador. Com OperatorID, o cliente anexa a
+	// credencial do bff-core (contrato C2 §3).
+	OperatorID string
+	ClientIP   string
 }
 
 type BillingClient interface {
@@ -67,7 +73,7 @@ type BillingClient interface {
 	CreateSubscription(ctx context.Context, scope BillingScope, body any) (json.RawMessage, int, error)
 	GrantLifetimeSubscription(ctx context.Context, scope BillingScope, body any) (json.RawMessage, error)
 	CancelSubscription(ctx context.Context, scope BillingScope, id string, immediate bool) (json.RawMessage, error)
-	ReactivateSubscription(ctx context.Context, scope BillingScope, id string) (json.RawMessage, error)
+	ReactivateSubscription(ctx context.Context, scope BillingScope, id string, body any) (json.RawMessage, error)
 	PreviewPlanChange(ctx context.Context, scope BillingScope, id string, query map[string]string) (json.RawMessage, error)
 	ChangePlan(ctx context.Context, scope BillingScope, id string, body any) (json.RawMessage, error)
 	ClearScheduledChange(ctx context.Context, scope BillingScope, id string) (json.RawMessage, error)
@@ -76,6 +82,7 @@ type BillingClient interface {
 	GetInvoice(ctx context.Context, scope BillingScope, id string) (json.RawMessage, error)
 	ForwardAsaasWebhook(ctx context.Context, accessToken string, body []byte) (json.RawMessage, int, error)
 	ForwardStripeWebhook(ctx context.Context, token string, body []byte) (json.RawMessage, int, error)
+	BillingForwarder
 }
 
 type ServiceTokenClient interface {

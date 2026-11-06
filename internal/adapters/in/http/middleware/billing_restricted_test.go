@@ -62,8 +62,11 @@ func (m *mockBillingClientForMiddleware) GrantLifetimeSubscription(ctx context.C
 func (m *mockBillingClientForMiddleware) CancelSubscription(ctx context.Context, scope domainclient.BillingScope, id string, immediate bool) (json.RawMessage, error) {
 	return nil, nil
 }
-func (m *mockBillingClientForMiddleware) ReactivateSubscription(ctx context.Context, scope domainclient.BillingScope, id string) (json.RawMessage, error) {
+func (m *mockBillingClientForMiddleware) ReactivateSubscription(ctx context.Context, scope domainclient.BillingScope, id string, body any) (json.RawMessage, error) {
 	return nil, nil
+}
+func (m *mockBillingClientForMiddleware) Forward(ctx context.Context, scope domainclient.BillingScope, call domainclient.BillingCall) (domainclient.BillingResponse, error) {
+	return domainclient.BillingResponse{}, nil
 }
 func (m *mockBillingClientForMiddleware) PreviewPlanChange(ctx context.Context, scope domainclient.BillingScope, id string, query map[string]string) (json.RawMessage, error) {
 	return nil, nil

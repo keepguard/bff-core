@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"strings"
 
@@ -12,6 +11,7 @@ import (
 	"github.com/keepguard/bff-core/internal/application/billing"
 	appdto "github.com/keepguard/bff-core/internal/application/dto"
 	"github.com/keepguard/bff-core/internal/application/port"
+	"github.com/keepguard/bff-core/internal/infrastructure/clientip"
 	"github.com/keepguard/bff-core/internal/pkg"
 	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
@@ -239,8 +239,17 @@ func (h *BillingHandlers) CancelBillingSubscriptionHandler(c echo.Context) error
 
 func (h *BillingHandlers) ReactivateBillingSubscriptionHandler(c echo.Context) error {
 	id := c.Param("id")
+	// Corpo opcional: cardDebitConsent, em cartão (contrato C2 §7.1). Sem corpo, igual a antes.
+	var body any
+	if c.Request().ContentLength > 0 {
+		parsed, err := bindBillingJSON(c)
+		if err != nil || c.Response().Committed {
+			return err
+		}
+		body = parsed
+	}
 	return h.proxy(c, http.StatusOK, func(ctx echo.Context, scope port.BillingScope) (json.RawMessage, error) {
-		return h.billing.ReactivateSubscription(ctx.Request().Context(), scope, id)
+		return h.billing.ReactivateSubscription(ctx.Request().Context(), scope, id, body)
 	})
 }
 
@@ -497,10 +506,11 @@ func (h *BillingHandlers) guard(c echo.Context) (port.BillingScope, error) {
 		c.SetRequest(c.Request().WithContext(ctx))
 	}
 	return port.BillingScope{
-		CompanyID:     companyID,
-		UserID:        userID,
-		CorrelationID: correlationID,
-		Admin:         admin,
+		CompanyID:      companyID,
+		UserID:         userID,
+		CorrelationID:  correlationID,
+		Admin:          admin,
+		IdempotencyKey: strings.TrimSpace(c.Request().Header.Get("Idempotency-Key")),
 	}, nil
 }
 
@@ -521,6 +531,8 @@ func bindBillingJSON(c echo.Context) (map[string]any, error) {
 			CorrelationID: correlationID,
 		})
 	}
+	// IP nunca vem do corpo (contrato C2 §9): só o que a conexão diz.
+	delete(body, "remoteIp")
 	method := strings.ToLower(strings.TrimSpace(stringifyJSON(body["paymentMethod"])))
 	if method == "credit_card" || method == "creditcard" {
 		body["paymentMethod"] = "credit_card"
@@ -537,19 +549,10 @@ func bindBillingJSON(c echo.Context) (map[string]any, error) {
 	return body, nil
 }
 
+// clientRemoteIP é o IP real do visitante (contrato C2 §9 e §11). O primeiro item de
+// X-Forwarded-For, usado antes, era controlado pelo cliente.
 func clientRemoteIP(c echo.Context) string {
-	if xff := strings.TrimSpace(c.Request().Header.Get("X-Forwarded-For")); xff != "" {
-		parts := strings.Split(xff, ",")
-		return strings.TrimSpace(parts[0])
-	}
-	if realIP := strings.TrimSpace(c.Request().Header.Get("X-Real-IP")); realIP != "" {
-		return realIP
-	}
-	host, _, err := net.SplitHostPort(c.Request().RemoteAddr)
-	if err != nil {
-		return strings.TrimSpace(c.Request().RemoteAddr)
-	}
-	return host
+	return clientip.FromRequest(c.Request())
 }
 
 func (h *BillingHandlers) attachPayerProfile(c echo.Context, body map[string]any, scope port.BillingScope) error {
@@ -610,14 +613,16 @@ func (h *BillingHandlers) attachSessionSnapshot(c echo.Context, body map[string]
 	if body == nil {
 		return
 	}
-	if _, exists := body["deviceId"]; !exists || stringifyJSON(body["deviceId"]) == "" {
-		devID := strings.TrimSpace(c.Request().Header.Get("X-Device-Id"))
-		if devID == "" && claims != nil {
-			devID = strings.TrimSpace(claims.DeviceID)
-		}
-		if devID != "" {
-			body["deviceId"] = devID
-		}
+	// IP e aparelho do corpo, e X-Public-IP, são ignorados: quem chama escolhe o que manda,
+	// e o valor vira sinal antifraude (contrato C2 §9, exceção global da §11).
+	delete(body, "ipAddress")
+	delete(body, "deviceId")
+	devID := strings.TrimSpace(c.Request().Header.Get("X-Device-Id"))
+	if devID == "" && claims != nil {
+		devID = strings.TrimSpace(claims.DeviceID)
+	}
+	if devID != "" {
+		body["deviceId"] = devID
 	}
 
 	if _, exists := body["deviceName"]; !exists || stringifyJSON(body["deviceName"]) == "" {
@@ -632,14 +637,8 @@ func (h *BillingHandlers) attachSessionSnapshot(c echo.Context, body map[string]
 		}
 	}
 
-	if _, exists := body["ipAddress"]; !exists || stringifyJSON(body["ipAddress"]) == "" {
-		ip := strings.TrimSpace(c.Request().Header.Get("X-Public-IP"))
-		if ip == "" {
-			ip = strings.TrimSpace(c.RealIP())
-		}
-		if ip != "" {
-			body["ipAddress"] = ip
-		}
+	if ip := clientip.FromRequest(c.Request()); ip != "" {
+		body["ipAddress"] = ip
 	}
 
 	if _, exists := body["userAgent"]; !exists || stringifyJSON(body["userAgent"]) == "" {
@@ -922,12 +921,31 @@ func stringifyJSON(value any) string {
 	}
 }
 
+// Chaves de dado de cartão, normalizadas por normalizeBillingKey (contrato C2 §6.12). O
+// token (creditCardToken) não está aqui: segue aceito neste caminho, e o billing recusa em
+// company ligada.
+var cardDataKeys = map[string]struct{}{
+	"cardnumber": {}, "creditcardnumber": {}, "pan": {}, "cvv": {}, "cvc": {}, "ccv": {},
+	"expirymonth": {}, "expiryyear": {}, "expirationdate": {}, "creditcardholderinfo": {},
+}
+
+// Dentro de um nó de cartão, estas chaves também são dado de cartão.
+var cardNodeKeys = map[string]struct{}{"creditcard": {}, "card": {}}
+var cardNodeDataKeys = map[string]struct{}{"number": {}, "holdername": {}, "expiry": {}, "expiration": {}}
+
+func normalizeBillingKey(key string) string {
+	return strings.NewReplacer("_", "", "-", "").Replace(strings.ToLower(strings.TrimSpace(key)))
+}
+
 func containsCardData(value any) bool {
 	switch typed := value.(type) {
 	case map[string]any:
 		for key, nested := range typed {
-			normalized := strings.ToLower(strings.ReplaceAll(key, "_", ""))
-			if normalized == "cardnumber" || normalized == "cvv" || normalized == "pan" || normalized == "cvc" {
+			normalized := normalizeBillingKey(key)
+			if _, card := cardDataKeys[normalized]; card {
+				return true
+			}
+			if _, node := cardNodeKeys[normalized]; node && cardNodeHasData(nested) {
 				return true
 			}
 			if containsCardData(nested) {
@@ -939,6 +957,19 @@ func containsCardData(value any) bool {
 			if containsCardData(nested) {
 				return true
 			}
+		}
+	}
+	return false
+}
+
+func cardNodeHasData(value any) bool {
+	node, ok := value.(map[string]any)
+	if !ok {
+		return false
+	}
+	for key := range node {
+		if _, data := cardNodeDataKeys[normalizeBillingKey(key)]; data {
+			return true
 		}
 	}
 	return false

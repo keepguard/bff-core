@@ -1,0 +1,898 @@
+[
+  {
+    "name": "cancel",
+    "status": 200,
+    "contentType": "application/json",
+    "responseBody": "{\"ok\":true}",
+    "upstream": [
+      {
+        "method": "POST",
+        "uri": "/api/v1/billing/subscriptions/bbbbbbbb-0000-4000-8000-000000000001/cancel",
+        "headers": {
+          "Accept-Encoding": [
+            "gzip"
+          ],
+          "Authorization": [
+            "Bearer \u003ctoken\u003e"
+          ],
+          "Content-Length": [
+            "0"
+          ],
+          "User-Agent": [
+            "go-resty/2.10.0 (https://github.com/go-resty/resty)"
+          ],
+          "X-Caller-Admin": [
+            "false"
+          ],
+          "X-Company-Id": [
+            "4e65bc72-c60b-4382-977d-c15314d117a8"
+          ],
+          "X-Correlation-Id": [
+            "cccccccc-0000-4000-8000-000000000001"
+          ],
+          "X-User-Id": [
+            "1a2b3c4d-0000-4000-8000-000000000001"
+          ]
+        },
+        "body": ""
+      }
+    ]
+  },
+  {
+    "name": "cancel immediate de admin",
+    "status": 200,
+    "contentType": "application/json",
+    "responseBody": "{\"ok\":true}",
+    "upstream": [
+      {
+        "method": "POST",
+        "uri": "/api/v1/billing/subscriptions/bbbbbbbb-0000-4000-8000-000000000001/cancel?immediate=true",
+        "headers": {
+          "Accept-Encoding": [
+            "gzip"
+          ],
+          "Authorization": [
+            "Bearer \u003ctoken\u003e"
+          ],
+          "Content-Length": [
+            "0"
+          ],
+          "User-Agent": [
+            "go-resty/2.10.0 (https://github.com/go-resty/resty)"
+          ],
+          "X-Caller-Admin": [
+            "true"
+          ],
+          "X-Company-Id": [
+            "4e65bc72-c60b-4382-977d-c15314d117a8"
+          ],
+          "X-Correlation-Id": [
+            "cccccccc-0000-4000-8000-000000000001"
+          ],
+          "X-User-Id": [
+            "1a2b3c4d-0000-4000-8000-000000000001"
+          ]
+        },
+        "body": ""
+      }
+    ]
+  },
+  {
+    "name": "cancel immediate de assinante",
+    "status": 200,
+    "contentType": "application/json",
+    "responseBody": "{\"ok\":true}",
+    "upstream": [
+      {
+        "method": "POST",
+        "uri": "/api/v1/billing/subscriptions/bbbbbbbb-0000-4000-8000-000000000001/cancel",
+        "headers": {
+          "Accept-Encoding": [
+            "gzip"
+          ],
+          "Authorization": [
+            "Bearer \u003ctoken\u003e"
+          ],
+          "Content-Length": [
+            "0"
+          ],
+          "User-Agent": [
+            "go-resty/2.10.0 (https://github.com/go-resty/resty)"
+          ],
+          "X-Caller-Admin": [
+            "false"
+          ],
+          "X-Company-Id": [
+            "4e65bc72-c60b-4382-977d-c15314d117a8"
+          ],
+          "X-Correlation-Id": [
+            "cccccccc-0000-4000-8000-000000000001"
+          ],
+          "X-User-Id": [
+            "1a2b3c4d-0000-4000-8000-000000000001"
+          ]
+        },
+        "body": ""
+      }
+    ]
+  },
+  {
+    "name": "change plan",
+    "status": 200,
+    "contentType": "application/json",
+    "responseBody": "{\"ok\":true}",
+    "upstream": [
+      {
+        "method": "POST",
+        "uri": "/api/v1/billing/subscriptions/bbbbbbbb-0000-4000-8000-000000000001/change-plan",
+        "headers": {
+          "Accept-Encoding": [
+            "gzip"
+          ],
+          "Authorization": [
+            "Bearer \u003ctoken\u003e"
+          ],
+          "Content-Length": [
+            "80"
+          ],
+          "Content-Type": [
+            "application/json"
+          ],
+          "User-Agent": [
+            "go-resty/2.10.0 (https://github.com/go-resty/resty)"
+          ],
+          "X-Caller-Admin": [
+            "false"
+          ],
+          "X-Company-Id": [
+            "4e65bc72-c60b-4382-977d-c15314d117a8"
+          ],
+          "X-Correlation-Id": [
+            "cccccccc-0000-4000-8000-000000000001"
+          ],
+          "X-User-Id": [
+            "1a2b3c4d-0000-4000-8000-000000000001"
+          ]
+        },
+        "body": "{\"id\":\"bbbbbbbb-0000-4000-8000-000000000001\",\"interval\":\"year\",\"planCode\":\"PRO\"}"
+      }
+    ]
+  },
+  {
+    "name": "change preview",
+    "status": 200,
+    "contentType": "application/json",
+    "responseBody": "{\"ok\":true}",
+    "upstream": [
+      {
+        "method": "GET",
+        "uri": "/api/v1/billing/subscriptions/bbbbbbbb-0000-4000-8000-000000000001/change-preview?interval=year\u0026planCode=PRO",
+        "headers": {
+          "Accept-Encoding": [
+            "gzip"
+          ],
+          "Authorization": [
+            "Bearer \u003ctoken\u003e"
+          ],
+          "User-Agent": [
+            "go-resty/2.10.0 (https://github.com/go-resty/resty)"
+          ],
+          "X-Caller-Admin": [
+            "false"
+          ],
+          "X-Company-Id": [
+            "4e65bc72-c60b-4382-977d-c15314d117a8"
+          ],
+          "X-Correlation-Id": [
+            "cccccccc-0000-4000-8000-000000000001"
+          ],
+          "X-User-Id": [
+            "1a2b3c4d-0000-4000-8000-000000000001"
+          ]
+        },
+        "body": ""
+      }
+    ]
+  },
+  {
+    "name": "entitlement",
+    "status": 200,
+    "contentType": "application/json",
+    "responseBody": "{\"status\":\"active\",\"allowsProduct\":true,\"planCode\":\"PRO\"}",
+    "upstream": [
+      {
+        "method": "GET",
+        "uri": "/api/v1/billing/entitlement",
+        "headers": {
+          "Accept-Encoding": [
+            "gzip"
+          ],
+          "Authorization": [
+            "Bearer \u003ctoken\u003e"
+          ],
+          "User-Agent": [
+            "go-resty/2.10.0 (https://github.com/go-resty/resty)"
+          ],
+          "X-Caller-Admin": [
+            "false"
+          ],
+          "X-Company-Id": [
+            "4e65bc72-c60b-4382-977d-c15314d117a8"
+          ],
+          "X-Correlation-Id": [
+            "cccccccc-0000-4000-8000-000000000001"
+          ],
+          "X-User-Id": [
+            "1a2b3c4d-0000-4000-8000-000000000001"
+          ]
+        },
+        "body": ""
+      }
+    ]
+  },
+  {
+    "name": "entitlements de admin",
+    "status": 200,
+    "contentType": "application/json",
+    "responseBody": "{\"ok\":true}",
+    "upstream": [
+      {
+        "method": "GET",
+        "uri": "/api/v1/billing/entitlements?page=0",
+        "headers": {
+          "Accept-Encoding": [
+            "gzip"
+          ],
+          "Authorization": [
+            "Bearer \u003ctoken\u003e"
+          ],
+          "User-Agent": [
+            "go-resty/2.10.0 (https://github.com/go-resty/resty)"
+          ],
+          "X-Caller-Admin": [
+            "true"
+          ],
+          "X-Company-Id": [
+            "4e65bc72-c60b-4382-977d-c15314d117a8"
+          ],
+          "X-Correlation-Id": [
+            "cccccccc-0000-4000-8000-000000000001"
+          ],
+          "X-User-Id": [
+            "1a2b3c4d-0000-4000-8000-000000000001"
+          ]
+        },
+        "body": ""
+      }
+    ]
+  },
+  {
+    "name": "entitlements de assinante recusado",
+    "status": 403,
+    "contentType": "application/json; charset=UTF-8",
+    "responseBody": "{\"error\":\"FORBIDDEN\",\"message\":\"Acesso restrito a administradores ou gestores com billing:read\",\"correlationId\":\"cccccccc-0000-4000-8000-000000000001\"}\n",
+    "upstream": null
+  },
+  {
+    "name": "gateway accounts",
+    "status": 200,
+    "contentType": "application/json",
+    "responseBody": "{\"ok\":true}",
+    "upstream": [
+      {
+        "method": "GET",
+        "uri": "/api/v1/billing/gateway-accounts",
+        "headers": {
+          "Accept-Encoding": [
+            "gzip"
+          ],
+          "Authorization": [
+            "Bearer \u003ctoken\u003e"
+          ],
+          "User-Agent": [
+            "go-resty/2.10.0 (https://github.com/go-resty/resty)"
+          ],
+          "X-Caller-Admin": [
+            "true"
+          ],
+          "X-Company-Id": [
+            "4e65bc72-c60b-4382-977d-c15314d117a8"
+          ],
+          "X-Correlation-Id": [
+            "cccccccc-0000-4000-8000-000000000001"
+          ],
+          "X-User-Id": [
+            "1a2b3c4d-0000-4000-8000-000000000001"
+          ]
+        },
+        "body": ""
+      }
+    ]
+  },
+  {
+    "name": "grant lifetime",
+    "status": 201,
+    "contentType": "application/json",
+    "responseBody": "{\"status\":\"active\"}",
+    "upstream": [
+      {
+        "method": "POST",
+        "uri": "/api/v1/billing/subscriptions/grant-lifetime",
+        "headers": {
+          "Accept-Encoding": [
+            "gzip"
+          ],
+          "Authorization": [
+            "Bearer \u003ctoken\u003e"
+          ],
+          "Content-Length": [
+            "72"
+          ],
+          "Content-Type": [
+            "application/json"
+          ],
+          "User-Agent": [
+            "go-resty/2.10.0 (https://github.com/go-resty/resty)"
+          ],
+          "X-Caller-Admin": [
+            "true"
+          ],
+          "X-Company-Id": [
+            "4e65bc72-c60b-4382-977d-c15314d117a8"
+          ],
+          "X-Correlation-Id": [
+            "cccccccc-0000-4000-8000-000000000001"
+          ],
+          "X-User-Id": [
+            "1a2b3c4d-0000-4000-8000-000000000001"
+          ]
+        },
+        "body": "{\"planCode\":\"VIP\",\"targetUserId\":\"1a2b3c4d-0000-4000-8000-000000000002\"}"
+      }
+    ]
+  },
+  {
+    "name": "invoice",
+    "status": 200,
+    "contentType": "application/json",
+    "responseBody": "{\"ok\":true}",
+    "upstream": [
+      {
+        "method": "GET",
+        "uri": "/api/v1/billing/invoices/bbbbbbbb-0000-4000-8000-000000000001",
+        "headers": {
+          "Accept-Encoding": [
+            "gzip"
+          ],
+          "Authorization": [
+            "Bearer \u003ctoken\u003e"
+          ],
+          "User-Agent": [
+            "go-resty/2.10.0 (https://github.com/go-resty/resty)"
+          ],
+          "X-Caller-Admin": [
+            "false"
+          ],
+          "X-Company-Id": [
+            "4e65bc72-c60b-4382-977d-c15314d117a8"
+          ],
+          "X-Correlation-Id": [
+            "cccccccc-0000-4000-8000-000000000001"
+          ],
+          "X-User-Id": [
+            "1a2b3c4d-0000-4000-8000-000000000001"
+          ]
+        },
+        "body": ""
+      }
+    ]
+  },
+  {
+    "name": "invoice nao encontrada",
+    "status": 404,
+    "contentType": "application/json; charset=UTF-8",
+    "responseBody": "{\"error\":\"NOT_FOUND\",\"message\":\"Fatura não encontrada\",\"correlationId\":\"cccccccc-0000-4000-8000-000000000001\"}\n",
+    "upstream": [
+      {
+        "method": "GET",
+        "uri": "/api/v1/billing/invoices/naoexiste",
+        "headers": {
+          "Accept-Encoding": [
+            "gzip"
+          ],
+          "Authorization": [
+            "Bearer \u003ctoken\u003e"
+          ],
+          "User-Agent": [
+            "go-resty/2.10.0 (https://github.com/go-resty/resty)"
+          ],
+          "X-Caller-Admin": [
+            "false"
+          ],
+          "X-Company-Id": [
+            "4e65bc72-c60b-4382-977d-c15314d117a8"
+          ],
+          "X-Correlation-Id": [
+            "cccccccc-0000-4000-8000-000000000001"
+          ],
+          "X-User-Id": [
+            "1a2b3c4d-0000-4000-8000-000000000001"
+          ]
+        },
+        "body": ""
+      }
+    ]
+  },
+  {
+    "name": "invoices",
+    "status": 200,
+    "contentType": "application/json",
+    "responseBody": "{\"ok\":true}",
+    "upstream": [
+      {
+        "method": "GET",
+        "uri": "/api/v1/billing/invoices?page=0\u0026size=20\u0026status=PAID",
+        "headers": {
+          "Accept-Encoding": [
+            "gzip"
+          ],
+          "Authorization": [
+            "Bearer \u003ctoken\u003e"
+          ],
+          "User-Agent": [
+            "go-resty/2.10.0 (https://github.com/go-resty/resty)"
+          ],
+          "X-Caller-Admin": [
+            "false"
+          ],
+          "X-Company-Id": [
+            "4e65bc72-c60b-4382-977d-c15314d117a8"
+          ],
+          "X-Correlation-Id": [
+            "cccccccc-0000-4000-8000-000000000001"
+          ],
+          "X-User-Id": [
+            "1a2b3c4d-0000-4000-8000-000000000001"
+          ]
+        },
+        "body": ""
+      }
+    ]
+  },
+  {
+    "name": "invoices de admin com q",
+    "status": 200,
+    "contentType": "application/json",
+    "responseBody": "{\"ok\":true}",
+    "upstream": [
+      {
+        "method": "GET",
+        "uri": "/api/v1/billing/invoices?payerUserId=1a2b3c4d-0000-4000-8000-000000000002\u0026q=1a2b3c4d-0000-4000-8000-000000000002\u0026userId=1a2b3c4d-0000-4000-8000-000000000002",
+        "headers": {
+          "Accept-Encoding": [
+            "gzip"
+          ],
+          "Authorization": [
+            "Bearer \u003ctoken\u003e"
+          ],
+          "User-Agent": [
+            "go-resty/2.10.0 (https://github.com/go-resty/resty)"
+          ],
+          "X-Caller-Admin": [
+            "true"
+          ],
+          "X-Company-Id": [
+            "4e65bc72-c60b-4382-977d-c15314d117a8"
+          ],
+          "X-Correlation-Id": [
+            "cccccccc-0000-4000-8000-000000000001"
+          ],
+          "X-User-Id": [
+            "1a2b3c4d-0000-4000-8000-000000000001"
+          ]
+        },
+        "body": ""
+      }
+    ]
+  },
+  {
+    "name": "plan create",
+    "status": 201,
+    "contentType": "application/json",
+    "responseBody": "{\"code\":\"PRO\"}",
+    "upstream": [
+      {
+        "method": "POST",
+        "uri": "/api/v1/billing/plans",
+        "headers": {
+          "Accept-Encoding": [
+            "gzip"
+          ],
+          "Authorization": [
+            "Bearer \u003ctoken\u003e"
+          ],
+          "Content-Length": [
+            "105"
+          ],
+          "Content-Type": [
+            "application/json"
+          ],
+          "User-Agent": [
+            "go-resty/2.10.0 (https://github.com/go-resty/resty)"
+          ],
+          "X-Caller-Admin": [
+            "true"
+          ],
+          "X-Company-Id": [
+            "4e65bc72-c60b-4382-977d-c15314d117a8"
+          ],
+          "X-Correlation-Id": [
+            "cccccccc-0000-4000-8000-000000000001"
+          ],
+          "X-User-Id": [
+            "1a2b3c4d-0000-4000-8000-000000000001"
+          ]
+        },
+        "body": "{\"code\":\"PRO\",\"level\":1,\"name\":\"Pro\",\"prices\":[{\"amountCents\":9700,\"currency\":\"BRL\",\"interval\":\"month\"}]}"
+      }
+    ]
+  },
+  {
+    "name": "plan delete",
+    "status": 204,
+    "contentType": "",
+    "responseBody": "",
+    "upstream": [
+      {
+        "method": "DELETE",
+        "uri": "/api/v1/billing/plans/PRO",
+        "headers": {
+          "Accept-Encoding": [
+            "gzip"
+          ],
+          "Authorization": [
+            "Bearer \u003ctoken\u003e"
+          ],
+          "User-Agent": [
+            "go-resty/2.10.0 (https://github.com/go-resty/resty)"
+          ],
+          "X-Caller-Admin": [
+            "true"
+          ],
+          "X-Company-Id": [
+            "4e65bc72-c60b-4382-977d-c15314d117a8"
+          ],
+          "X-Correlation-Id": [
+            "cccccccc-0000-4000-8000-000000000001"
+          ],
+          "X-User-Id": [
+            "1a2b3c4d-0000-4000-8000-000000000001"
+          ]
+        },
+        "body": ""
+      }
+    ]
+  },
+  {
+    "name": "plan patch",
+    "status": 200,
+    "contentType": "application/json",
+    "responseBody": "{\"ok\":true}",
+    "upstream": [
+      {
+        "method": "PATCH",
+        "uri": "/api/v1/billing/plans/PRO",
+        "headers": {
+          "Accept-Encoding": [
+            "gzip"
+          ],
+          "Authorization": [
+            "Bearer \u003ctoken\u003e"
+          ],
+          "Content-Length": [
+            "29"
+          ],
+          "Content-Type": [
+            "application/json"
+          ],
+          "User-Agent": [
+            "go-resty/2.10.0 (https://github.com/go-resty/resty)"
+          ],
+          "X-Caller-Admin": [
+            "true"
+          ],
+          "X-Company-Id": [
+            "4e65bc72-c60b-4382-977d-c15314d117a8"
+          ],
+          "X-Correlation-Id": [
+            "cccccccc-0000-4000-8000-000000000001"
+          ],
+          "X-User-Id": [
+            "1a2b3c4d-0000-4000-8000-000000000001"
+          ]
+        },
+        "body": "{\"code\":\"PRO\",\"name\":\"Pro 2\"}"
+      }
+    ]
+  },
+  {
+    "name": "plans",
+    "status": 200,
+    "contentType": "application/json",
+    "responseBody": "{\"ok\":true}",
+    "upstream": [
+      {
+        "method": "GET",
+        "uri": "/api/v1/billing/plans",
+        "headers": {
+          "Accept-Encoding": [
+            "gzip"
+          ],
+          "Authorization": [
+            "Bearer \u003ctoken\u003e"
+          ],
+          "User-Agent": [
+            "go-resty/2.10.0 (https://github.com/go-resty/resty)"
+          ],
+          "X-Caller-Admin": [
+            "false"
+          ],
+          "X-Company-Id": [
+            "4e65bc72-c60b-4382-977d-c15314d117a8"
+          ],
+          "X-Correlation-Id": [
+            "cccccccc-0000-4000-8000-000000000001"
+          ],
+          "X-User-Id": [
+            "1a2b3c4d-0000-4000-8000-000000000001"
+          ]
+        },
+        "body": ""
+      }
+    ]
+  },
+  {
+    "name": "reactivate sem corpo",
+    "status": 200,
+    "contentType": "application/json",
+    "responseBody": "{\"ok\":true}",
+    "upstream": [
+      {
+        "method": "POST",
+        "uri": "/api/v1/billing/subscriptions/bbbbbbbb-0000-4000-8000-000000000001/reactivate",
+        "headers": {
+          "Accept-Encoding": [
+            "gzip"
+          ],
+          "Authorization": [
+            "Bearer \u003ctoken\u003e"
+          ],
+          "Content-Length": [
+            "0"
+          ],
+          "User-Agent": [
+            "go-resty/2.10.0 (https://github.com/go-resty/resty)"
+          ],
+          "X-Caller-Admin": [
+            "false"
+          ],
+          "X-Company-Id": [
+            "4e65bc72-c60b-4382-977d-c15314d117a8"
+          ],
+          "X-Correlation-Id": [
+            "cccccccc-0000-4000-8000-000000000001"
+          ],
+          "X-User-Id": [
+            "1a2b3c4d-0000-4000-8000-000000000001"
+          ]
+        },
+        "body": ""
+      }
+    ]
+  },
+  {
+    "name": "scheduled change",
+    "status": 200,
+    "contentType": "application/json",
+    "responseBody": "{\"ok\":true}",
+    "upstream": [
+      {
+        "method": "DELETE",
+        "uri": "/api/v1/billing/subscriptions/bbbbbbbb-0000-4000-8000-000000000001/scheduled-change",
+        "headers": {
+          "Accept-Encoding": [
+            "gzip"
+          ],
+          "Authorization": [
+            "Bearer \u003ctoken\u003e"
+          ],
+          "User-Agent": [
+            "go-resty/2.10.0 (https://github.com/go-resty/resty)"
+          ],
+          "X-Caller-Admin": [
+            "false"
+          ],
+          "X-Company-Id": [
+            "4e65bc72-c60b-4382-977d-c15314d117a8"
+          ],
+          "X-Correlation-Id": [
+            "cccccccc-0000-4000-8000-000000000001"
+          ],
+          "X-User-Id": [
+            "1a2b3c4d-0000-4000-8000-000000000001"
+          ]
+        },
+        "body": ""
+      }
+    ]
+  },
+  {
+    "name": "subscribe cartao sem token",
+    "status": 201,
+    "contentType": "application/json",
+    "responseBody": "{\"status\":\"pending_gateway\"}",
+    "upstream": [
+      {
+        "method": "POST",
+        "uri": "/api/v1/billing/subscriptions",
+        "headers": {
+          "Accept-Encoding": [
+            "gzip"
+          ],
+          "Authorization": [
+            "Bearer \u003ctoken\u003e"
+          ],
+          "Content-Length": [
+            "166"
+          ],
+          "Content-Type": [
+            "application/json"
+          ],
+          "User-Agent": [
+            "go-resty/2.10.0 (https://github.com/go-resty/resty)"
+          ],
+          "X-Caller-Admin": [
+            "false"
+          ],
+          "X-Company-Id": [
+            "4e65bc72-c60b-4382-977d-c15314d117a8"
+          ],
+          "X-Correlation-Id": [
+            "cccccccc-0000-4000-8000-000000000001"
+          ],
+          "X-User-Id": [
+            "1a2b3c4d-0000-4000-8000-000000000001"
+          ]
+        },
+        "body": "{\"deviceId\":\"dev-claim\",\"interval\":\"month\",\"ipAddress\":\"127.0.0.1\",\"paymentMethod\":\"credit_card\",\"planCode\":\"PRO\",\"sessionId\":\"jti-fixo\",\"userAgent\":\"GoldenTest/1.0\"}"
+      }
+    ]
+  },
+  {
+    "name": "subscribe com X-Public-IP",
+    "status": 201,
+    "contentType": "application/json",
+    "responseBody": "{\"status\":\"pending_gateway\"}",
+    "upstream": [
+      {
+        "method": "POST",
+        "uri": "/api/v1/billing/subscriptions",
+        "headers": {
+          "Accept-Encoding": [
+            "gzip"
+          ],
+          "Authorization": [
+            "Bearer \u003ctoken\u003e"
+          ],
+          "Content-Length": [
+            "157"
+          ],
+          "Content-Type": [
+            "application/json"
+          ],
+          "User-Agent": [
+            "go-resty/2.10.0 (https://github.com/go-resty/resty)"
+          ],
+          "X-Caller-Admin": [
+            "false"
+          ],
+          "X-Company-Id": [
+            "4e65bc72-c60b-4382-977d-c15314d117a8"
+          ],
+          "X-Correlation-Id": [
+            "cccccccc-0000-4000-8000-000000000001"
+          ],
+          "X-User-Id": [
+            "1a2b3c4d-0000-4000-8000-000000000001"
+          ]
+        },
+        "body": "{\"deviceId\":\"dev-header\",\"interval\":\"month\",\"ipAddress\":\"127.0.0.1\",\"paymentMethod\":\"pix\",\"planCode\":\"PRO\",\"sessionId\":\"sess-1\",\"userAgent\":\"GoldenTest/1.0\"}"
+      }
+    ]
+  },
+  {
+    "name": "subscribe pix, sem Idempotency-Key",
+    "status": 201,
+    "contentType": "application/json",
+    "responseBody": "{\"status\":\"pending_gateway\"}",
+    "upstream": [
+      {
+        "method": "POST",
+        "uri": "/api/v1/billing/subscriptions",
+        "headers": {
+          "Accept-Encoding": [
+            "gzip"
+          ],
+          "Authorization": [
+            "Bearer \u003ctoken\u003e"
+          ],
+          "Content-Length": [
+            "158"
+          ],
+          "Content-Type": [
+            "application/json"
+          ],
+          "User-Agent": [
+            "go-resty/2.10.0 (https://github.com/go-resty/resty)"
+          ],
+          "X-Caller-Admin": [
+            "false"
+          ],
+          "X-Company-Id": [
+            "4e65bc72-c60b-4382-977d-c15314d117a8"
+          ],
+          "X-Correlation-Id": [
+            "cccccccc-0000-4000-8000-000000000001"
+          ],
+          "X-User-Id": [
+            "1a2b3c4d-0000-4000-8000-000000000001"
+          ]
+        },
+        "body": "{\"deviceId\":\"dev-claim\",\"interval\":\"month\",\"ipAddress\":\"127.0.0.1\",\"paymentMethod\":\"pix\",\"planCode\":\"PRO\",\"sessionId\":\"jti-fixo\",\"userAgent\":\"GoldenTest/1.0\"}"
+      }
+    ]
+  },
+  {
+    "name": "subscribe recusa PAN",
+    "status": 422,
+    "contentType": "application/json; charset=UTF-8",
+    "responseBody": "{\"error\":\"PAYMENT_METHOD_UNSUPPORTED\",\"message\":\"PAN/CVV não são aceitos\",\"correlationId\":\"cccccccc-0000-4000-8000-000000000001\"}\n",
+    "upstream": null
+  },
+  {
+    "name": "subscription",
+    "status": 200,
+    "contentType": "application/json",
+    "responseBody": "{\"ok\":true}",
+    "upstream": [
+      {
+        "method": "GET",
+        "uri": "/api/v1/billing/subscription",
+        "headers": {
+          "Accept-Encoding": [
+            "gzip"
+          ],
+          "Authorization": [
+            "Bearer \u003ctoken\u003e"
+          ],
+          "User-Agent": [
+            "go-resty/2.10.0 (https://github.com/go-resty/resty)"
+          ],
+          "X-Caller-Admin": [
+            "false"
+          ],
+          "X-Company-Id": [
+            "4e65bc72-c60b-4382-977d-c15314d117a8"
+          ],
+          "X-Correlation-Id": [
+            "cccccccc-0000-4000-8000-000000000001"
+          ],
+          "X-User-Id": [
+            "1a2b3c4d-0000-4000-8000-000000000001"
+          ]
+        },
+        "body": ""
+      }
+    ]
+  }
+]

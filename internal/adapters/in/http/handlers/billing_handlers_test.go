@@ -25,6 +25,16 @@ type stubBillingClient struct {
 	createBody  any
 	webhookBody []byte
 	webhookTok  string
+
+	reactivateBody any
+	forwarded      []forwardedCall
+	forwardStatus  int
+	forwardErr     error
+}
+
+type forwardedCall struct {
+	scope port.BillingScope
+	call  port.BillingCall
 }
 
 func (s *stubBillingClient) GetEntitlement(context.Context, port.BillingScope) (json.RawMessage, error) {
@@ -87,7 +97,19 @@ func (s *stubBillingClient) GrantLifetimeSubscription(context.Context, port.Bill
 func (s *stubBillingClient) CancelSubscription(context.Context, port.BillingScope, string, bool) (json.RawMessage, error) {
 	return json.RawMessage(`{"status":"canceled"}`), nil
 }
-func (s *stubBillingClient) ReactivateSubscription(context.Context, port.BillingScope, string) (json.RawMessage, error) {
+func (s *stubBillingClient) Forward(_ context.Context, scope port.BillingScope, call port.BillingCall) (port.BillingResponse, error) {
+	s.forwarded = append(s.forwarded, forwardedCall{scope: scope, call: call})
+	if s.forwardErr != nil {
+		return port.BillingResponse{}, s.forwardErr
+	}
+	status := s.forwardStatus
+	if status == 0 {
+		status = http.StatusOK
+	}
+	return port.BillingResponse{Status: status, Body: json.RawMessage(`{"ok":true}`)}, nil
+}
+func (s *stubBillingClient) ReactivateSubscription(_ context.Context, _ port.BillingScope, _ string, body any) (json.RawMessage, error) {
+	s.reactivateBody = body
 	return json.RawMessage(`{"status":"active","cancelAtPeriodEnd":false}`), nil
 }
 func (s *stubBillingClient) PreviewPlanChange(context.Context, port.BillingScope, string, map[string]string) (json.RawMessage, error) {
@@ -548,7 +570,7 @@ func TestCreateSubscriptionAttachesSessionSnapshot(t *testing.T) {
 	c.Request().Header.Set("X-Device-Id", "dev_header_1")
 	c.Request().Header.Set("X-Device-Name", "Chrome no Mac")
 	c.Request().Header.Set("X-Device-Type", "DESKTOP")
-	c.Request().Header.Set("X-Public-IP", "189.10.20.30")
+	c.Request().Header.Set("X-Real-IP", "189.10.20.30")
 	c.Request().Header.Set("User-Agent", "GoTestBrowser/1.0")
 	c.Request().Header.Set("X-Session-Id", "sess_header_1")
 
@@ -623,5 +645,136 @@ func TestReactivateBillingSubscriptionHandler_Success(t *testing.T) {
 	}
 	if !strings.Contains(rec.Body.String(), `"cancelAtPeriodEnd":false`) {
 		t.Fatalf("unexpected body: %s", rec.Body.String())
+	}
+}
+
+// K5 e §6.12: dado de cartão recusado em qualquer nível; o token segue aceito neste caminho.
+func TestContainsCardData(t *testing.T) {
+	refused := []string{
+		`{"cardNumber":"4111"}`, `{"card_number":"4111"}`, `{"card-number":"4111"}`,
+		`{"creditCardNumber":"4111"}`, `{"credit_card_number":"4111"}`,
+		`{"creditCard":{"number":"4111"}}`, `{"credit_card":{"number":"4111"}}`, `{"card":{"number":"4111"}}`,
+		`{"creditCard":{"holderName":"X"}}`,
+		`{"cvv":"123"}`, `{"cvc":"123"}`, `{"ccv":"123"}`, `{"pan":"4111"}`,
+		`{"expiryMonth":"12"}`, `{"expiryYear":"2030"}`, `{"expirationDate":"2030-12"}`, `{"expiry_month":"12"}`,
+		`{"creditCardHolderInfo":{"name":"X"}}`,
+		`{"nested":{"list":[{"ccv":"123"}]}}`,
+	}
+	for _, raw := range refused {
+		var body map[string]any
+		if err := json.Unmarshal([]byte(raw), &body); err != nil {
+			t.Fatal(err)
+		}
+		if !containsCardData(body) {
+			t.Fatalf("precisa recusar %s", raw)
+		}
+	}
+	accepted := []string{
+		`{"creditCardToken":"tok"}`, `{"planCode":"PRO","interval":"month","paymentMethod":"credit_card"}`,
+		`{"number":"123"}`, `{"invoice":{"number":"123"}}`, `{"expiresAt":"2030-01-01T00:00:00Z"}`,
+		`{"cardDebitConsent":{"textVersion":"v1"}}`, `{"prices":[{"interval":"month","amountCents":9700}]}`,
+	}
+	for _, raw := range accepted {
+		var body map[string]any
+		if err := json.Unmarshal([]byte(raw), &body); err != nil {
+			t.Fatal(err)
+		}
+		if containsCardData(body) {
+			t.Fatalf("não pode recusar %s", raw)
+		}
+	}
+}
+
+func TestCreateSubscriptionRefusesNewCardFields(t *testing.T) {
+	for _, field := range []string{`"creditCardNumber":"4111"`, `"creditCard":{"number":"4111"}`, `"ccv":"123"`, `"expiryMonth":"12"`, `"expiryYear":"2030"`, `"expirationDate":"2030-12"`, `"creditCardHolderInfo":{"name":"X"}`} {
+		t.Run(field, func(t *testing.T) {
+			c, rec := billingContext(http.MethodPost, "/api/v1/core/billing/subscriptions", `{"planCode":"basic",`+field+`}`, &pkg.JWTClaims{UserID: "user-1", Roles: []string{"ROLE_USER"}})
+			stub := &stubBillingClient{}
+			h := NewBillingHandlers(appbilling.NewBillingPort(stub), zap.NewNop())
+			if err := h.CreateBillingSubscriptionHandler(c); err != nil {
+				t.Fatal(err)
+			}
+			if rec.Code != http.StatusUnprocessableEntity || !strings.Contains(rec.Body.String(), "PAYMENT_METHOD_UNSUPPORTED") {
+				t.Fatalf("status %d body %s", rec.Code, rec.Body.String())
+			}
+			if stub.createCalls != 0 {
+				t.Fatal("não pode chegar ao ms-billing")
+			}
+		})
+	}
+}
+
+func TestReactivateForwardsOptionalBody(t *testing.T) {
+	newContext := func(body string) (echo.Context, *httptest.ResponseRecorder) {
+		c, rec := billingContext(http.MethodPost, "/api/v1/core/billing/subscriptions/sub-123/reactivate", body, &pkg.JWTClaims{UserID: "user-1", Roles: []string{"ROLE_USER"}})
+		c.SetParamNames("id")
+		c.SetParamValues("sub-123")
+		return c, rec
+	}
+	stub := &stubBillingClient{}
+	h := NewBillingHandlers(appbilling.NewBillingPort(stub), zap.NewNop())
+	c, rec := newContext("")
+	if err := h.ReactivateBillingSubscriptionHandler(c); err != nil {
+		t.Fatal(err)
+	}
+	if rec.Code != http.StatusOK || stub.reactivateBody != nil {
+		t.Fatalf("sem corpo fica igual: %d %v", rec.Code, stub.reactivateBody)
+	}
+	c, rec = newContext(`{"cardDebitConsent":{"textVersion":"v1"}}`)
+	if err := h.ReactivateBillingSubscriptionHandler(c); err != nil {
+		t.Fatal(err)
+	}
+	body, ok := stub.reactivateBody.(map[string]any)
+	if rec.Code != http.StatusOK || !ok || body["cardDebitConsent"] == nil {
+		t.Fatalf("aceite precisa seguir: %d %v", rec.Code, stub.reactivateBody)
+	}
+}
+
+func TestIdempotencyKeyReachesScope(t *testing.T) {
+	stub := &stubBillingClient{}
+	h := NewBillingHandlers(appbilling.NewBillingPort(stub), zap.NewNop())
+	c, _ := billingContext(http.MethodGet, "/api/v1/core/billing/credits", "", &pkg.JWTClaims{UserID: "user-1", Roles: []string{"ROLE_USER"}})
+	c.Request().Header.Set("Idempotency-Key", " chave-1 ")
+	if err := h.RemoveBillingCardHandler(c); err != nil {
+		t.Fatal(err)
+	}
+	if len(stub.forwarded) != 1 || stub.forwarded[0].scope.IdempotencyKey != "chave-1" {
+		t.Fatalf("escopo %+v", stub.forwarded)
+	}
+	if stub.forwarded[0].scope.OperatorID != "" {
+		t.Fatal("rota de assinante não carrega operador")
+	}
+}
+
+func TestOperatorScopeUsesTokenSubject(t *testing.T) {
+	stub := &stubBillingClient{forwardStatus: http.StatusCreated}
+	h := NewBillingHandlers(appbilling.NewBillingPort(stub), zap.NewNop())
+	c, rec := billingContext(http.MethodPost, "/api/v1/core/billing/credits", `{"amountCents":99999999999,"reason":"x"}`, &pkg.JWTClaims{Sub: "sub-do-token", UserID: "user-1", Roles: []string{"ROLE_ADMIN"}})
+	c.Request().RemoteAddr = "200.200.200.3:1234"
+	if err := h.GrantBillingCreditHandler(c); err != nil {
+		t.Fatal(err)
+	}
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("status %d", rec.Code)
+	}
+	got := stub.forwarded[0]
+	if got.scope.OperatorID != "sub-do-token" || got.scope.ClientIP != "200.200.200.3" {
+		t.Fatalf("escopo %+v", got.scope)
+	}
+	body := got.call.Body.(map[string]any)
+	if body["amountCents"].(json.Number).String() != "99999999999" {
+		t.Fatalf("centavos precisam ir intactos: %v", body["amountCents"])
+	}
+}
+
+func TestForwardedErrorKeepsCode(t *testing.T) {
+	stub := &stubBillingClient{forwardErr: &appdto.HTTPError{Code: http.StatusTooManyRequests, Message: "Muitas requisições", Details: `{"error":"DAILY_CAP_EXCEEDED","message":"x"}`}}
+	h := NewBillingHandlers(appbilling.NewBillingPort(stub), zap.NewNop())
+	c, rec := billingContext(http.MethodPost, "/api/v1/core/billing/credits", `{"amountCents":1}`, &pkg.JWTClaims{Sub: "s", UserID: "user-1", Roles: []string{"ROLE_ADMIN"}})
+	if err := h.GrantBillingCreditHandler(c); err != nil {
+		t.Fatal(err)
+	}
+	if rec.Code != http.StatusTooManyRequests || !strings.Contains(rec.Body.String(), "DAILY_CAP_EXCEEDED") {
+		t.Fatalf("status %d body %s", rec.Code, rec.Body.String())
 	}
 }

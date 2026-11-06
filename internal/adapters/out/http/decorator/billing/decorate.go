@@ -3,6 +3,7 @@ package billing
 import (
 	"context"
 	"encoding/json"
+	"net/http"
 
 	"github.com/keepguard/bff-core/internal/adapters/out/http/decorator/observe"
 	"github.com/keepguard/bff-core/internal/application/port"
@@ -122,9 +123,9 @@ func (d *decorated) CancelSubscription(ctx context.Context, scope port.BillingSc
 	})
 }
 
-func (d *decorated) ReactivateSubscription(ctx context.Context, scope port.BillingScope, id string) (json.RawMessage, error) {
+func (d *decorated) ReactivateSubscription(ctx context.Context, scope port.BillingScope, id string, body any) (json.RawMessage, error) {
 	return observe.Call(d.cfg, "ReactivateSubscription", "POST", "/billing/subscriptions/{id}/reactivate", scope.CorrelationID, func() (json.RawMessage, error) {
-		return d.inner.ReactivateSubscription(ctx, scope, id)
+		return d.inner.ReactivateSubscription(ctx, scope, id, body)
 	})
 }
 
@@ -170,4 +171,16 @@ func (d *decorated) ForwardAsaasWebhook(ctx context.Context, accessToken string,
 
 func (d *decorated) ForwardStripeWebhook(ctx context.Context, token string, body []byte) (json.RawMessage, int, error) {
 	return d.inner.ForwardStripeWebhook(ctx, token, body)
+}
+
+// Forward repete só leitura: escrita nova tem Idempotency-Key, e quem decide repetir é
+// quem chama, para não cair em REQUEST_IN_PROGRESS com o primeiro pedido em curso.
+func (d *decorated) Forward(ctx context.Context, scope port.BillingScope, call port.BillingCall) (port.BillingResponse, error) {
+	cfg := d.cfg
+	if call.Method != http.MethodGet {
+		cfg.Retry = observe.RetryConfig{MaxAttempts: 1}
+	}
+	return observe.Call(cfg, call.Operation, call.Method, call.Endpoint, scope.CorrelationID, func() (port.BillingResponse, error) {
+		return d.inner.Forward(ctx, scope, call)
+	})
 }

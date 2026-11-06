@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	middlewarePkg "github.com/keepguard/bff-core/internal/adapters/in/http/middleware"
 	domainclient "github.com/keepguard/bff-core/internal/application/port"
 	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
@@ -101,6 +102,19 @@ type Handler interface {
 	ListBillingEntitlementsHandler(c echo.Context) error
 	GetBillingInvoiceHandler(c echo.Context) error
 	LookupBillingUserHandler(c echo.Context) error
+	GetBillingCreditsHandler(c echo.Context) error
+	RemoveBillingCardHandler(c echo.Context) error
+	GetBillingSettingsHandler(c echo.Context) error
+	ListBillingReviewsHandler(c echo.Context) error
+	GetBillingRefundPreviewHandler(c echo.Context) error
+	GrantBillingCreditHandler(c echo.Context) error
+	ReverseBillingCreditHandler(c echo.Context) error
+	RefundBillingInvoiceHandler(c echo.Context) error
+	ReleaseBillingRestrictionHandler(c echo.Context) error
+	PutBillingSettingsHandler(c echo.Context) error
+	AddBillingTestAccountHandler(c echo.Context) error
+	RemoveBillingTestAccountHandler(c echo.Context) error
+	ResolveBillingReviewHandler(c echo.Context) error
 	AsaasWebhookHandler(c echo.Context) error
 	StripeWebhookHandler(c echo.Context) error
 }
@@ -123,6 +137,7 @@ type Server interface {
 	Stop(ctx context.Context) error
 	SetupRoutes(handlers Handler)
 	WithBillingClient(client domainclient.BillingClient) Server
+	WithBillingMoneyGuard(guard *middlewarePkg.BillingMoneyGuard) Server
 }
 
 // Logger define a interface para logging

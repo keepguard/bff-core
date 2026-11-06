@@ -16,6 +16,7 @@ import (
 type billingClient struct {
 	httpClient *resty.Client
 	baseURL    string
+	serviceKey string
 	logger     *zap.Logger
 }
 
@@ -27,7 +28,7 @@ func NewBillingClient(cfg *config.Config, logger *zap.Logger) domainclient.Billi
 	httpClient := resty.New()
 	httpClient.SetTimeout(timeout)
 	httpClient.SetRetryCount(0)
-	return &billingClient{httpClient: httpClient, baseURL: cfg.Services.Billing.BaseURL, logger: logger}
+	return &billingClient{httpClient: httpClient, baseURL: cfg.Services.Billing.BaseURL, serviceKey: strings.TrimSpace(cfg.BillingCore.ServiceKey), logger: logger}
 }
 
 func (c *billingClient) headers(ctx context.Context, scope domainclient.BillingScope) *resty.Request {
@@ -38,6 +39,19 @@ func (c *billingClient) headers(ctx context.Context, scope domainclient.BillingS
 		SetHeader("X-Correlation-ID", scope.CorrelationID)
 	if token := strings.TrimSpace(domainclient.BearerTokenFromContext(ctx)); token != "" {
 		req.SetHeader("Authorization", "Bearer "+strings.TrimPrefix(token, "Bearer "))
+	}
+	if scope.IdempotencyKey != "" {
+		req.SetHeader("Idempotency-Key", scope.IdempotencyKey)
+	}
+	if scope.OperatorID != "" {
+		// Escrita de Operador: credencial do bff-core e quem opera. A chave nunca vai a log.
+		req.SetHeader("X-Operator-Id", scope.OperatorID)
+		if c.serviceKey != "" {
+			req.SetHeader("X-Billing-Service-Key", c.serviceKey)
+		}
+		if scope.ClientIP != "" {
+			req.SetHeader("X-Real-IP", scope.ClientIP)
+		}
 	}
 	return req
 }
@@ -114,8 +128,8 @@ func (c *billingClient) CancelSubscription(ctx context.Context, scope domainclie
 	return c.send(ctx, scope, "POST", path, nil, 200)
 }
 
-func (c *billingClient) ReactivateSubscription(ctx context.Context, scope domainclient.BillingScope, id string) (json.RawMessage, error) {
-	return c.send(ctx, scope, "POST", "/api/v1/billing/subscriptions/"+id+"/reactivate", nil, 200)
+func (c *billingClient) ReactivateSubscription(ctx context.Context, scope domainclient.BillingScope, id string, body any) (json.RawMessage, error) {
+	return c.send(ctx, scope, "POST", "/api/v1/billing/subscriptions/"+id+"/reactivate", body, 200)
 }
 
 func (c *billingClient) PreviewPlanChange(ctx context.Context, scope domainclient.BillingScope, id string, query map[string]string) (json.RawMessage, error) {
@@ -220,4 +234,25 @@ func (c *billingClient) send(ctx context.Context, scope domainclient.BillingScop
 		return nil, MapHTTPError(resp.StatusCode(), resp.Body(), "ms-billing")
 	}
 	return cloneBody(resp.Body()), nil
+}
+
+// Forward repassa as rotas novas da Cobrança: qualquer 2xx é sucesso, com o status dele.
+func (c *billingClient) Forward(ctx context.Context, scope domainclient.BillingScope, call domainclient.BillingCall) (domainclient.BillingResponse, error) {
+	req := c.headers(ctx, scope)
+	for key, value := range call.Query {
+		if strings.TrimSpace(value) != "" {
+			req.SetQueryParam(key, value)
+		}
+	}
+	if call.Body != nil {
+		req.SetBody(call.Body)
+	}
+	resp, err := req.Execute(call.Method, c.baseURL+call.Path)
+	if err != nil {
+		return domainclient.BillingResponse{}, MapNetworkError(err, "ms-billing")
+	}
+	if resp.StatusCode() < 200 || resp.StatusCode() >= 300 {
+		return domainclient.BillingResponse{}, MapHTTPError(resp.StatusCode(), resp.Body(), "ms-billing")
+	}
+	return domainclient.BillingResponse{Status: resp.StatusCode(), Body: cloneBody(resp.Body())}, nil
 }

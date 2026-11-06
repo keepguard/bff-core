@@ -27,10 +27,17 @@ type serverImpl struct {
 	rateLimiter   *middlewarePkg.RateLimiterMiddleware
 	jwt           *middlewarePkg.JWTMiddleware
 	billingClient client.BillingClient
+	billingMoney  *middlewarePkg.BillingMoneyGuard
 }
 
 func (s *serverImpl) WithBillingClient(client client.BillingClient) Server {
 	s.billingClient = client
+	return s
+}
+
+// WithBillingMoneyGuard liga a trava da escrita de Operador. Sem ela, toda escrita recusa.
+func (s *serverImpl) WithBillingMoneyGuard(guard *middlewarePkg.BillingMoneyGuard) Server {
+	s.billingMoney = guard
 	return s
 }
 
@@ -298,6 +305,28 @@ func (s *serverImpl) SetupRoutes(handlers Handler) {
 	userGroup.GET("/core/billing/invoices/:id", handlers.GetBillingInvoiceHandler, billingRead...)
 	userGroup.GET("/core/billing/entitlements", handlers.ListBillingEntitlementsHandler, billingOrgRead...)
 	userGroup.GET("/core/billing/users/lookup", handlers.LookupBillingUserHandler, billingOrgRead...)
+	// Cobrança, fase C3 (contrato C2 §3 e §6.12).
+	billingOperatorRead := []echo.MiddlewareFunc{
+		s.jwt.Middleware(),
+		middlewarePkg.RequireBillingAdmin(),
+		rl.Limit("billing", rules.Billing),
+	}
+	// billingMoney: toda rota nova de escrita de Operador. A lista de companies começa
+	// vazia, e cada rota aqui precisa de teste em billing_money_routes_test.go (K7).
+	billingMoney := append(append([]echo.MiddlewareFunc{s.jwt.Middleware()}, s.billingMoney.Chain()...), rl.Limit("billing", rules.Billing))
+	userGroup.GET("/core/billing/credits", handlers.GetBillingCreditsHandler, billingRead...)
+	userGroup.DELETE("/core/billing/subscriptions/:id/card", handlers.RemoveBillingCardHandler, billingRead...)
+	userGroup.GET("/core/billing/billing-settings", handlers.GetBillingSettingsHandler, billingOperatorRead...)
+	userGroup.GET("/core/billing/billing-reviews", handlers.ListBillingReviewsHandler, billingOperatorRead...)
+	userGroup.GET("/core/billing/invoices/:id/refund-preview", handlers.GetBillingRefundPreviewHandler, billingOperatorRead...)
+	userGroup.POST("/core/billing/credits", handlers.GrantBillingCreditHandler, billingMoney...)
+	userGroup.POST("/core/billing/credits/:id/reverse", handlers.ReverseBillingCreditHandler, billingMoney...)
+	userGroup.POST("/core/billing/invoices/:id/refunds", handlers.RefundBillingInvoiceHandler, billingMoney...)
+	userGroup.POST("/core/billing/entitlements/:userId/release-restriction", handlers.ReleaseBillingRestrictionHandler, billingMoney...)
+	userGroup.PUT("/core/billing/billing-settings", handlers.PutBillingSettingsHandler, billingMoney...)
+	userGroup.POST("/core/billing/test-accounts", handlers.AddBillingTestAccountHandler, billingMoney...)
+	userGroup.DELETE("/core/billing/test-accounts", handlers.RemoveBillingTestAccountHandler, billingMoney...)
+	userGroup.POST("/core/billing/billing-reviews/:id/resolve", handlers.ResolveBillingReviewHandler, billingMoney...)
 	userGroup.POST("/core/billing/webhooks/asaas", handlers.AsaasWebhookHandler, publicEndpoint.Middleware(), rl.Limit("asaas_webhook", rules.AsaasWebhook))
 	userGroup.POST("/core/billing/webhooks/stripe", handlers.StripeWebhookHandler, publicEndpoint.Middleware(), rl.Limit("stripe_webhook", rules.AsaasWebhook))
 

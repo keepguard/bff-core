@@ -37,6 +37,7 @@ import (
 	auditPublisher "github.com/keepguard/bff-core/internal/adapters/out/messaging/audit"
 	messagingDecorator "github.com/keepguard/bff-core/internal/adapters/out/messaging/decorator"
 	rabbitmqPublisher "github.com/keepguard/bff-core/internal/adapters/out/messaging/rabbitmq"
+	redisstore "github.com/keepguard/bff-core/internal/adapters/out/redis"
 	"github.com/keepguard/bff-core/internal/application/audit"
 	appbilling "github.com/keepguard/bff-core/internal/application/billing"
 	"github.com/keepguard/bff-core/internal/application/collector"
@@ -351,7 +352,18 @@ func main() {
 	rateLimiterMiddleware := middlewarePkg.NewRateLimiterMiddleware(redisClient, cfg.RateLimit, zapLogger, metricsInstance)
 
 	// Inicializa servidor HTTP com Rate Limiting e Validação de Sessão/Blacklist via Redis
-	server := httpserver.NewServer(cfg, appLogger, metricsInstance, rateLimiterMiddleware, redisClient, companyClient, auditEventPublisher).WithBillingClient(billingClient)
+	coreWriteCompanies, rejectedCompanies := middlewarePkg.ParseCoreWriteCompanies(cfg.BillingCore.WriteCompanyIDs)
+	if len(rejectedCompanies) > 0 {
+		appLogger.Warn("BILLING_CORE_WRITE_COMPANY_IDS: valores ignorados, só vale UUID", zap.Int("ignorados", len(rejectedCompanies)))
+	}
+	billingMoneyGuard := middlewarePkg.NewBillingMoneyGuard(
+		coreWriteCompanies,
+		cfg.BillingCore.ServiceKey != "",
+		redisstore.NewActiveSessionReader(redisClient),
+		httpclient.NewUserAccessClient(cfg),
+		zapLogger,
+	)
+	server := httpserver.NewServer(cfg, appLogger, metricsInstance, rateLimiterMiddleware, redisClient, companyClient, auditEventPublisher).WithBillingClient(billingClient).WithBillingMoneyGuard(billingMoneyGuard)
 	server.SetupRoutes(httpHandlers)
 
 	// =============================================================================
