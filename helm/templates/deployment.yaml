@@ -82,11 +82,6 @@ spec:
             secretKeyRef:
               name: bff-core-oauth-key
               key: AUTH_CLIENT_SECRET_BASE
-        - name: BFF_CORE_JWT_SECRET
-          valueFrom:
-            secretKeyRef:
-              name: keepguard-secret
-              key: JWT_SECRET
         # Chaves públicas do ms-auth (EdDSA); quem valida não precisa assinar.
         - name: BFF_CORE_JWT_JWKS_URL
           value: "http://ms-auth:8081/.well-known/jwks.json"
