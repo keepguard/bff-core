@@ -80,7 +80,7 @@ spec:
         - name: AUTH_CLIENT_SECRET_BASE
           valueFrom:
             secretKeyRef:
-              name: keepguard-secret
+              name: bff-core-oauth-key
               key: AUTH_CLIENT_SECRET_BASE
         - name: BFF_CORE_JWT_SECRET
           valueFrom:
