@@ -160,6 +160,24 @@ func (h *OAuthClientHandlers) mutate(c echo.Context, block bool) error {
 	return c.JSON(http.StatusOK, result)
 }
 
+// RotateOAuthClientSecretHandler troca o segredo do client e devolve o novo em
+// claro, só nesta resposta (a leitura do client nunca devolve o segredo).
+func (h *OAuthClientHandlers) RotateOAuthClientSecretHandler(c echo.Context) error {
+	scope := h.scope(c)
+	id := c.Param("id")
+	result, err := h.oauth.RotateSecret(c.Request().Context(), oauth.ClientIDCommand{CompanyScope: scope, ID: id})
+	if err != nil {
+		h.logger.Error("Erro ao rotacionar segredo do OAuth client",
+			zap.String("correlationId", scope.CorrelationID),
+			zap.String("id", id),
+			zap.Error(err),
+		)
+		return handleError(c, err, scope.CorrelationID)
+	}
+	c.Response().Header().Set("Cache-Control", "no-store")
+	return c.JSON(http.StatusOK, result)
+}
+
 func (h *OAuthClientHandlers) DeleteOAuthClientHandler(c echo.Context) error {
 	scope := h.scope(c)
 	id := c.Param("id")

@@ -14,5 +14,6 @@ type OAuthClientClient interface {
 	ListServiceRoles(ctx context.Context, companyID, bearerToken, correlationID string) ([]appdto.OAuthServiceRoleDTO, error)
 	Block(ctx context.Context, companyID, bearerToken, correlationID, id string) (appdto.OAuthClientDTO, error)
 	Unblock(ctx context.Context, companyID, bearerToken, correlationID, id string) (appdto.OAuthClientDTO, error)
+	RotateSecret(ctx context.Context, companyID, bearerToken, correlationID, id string) (appdto.OAuthClientDTO, error)
 	Delete(ctx context.Context, companyID, bearerToken, correlationID, id string) error
 }

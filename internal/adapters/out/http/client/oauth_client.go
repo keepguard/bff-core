@@ -166,6 +166,10 @@ func (c *oauthClientHTTP) mutate(ctx context.Context, companyID, bearerToken, co
 	return out, nil
 }
 
+func (c *oauthClientHTTP) RotateSecret(ctx context.Context, companyID, bearerToken, correlationID, id string) (appdto.OAuthClientDTO, error) {
+	return c.mutate(ctx, companyID, bearerToken, correlationID, id, "rotate-secret")
+}
+
 func (c *oauthClientHTTP) Delete(ctx context.Context, companyID, bearerToken, correlationID, id string) error {
 	resp, err := c.httpClient.R().
 		SetContext(ctx).

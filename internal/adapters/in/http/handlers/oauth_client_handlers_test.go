@@ -70,6 +70,10 @@ func (s *stubOAuthClient) Block(_ context.Context, _, _, _, _ string) (appdto.OA
 	return appdto.OAuthClientDTO{ID: "c1", ClientID: "investbot-collector", Status: "BLOCKED"}, nil
 }
 
+func (s *stubOAuthClient) RotateSecret(_ context.Context, _, _, _, _ string) (appdto.OAuthClientDTO, error) {
+	return appdto.OAuthClientDTO{ID: "c1", ClientID: "investbot-collector", ClientSecret: "novo"}, nil
+}
+
 func (s *stubOAuthClient) Unblock(_ context.Context, _, _, _, _ string) (appdto.OAuthClientDTO, error) {
 	s.unblocked = true
 	return appdto.OAuthClientDTO{ID: "c1", ClientID: "investbot-collector", Status: "ACTIVE"}, nil
@@ -630,5 +634,24 @@ func TestUpdateOAuthClientHandler_ValidBodyDoesNotDisableAgents(t *testing.T) {
 	}
 	if len(collector.disabledIDs) != 0 {
 		t.Fatalf("update should not disable agents, got %v", collector.disabledIDs)
+	}
+}
+
+func TestRotateOAuthClientSecretHandler_DevolveSegredoSemCache(t *testing.T) {
+	c, rec := oauthContext(http.MethodPost, "/api/v1/core/oauth/clients/c1/rotate-secret", "company-1", &pkg.JWTClaims{
+		Roles:    []string{"ADMIN"},
+		TenantId: "tenant-1",
+	})
+	c.SetParamNames("id")
+	c.SetParamValues("c1")
+	h := testOAuthHandlers(&stubOAuthClient{}, &oauthStubCompany{id: "company-1"}, &oauthStubCollector{}, zap.NewNop())
+	if err := h.RotateOAuthClientSecretHandler(c); err != nil {
+		t.Fatal(err)
+	}
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"clientSecret":"novo"`) {
+		t.Fatalf("rotate = %d %s", rec.Code, rec.Body.String())
+	}
+	if rec.Header().Get("Cache-Control") != "no-store" {
+		t.Fatal("a resposta com segredo precisa de Cache-Control: no-store")
 	}
 }

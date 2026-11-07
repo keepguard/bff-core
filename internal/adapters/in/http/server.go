@@ -191,6 +191,7 @@ func (s *serverImpl) SetupRoutes(handlers Handler) {
 	userGroup.PUT("/core/oauth/clients/:id", handlers.UpdateOAuthClientHandler, oauthWrite...)
 	userGroup.POST("/core/oauth/clients/:id/block", handlers.BlockOAuthClientHandler, oauthWrite...)
 	userGroup.POST("/core/oauth/clients/:id/unblock", handlers.UnblockOAuthClientHandler, oauthWrite...)
+	userGroup.POST("/core/oauth/clients/:id/rotate-secret", handlers.RotateOAuthClientSecretHandler, oauthWrite...)
 	userGroup.DELETE("/core/oauth/clients/:id", handlers.DeleteOAuthClientHandler, oauthWrite...)
 
 	collectorRead := []echo.MiddlewareFunc{

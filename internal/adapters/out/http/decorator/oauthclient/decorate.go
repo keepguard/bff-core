@@ -58,6 +58,12 @@ func (d *decorated) Block(ctx context.Context, companyID, bearerToken, correlati
 	})
 }
 
+func (d *decorated) RotateSecret(ctx context.Context, companyID, bearerToken, correlationID, id string) (appdto.OAuthClientDTO, error) {
+	return observe.Call(d.cfg, "RotateSecret", "POST", "/oauth/clients/{id}/rotate-secret", correlationID, func() (appdto.OAuthClientDTO, error) {
+		return d.inner.RotateSecret(ctx, companyID, bearerToken, correlationID, id)
+	})
+}
+
 func (d *decorated) Unblock(ctx context.Context, companyID, bearerToken, correlationID, id string) (appdto.OAuthClientDTO, error) {
 	return observe.Call(d.cfg, "Unblock", "POST", "/oauth/clients/{id}/unblock", correlationID, func() (appdto.OAuthClientDTO, error) {
 		return d.inner.Unblock(ctx, companyID, bearerToken, correlationID, id)

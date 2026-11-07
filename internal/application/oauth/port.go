@@ -53,6 +53,7 @@ type OAuthPort interface {
 	ListServiceRoles(ctx context.Context, query CompanyScope) ([]appdto.OAuthServiceRoleDTO, error)
 	Block(ctx context.Context, cmd ClientIDCommand) (appdto.OAuthClientDTO, error)
 	Unblock(ctx context.Context, cmd ClientIDCommand) (appdto.OAuthClientDTO, error)
+	RotateSecret(ctx context.Context, cmd ClientIDCommand) (appdto.OAuthClientDTO, error)
 	Delete(ctx context.Context, cmd ClientIDCommand) error
 }
 
@@ -157,6 +158,14 @@ func (s *service) Unblock(ctx context.Context, cmd ClientIDCommand) (appdto.OAut
 		return appdto.OAuthClientDTO{}, err
 	}
 	return s.oauth.Unblock(ctx, companyID, cmd.BearerToken, cmd.CorrelationID, cmd.ID)
+}
+
+func (s *service) RotateSecret(ctx context.Context, cmd ClientIDCommand) (appdto.OAuthClientDTO, error) {
+	companyID, err := s.requireCompany(ctx, cmd.CompanyScope)
+	if err != nil {
+		return appdto.OAuthClientDTO{}, err
+	}
+	return s.oauth.RotateSecret(ctx, companyID, cmd.BearerToken, cmd.CorrelationID, cmd.ID)
 }
 
 func (s *service) Delete(ctx context.Context, cmd ClientIDCommand) error {
