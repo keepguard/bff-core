@@ -22,6 +22,7 @@ type userClient struct {
 	httpClient *resty.Client
 	config     *config.Config
 	logger     *zap.Logger
+	oauth      *FonteOAuth // KEEPGUARD_OAUTH_*: token de serviço do bff-core nas rotas administrativas do ms-user
 }
 
 // NewUserClient cria uma nova instância do UserClient
@@ -35,6 +36,7 @@ func NewUserClient(config *config.Config, logger *zap.Logger) domainclient.UserC
 		httpClient: httpClient,
 		config:     config,
 		logger:     logger,
+		oauth:      FonteOAuthDoAmbiente(),
 	}
 }
 
@@ -48,6 +50,7 @@ func NewUserClientWithoutRetry(config *config.Config, logger *zap.Logger) domain
 		httpClient: httpClient,
 		config:     config,
 		logger:     logger,
+		oauth:      FonteOAuthDoAmbiente(),
 	}
 }
 
@@ -338,12 +341,21 @@ func (c *userClient) ConfirmRegister(ctx context.Context, req userDto.MSUserRegi
 func (c *userClient) DeleteUser(ctx context.Context, userID, tenantId, correlationID string) error {
 	url := fmt.Sprintf("%s/api/v1/users/%s", c.config.Services.User.BaseURL, userID)
 
-	resp, err := c.httpClient.R().
+	req := c.httpClient.R().
 		SetContext(ctx).
 		SetHeader("X-Correlation-ID", correlationID).
 		SetHeader("X-Company-Id", companyHeader(ctx)).
-		SetHeader("Content-Type", "application/json").
-		Delete(url)
+		SetHeader("Content-Type", "application/json")
+	// Rota administrativa do ms-user: manda o token de serviço do bff-core quando o client existe
+	// (sem ele segue anônimo, como antes; o ms-user em AUTHZ_MODE=enforce só aceita com token).
+	if c.oauth != nil {
+		if tk, terr := c.oauth.Token(); terr != nil {
+			c.logger.Warn("sem token de serviço para o DELETE no ms-user; seguindo sem token", zap.Error(terr))
+		} else {
+			req.SetAuthToken(tk)
+		}
+	}
+	resp, err := req.Delete(url)
 
 	if err != nil {
 		return fmt.Errorf("erro ao comunicar com user service: %w", err)

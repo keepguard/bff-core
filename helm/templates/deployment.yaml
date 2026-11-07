@@ -85,6 +85,25 @@ spec:
         # Chaves públicas do ms-auth (EdDSA); quem valida não precisa assinar.
         - name: BFF_CORE_JWT_JWKS_URL
           value: "http://ms-auth:8081/.well-known/jwks.json"
+        # Client OAuth próprio do bff-core no ms-auth (token de serviço nas rotas administrativas do ms-user). Ausente = sem token.
+        - name: KEEPGUARD_OAUTH_COMPANY_ID
+          valueFrom:
+            secretKeyRef:
+              name: keepguard-secret
+              key: BFF_CORE_OAUTH_COMPANY_ID
+              optional: true
+        - name: KEEPGUARD_OAUTH_CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              name: keepguard-secret
+              key: BFF_CORE_OAUTH_CLIENT_ID
+              optional: true
+        - name: KEEPGUARD_OAUTH_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: keepguard-secret
+              key: BFF_CORE_OAUTH_CLIENT_SECRET
+              optional: true
         - name: KEEPGUARD_VALIDATION_MODERATION_ENABLED
           value: "false"
         ports:
