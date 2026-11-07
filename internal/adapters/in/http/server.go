@@ -89,7 +89,7 @@ func NewServer(
 		logger:      logger,
 		metrics:     metrics,
 		rateLimiter: rateLimiter,
-		jwt:         middlewarePkg.NewJWTMiddlewareWithRedis(config.JWT.Secret, redisClient, zapLogger),
+		jwt:         middlewarePkg.NewJWTMiddlewareWithRedis(config.JWT.Secret, redisClient, zapLogger, jwksKeys(config.JWT.JWKSURL)...),
 	}
 }
 

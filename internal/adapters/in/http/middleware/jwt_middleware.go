@@ -3,6 +3,7 @@ package http
 import (
 	"context"
 	"fmt"
+	libauth "github.com/keepguard/lib-go-common/auth"
 	"net/http"
 	"strings"
 	"time"
@@ -17,6 +18,7 @@ import (
 // JWTMiddleware implementa middleware JWT com validação local e verificação de revogação/blacklist no Redis
 type JWTMiddleware struct {
 	jwtSecret   string
+	keys        libauth.KeySource // JWKS do ms-auth (EdDSA); nil = só HS256
 	redisClient *redis.Client
 	logger      *zap.Logger
 }
@@ -30,8 +32,13 @@ func NewJWTMiddleware(jwtSecret string, logger *zap.Logger) *JWTMiddleware {
 }
 
 // NewJWTMiddlewareWithRedis cria um novo middleware JWT com checagem no Redis
-func NewJWTMiddlewareWithRedis(jwtSecret string, redisClient *redis.Client, logger *zap.Logger) *JWTMiddleware {
+func NewJWTMiddlewareWithRedis(jwtSecret string, redisClient *redis.Client, logger *zap.Logger, keys ...libauth.KeySource) *JWTMiddleware {
+	var ks libauth.KeySource
+	if len(keys) > 0 {
+		ks = keys[0]
+	}
 	return &JWTMiddleware{
+		keys:        ks,
 		jwtSecret:   jwtSecret,
 		redisClient: redisClient,
 		logger:      logger,
@@ -203,14 +210,32 @@ func (j *JWTMiddleware) Middleware() echo.MiddlewareFunc {
 	}
 }
 
-// validateTokenLocal valida JWT localmente usando secret compartilhado
-func (j *JWTMiddleware) validateTokenLocal(tokenString, tenantIdHeader string) (*pkg.JWTClaims, error) {
-	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("método de assinatura inválido: %v", token.Header["alg"])
+// keyFunc: HMAC com o segredo (convivência; sem segredo, HS* fica desligado) ou
+// EdDSA com a chave pública do JWKS escolhida pelo kid. Qualquer outro algoritmo
+// (inclusive "none") é recusado.
+func (j *JWTMiddleware) keyFunc(token *jwt.Token) (interface{}, error) {
+	switch token.Method.(type) {
+	case *jwt.SigningMethodHMAC:
+		if j.jwtSecret == "" {
+			return nil, fmt.Errorf("HS256 desligado")
 		}
 		return []byte(j.jwtSecret), nil
-	})
+	case *jwt.SigningMethodEd25519:
+		if j.keys == nil {
+			return nil, fmt.Errorf("EdDSA desligado")
+		}
+		kid, _ := token.Header["kid"].(string)
+		if kid == "" {
+			return nil, fmt.Errorf("kid ausente")
+		}
+		return j.keys.Key(kid)
+	}
+	return nil, fmt.Errorf("método de assinatura inválido: %v", token.Header["alg"])
+}
+
+// validateTokenLocal valida JWT localmente usando secret compartilhado
+func (j *JWTMiddleware) validateTokenLocal(tokenString, tenantIdHeader string) (*pkg.JWTClaims, error) {
+	token, err := jwt.Parse(tokenString, j.keyFunc)
 
 	if err != nil {
 		return nil, fmt.Errorf("erro ao parsear token: %w", err)
