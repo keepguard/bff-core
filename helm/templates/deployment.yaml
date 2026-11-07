@@ -87,6 +87,9 @@ spec:
             secretKeyRef:
               name: keepguard-secret
               key: JWT_SECRET
+        # Chaves públicas do ms-auth (EdDSA); quem valida não precisa assinar.
+        - name: BFF_CORE_JWT_JWKS_URL
+          value: "http://ms-auth:8081/.well-known/jwks.json"
         - name: KEEPGUARD_VALIDATION_MODERATION_ENABLED
           value: "false"
         ports:
