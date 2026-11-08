@@ -22,7 +22,7 @@ type userClient struct {
 	httpClient *resty.Client
 	config     *config.Config
 	logger     *zap.Logger
-	oauth      *FonteOAuth // KEEPGUARD_OAUTH_*: token de serviço do bff-core nas rotas administrativas do ms-user
+	oauth      tokenServico // KEEPGUARD_OAUTH_*: token de serviço do bff-core nas rotas administrativas do ms-user
 }
 
 // NewUserClient cria uma nova instância do UserClient
@@ -36,7 +36,7 @@ func NewUserClient(config *config.Config, logger *zap.Logger) domainclient.UserC
 		httpClient: httpClient,
 		config:     config,
 		logger:     logger,
-		oauth:      FonteOAuthDoAmbiente(),
+		oauth:      tokenServicoDoAmbiente(),
 	}
 }
 
@@ -50,7 +50,7 @@ func NewUserClientWithoutRetry(config *config.Config, logger *zap.Logger) domain
 		httpClient: httpClient,
 		config:     config,
 		logger:     logger,
-		oauth:      FonteOAuthDoAmbiente(),
+		oauth:      tokenServicoDoAmbiente(),
 	}
 }
 

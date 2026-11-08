@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	"github.com/go-resty/resty/v2"
 	"go.uber.org/zap"
@@ -52,7 +51,7 @@ func TestPatchPersonDocumentTenantSoComTokenDaPessoa(t *testing.T) {
 	cfg := &config.Config{}
 	cfg.Services.User.BaseURL = upstream.URL
 	ctx := port.WithCompanyID(context.Background(), "4e65bc72-c60b-4382-977d-c15314d117a8")
-	servico := &FonteOAuth{atual: "token-de-servico", expira: time.Now().Add(time.Hour), agora: time.Now}
+	servico := tokenFixo("token-de-servico")
 
 	c := &userClient{httpClient: resty.New(), config: cfg, logger: zap.NewNop(), oauth: servico}
 	if _, err := c.PatchPersonDocument(ctx, "u1", "52998224725", "token-da-pessoa", "tenant-echouno", "corr"); err != nil {
@@ -70,3 +69,7 @@ func TestPatchPersonDocumentTenantSoComTokenDaPessoa(t *testing.T) {
 		t.Fatalf("pessoa: Authorization=%q X-Tenant-Id=%q; esperava o token e o tenant da pessoa", auth, tenant)
 	}
 }
+
+type tokenFixo string
+
+func (t tokenFixo) Token() (string, error) { return string(t), nil }

@@ -6,7 +6,7 @@ require (
 	github.com/go-playground/validator/v10 v10.27.0
 	github.com/go-resty/resty/v2 v2.11.0
 	github.com/golang-jwt/jwt/v5 v5.3.0
-	github.com/keepguard/lib-go-common v0.5.1
+	github.com/keepguard/lib-go-common v0.6.0
 	github.com/labstack/echo/v4 v4.11.4
 	github.com/prometheus/client_golang v1.20.5
 	github.com/redis/go-redis/v9 v9.22.0
