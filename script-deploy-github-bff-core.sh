@@ -178,13 +178,17 @@ else
 fi
 log_success "Imagem Docker construída com sucesso"
 
+push_falhou() {
+    log_error "docker push falhou (login vencido no GHCR? rode: docker login ghcr.io). Nada foi para o cluster."
+    exit 1
+}
 # 4. Push para GitHub Container Registry
 log_step "4/5 Fazendo push para o GitHub Container Registry..."
-docker push "${PRIMARY_TAG}" || true
-docker push "${LATEST_TAG}" || true
+docker push "${PRIMARY_TAG}" || push_falhou
+docker push "${LATEST_TAG}" || push_falhou
 if [ "$BUILD_BRANCH" = "main" ]; then
-    docker push "${BRANCH_TAG}" || true
-    docker push "${BRANCH_LATEST}" || true
+    docker push "${BRANCH_TAG}" || push_falhou
+    docker push "${BRANCH_LATEST}" || push_falhou
 fi
 log_success "Push concluído para as tags do GHCR"
 # 5. Atualização e Deploy Docker Compose Local (se solicitado 'up')
