@@ -129,14 +129,30 @@ func (c *userClient) PatchPersonDocument(ctx context.Context, userID, cpf, token
 		return userDto.MSUserResponseDTO{}, fmt.Errorf("companyId é obrigatório para gravar documento")
 	}
 
-	resp, err := c.httpClient.R().
+	req := c.httpClient.R().
 		SetContext(ctx).
 		SetBody(map[string]string{"cpf": cpf}).
 		SetHeader("X-Correlation-ID", correlationID).
 		SetHeader("X-Company-Id", companyID).
 		SetHeader("X-Tenant-Id", tenantId).
-		SetHeader("Content-Type", "application/json").
-		Patch(url)
+		SetHeader("Content-Type", "application/json")
+	// O ms-user em AUTHZ_MODE=enforce nega chamada anônima nesta rota (a rota é pública, mas a autorização por
+	// rota confere quem chama). Vai o token de serviço do bff-core, como no DELETE; sem client de serviço,
+	// o token da própria pessoa, que o ms-user aceita porque ela é a dona do registro.
+	switch {
+	case c.oauth != nil:
+		if tk, terr := c.oauth.Token(); terr != nil {
+			c.logger.Warn("sem token de serviço para gravar o documento no ms-user", zap.Error(terr))
+			if token != "" {
+				req.SetAuthToken(token)
+			}
+		} else {
+			req.SetAuthToken(tk)
+		}
+	case token != "":
+		req.SetAuthToken(token)
+	}
+	resp, err := req.Patch(url)
 
 	if err != nil {
 		return userDto.MSUserResponseDTO{}, fmt.Errorf("erro ao comunicar com user service: %w", err)
