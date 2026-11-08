@@ -134,23 +134,29 @@ func (c *userClient) PatchPersonDocument(ctx context.Context, userID, cpf, token
 		SetBody(map[string]string{"cpf": cpf}).
 		SetHeader("X-Correlation-ID", correlationID).
 		SetHeader("X-Company-Id", companyID).
-		SetHeader("X-Tenant-Id", tenantId).
 		SetHeader("Content-Type", "application/json")
 	// O ms-user em AUTHZ_MODE=enforce nega chamada anônima nesta rota (a rota é pública, mas a autorização por
 	// rota confere quem chama). Vai o token de serviço do bff-core, como no DELETE; sem client de serviço,
 	// o token da própria pessoa, que o ms-user aceita porque ela é a dona do registro.
+	// X-Tenant-Id só com o token da pessoa: o token de serviço carrega o tenant do bff-core, e o ms-user recusa
+	// (403 "Inconsistência de isolamento de tenant") quando o header é de outro tenant, como o do Echouno (08/11/2026).
+	// O handler só usa o X-Company-Id.
+	usarTokenDaPessoa := func() {
+		if token != "" {
+			req.SetAuthToken(token)
+			req.SetHeader("X-Tenant-Id", tenantId)
+		}
+	}
 	switch {
 	case c.oauth != nil:
 		if tk, terr := c.oauth.Token(); terr != nil {
 			c.logger.Warn("sem token de serviço para gravar o documento no ms-user", zap.Error(terr))
-			if token != "" {
-				req.SetAuthToken(token)
-			}
+			usarTokenDaPessoa()
 		} else {
 			req.SetAuthToken(tk)
 		}
-	case token != "":
-		req.SetAuthToken(token)
+	default:
+		usarTokenDaPessoa()
 	}
 	resp, err := req.Patch(url)
 

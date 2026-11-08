@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/go-resty/resty/v2"
 	"go.uber.org/zap"
@@ -34,5 +35,38 @@ func TestPatchPersonDocumentEnviaToken(t *testing.T) {
 	}
 	if recebido != "Bearer token-da-pessoa" {
 		t.Fatalf("Authorization = %q, esperava o token da pessoa", recebido)
+	}
+}
+
+// Com token de serviço não vai X-Tenant-Id: o token carrega o tenant do bff-core e o ms-user recusaria o tenant do produto
+// (403 "Inconsistência de isolamento de tenant", visto em 08/11/2026 assinando pelo Echouno). Com o token da pessoa, vai.
+func TestPatchPersonDocumentTenantSoComTokenDaPessoa(t *testing.T) {
+	var auth, tenant, company string
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		auth, tenant, company = r.Header.Get("Authorization"), r.Header.Get("X-Tenant-Id"), r.Header.Get("X-Company-Id")
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"id":"u1"}`))
+	}))
+	defer upstream.Close()
+
+	cfg := &config.Config{}
+	cfg.Services.User.BaseURL = upstream.URL
+	ctx := port.WithCompanyID(context.Background(), "4e65bc72-c60b-4382-977d-c15314d117a8")
+	servico := &FonteOAuth{atual: "token-de-servico", expira: time.Now().Add(time.Hour), agora: time.Now}
+
+	c := &userClient{httpClient: resty.New(), config: cfg, logger: zap.NewNop(), oauth: servico}
+	if _, err := c.PatchPersonDocument(ctx, "u1", "52998224725", "token-da-pessoa", "tenant-echouno", "corr"); err != nil {
+		t.Fatalf("erro: %v", err)
+	}
+	if auth != "Bearer token-de-servico" || tenant != "" || company != "4e65bc72-c60b-4382-977d-c15314d117a8" {
+		t.Fatalf("serviço: Authorization=%q X-Tenant-Id=%q X-Company-Id=%q; esperava token de serviço, sem tenant, com company", auth, tenant, company)
+	}
+
+	c = &userClient{httpClient: resty.New(), config: cfg, logger: zap.NewNop()}
+	if _, err := c.PatchPersonDocument(ctx, "u1", "52998224725", "token-da-pessoa", "tenant-echouno", "corr"); err != nil {
+		t.Fatalf("erro: %v", err)
+	}
+	if auth != "Bearer token-da-pessoa" || tenant != "tenant-echouno" {
+		t.Fatalf("pessoa: Authorization=%q X-Tenant-Id=%q; esperava o token e o tenant da pessoa", auth, tenant)
 	}
 }
