@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"github.com/keepguard/bff-core/internal/application/port"
+	"github.com/keepguard/bff-core/internal/infrastructure/clientip"
 	"net/http"
 	"strings"
 
@@ -106,7 +107,7 @@ func (h *RegisterHandlers) InitRegisterHandler(c echo.Context) error {
 		req.Phone,
 		req.HasAcceptedTermsAndPrivacy,
 		acceptedMarketing,
-		req.IPAddress,
+		ipDoCadastro(c.Request(), req.IPAddress),
 		req.UserAgent,
 		req.Geolocation,
 		req.Type,
@@ -351,4 +352,13 @@ func upstreamErrorCode(details string) string {
 		return ""
 	}
 	return code
+}
+
+// ipDoCadastro: o IP do antifraude do cadastro vem do pedido (X-Real-IP do nginx do front / borda), não do corpo, que o
+// navegador escolhe. Antes ninguém preenchia o campo e o IP ficava vazio. Corpo só vale se o servidor não souber o IP.
+func ipDoCadastro(r *http.Request, doCorpo string) string {
+	if ip := clientip.FromRequest(r); ip != "" {
+		return ip
+	}
+	return strings.TrimSpace(doCorpo)
 }
