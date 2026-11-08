@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"github.com/keepguard/bff-core/internal/application/port"
 	"net/http"
 	"strings"
 
@@ -223,7 +224,8 @@ func (h *RegisterHandlers) ConfirmRegisterHandler(c echo.Context) error {
 	// ========================================================================
 	// EXECUTAR CASO DE USO
 	// ========================================================================
-	response, err := h.registerConfirmUseCase.Execute(c.Request().Context(), command)
+	ctx := port.WithDeviceID(c.Request().Context(), strings.TrimSpace(c.Request().Header.Get("X-Device-Id")))
+	response, err := h.registerConfirmUseCase.Execute(ctx, command)
 	if err != nil {
 		return handleError(c, err, correlationID)
 	}

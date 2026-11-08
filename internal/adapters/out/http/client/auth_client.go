@@ -114,6 +114,7 @@ func (c *authClient) RegisterLogin(ctx context.Context, req authDto.AuthRegister
 		SetBody(req).
 		SetHeader("X-Correlation-ID", correlationID).
 		SetHeader("X-Company-Id", companyHeader(ctx)).
+		SetHeader("X-Device-Id", client.DeviceIDFromContext(ctx)).
 		SetHeader("Content-Type", "application/json").
 		Post(url)
 
