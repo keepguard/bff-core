@@ -24,6 +24,8 @@ type RegisterInitResponseDTO struct {
 	RequiredChannels      []string `json:"requiredChannels,omitempty"`
 	Token                 string   `json:"token,omitempty"`
 	TokenExpiresIn        int64    `json:"tokenExpiresIn,omitempty"`
+	// ResendAvailable aparece só com registration.saga_hardening.enabled (campo aditivo).
+	ResendAvailable *bool `json:"resendAvailable,omitempty"`
 }
 
 // RegisterConfirmRequestDTO representa a requisição para confirmar o registro de usuário

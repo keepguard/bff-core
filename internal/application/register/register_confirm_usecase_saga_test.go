@@ -96,6 +96,11 @@ func (m *MockAuthClient) HardDeleteUser(ctx context.Context, idUserExternal, ten
 	return args.Error(0)
 }
 
+func (m *MockAuthClient) ExistsByIDExternal(ctx context.Context, idUserExternal, tenantId, correlationID string) (bool, error) {
+	args := m.Called(ctx, idUserExternal, tenantId, correlationID)
+	return args.Bool(0), args.Error(1)
+}
+
 type MockUserConsentClient struct {
 	mock.Mock
 }

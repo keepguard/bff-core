@@ -327,6 +327,10 @@ func (c *userConsentClient) DeleteAllByUserId(ctx context.Context, userID, tenan
 		return fmt.Errorf("erro ao comunicar com user consents service: %w", err)
 	}
 
+	// 404: não há consentimentos para apagar (compensação repetida). Para a compensação, é sucesso.
+	if resp.StatusCode() == http.StatusNotFound {
+		return nil
+	}
 	if resp.StatusCode() != http.StatusNoContent {
 		return MapHTTPError(resp.StatusCode(), resp.Body(), "user consents service")
 	}

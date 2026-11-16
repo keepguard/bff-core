@@ -20,6 +20,7 @@ type Config struct {
 	RateLimit         RateLimitConfig         `mapstructure:"rate_limit"`
 	ConnectionsHealth ConnectionsHealthConfig `mapstructure:"connections_health"`
 	OAuth             OAuthConfig             `mapstructure:"oauth"`
+	Registration      RegistrationConfig      `mapstructure:"registration"`
 	BillingCore       BillingCoreConfig       `mapstructure:"-"`
 	Env               string                  `mapstructure:"env"`
 }
@@ -34,6 +35,18 @@ type BillingCoreConfig struct {
 }
 
 // RedisConfig configurações de conexão com Redis
+// RegistrationConfig agrupa as flags do cadastro (registro público).
+type RegistrationConfig struct {
+	SagaHardening SagaHardeningConfig `mapstructure:"saga_hardening"`
+}
+
+// SagaHardeningConfig liga o comportamento visível da saga endurecida: confirm idempotente (trava e resultado
+// no Redis), recuperação do passo 5 em timeout ambíguo e reenvio explícito do código no init (W9).
+// Desligado: comportamento anterior. Compensação completa, contexto próprio e tolerância a 404 são sempre ligados.
+type SagaHardeningConfig struct {
+	Enabled bool `mapstructure:"enabled"`
+}
+
 type RedisConfig struct {
 	Host     string `mapstructure:"host"`
 	Port     int    `mapstructure:"port"`
@@ -225,6 +238,7 @@ func Load() (*Config, error) {
 // setDefaults define valores padrão
 func setDefaults() {
 	// Server
+	viper.SetDefault("registration.saga_hardening.enabled", false)
 	viper.SetDefault("server.port", "8382")
 	viper.SetDefault("server.read_timeout", "30s")
 	viper.SetDefault("server.write_timeout", "30s")

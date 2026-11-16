@@ -2,7 +2,11 @@ package register
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"net"
+	"net/http"
 	"time"
 
 	appdto "github.com/keepguard/bff-core/internal/application/dto"
@@ -10,6 +14,7 @@ import (
 	outport "github.com/keepguard/bff-core/internal/application/port/out"
 	"github.com/keepguard/bff-core/internal/domain/enums"
 	"github.com/keepguard/bff-core/internal/domain/saga"
+	"github.com/keepguard/bff-core/internal/pkg"
 	"go.uber.org/zap"
 )
 
@@ -23,6 +28,11 @@ type registerConfirmUseCaseImpl struct {
 	messagePublisher    outport.MessagePublisher
 	sagaExecutor        *saga.InMemorySagaExecutor
 	logger              *zap.Logger
+	opts                RegisterOptions
+	lockTTL             time.Duration
+	resultTTL           time.Duration
+	waitTimeout         time.Duration
+	pollInterval        time.Duration
 }
 
 // NewRegisterConfirmUseCase cria um novo caso de uso de confirmação de registro
@@ -34,6 +44,7 @@ func NewRegisterConfirmUseCase(
 	communicationClient client.CommunicationClient,
 	messagePublisher outport.MessagePublisher,
 	logger *zap.Logger,
+	opts RegisterOptions,
 ) RegisterConfirmUseCase {
 	return &registerConfirmUseCaseImpl{
 		userClient:          userClient,
@@ -44,13 +55,144 @@ func NewRegisterConfirmUseCase(
 		messagePublisher:    messagePublisher,
 		sagaExecutor:        saga.NewInMemorySagaExecutor(logger),
 		logger:              logger,
+		opts:                opts,
+		lockTTL:             registerLockTTL,
+		resultTTL:           registerResultTTL,
+		waitTimeout:         registerWaitTimeout,
+		pollInterval:        registerPollInterval,
 	}
 }
 
-// Execute executa o caso de uso de confirmação de registro usando SAGA em memória
+// Execute executa o caso de uso de confirmação de registro. Com saga_hardening ligado, o mesmo confirm repetido
+// devolve o resultado já concluído e dois confirms simultâneos não rodam a saga duas vezes.
 func (uc *registerConfirmUseCaseImpl) Execute(ctx context.Context, command appdto.RegisterConfirmCommand) (appdto.RegisterConfirmViewDTO, error) {
+	if !uc.opts.SagaHardening || uc.opts.State == nil {
+		return uc.runOnce(ctx, command)
+	}
+	return uc.runIdempotent(ctx, command)
+}
+
+// runIdempotent: replay do resultado, trava por confirm e espera pelo resultado de quem já está rodando.
+func (uc *registerConfirmUseCaseImpl) runIdempotent(ctx context.Context, command appdto.RegisterConfirmCommand) (appdto.RegisterConfirmViewDTO, error) {
+	material := confirmMaterial(command)
+	fingerprint := confirmFingerprint(material)
+	resultKey := registerResultKeyPrefix + fingerprint
+	lockKey := registerLockKeyPrefix + fingerprint
+	deadline := time.Now().Add(uc.waitTimeout)
+
+	for {
+		if view, ok := uc.loadReplay(ctx, resultKey, material, command.CorrelationID); ok {
+			uc.metrics().RecordStep("ConfirmRegister", "replayed")
+			return view, nil
+		}
+
+		acquired, err := uc.opts.State.TryLock(ctx, lockKey, uc.lockTTL)
+		if err != nil {
+			// Redis fora do ar: segue sem trava, como antes da saga endurecida (o banco e o ms-user decidem).
+			uc.logger.Warn("Trava do cadastro indisponível; seguindo sem trava",
+				zap.String("correlation_id", command.CorrelationID),
+				zap.Error(err))
+			uc.metrics().RecordStep("ConfirmLock", "store_error")
+			return uc.runOnce(ctx, command)
+		}
+		if acquired {
+			return uc.runAsOwner(ctx, command, material, resultKey, lockKey)
+		}
+
+		if time.Now().After(deadline) {
+			uc.metrics().RecordStep("ConfirmLock", "in_progress")
+			return appdto.RegisterConfirmViewDTO{}, pkg.NewAppError(
+				"REGISTRATION_IN_PROGRESS",
+				"Cadastro em andamento. Tente novamente em instantes.",
+				http.StatusConflict,
+			)
+		}
+
+		select {
+		case <-ctx.Done():
+			return appdto.RegisterConfirmViewDTO{}, ctx.Err()
+		case <-time.After(uc.pollInterval):
+		}
+	}
+}
+
+// runAsOwner roda a saga com a trava; guarda o resultado (cifrado) antes de soltar a trava.
+func (uc *registerConfirmUseCaseImpl) runAsOwner(ctx context.Context, command appdto.RegisterConfirmCommand, material, resultKey, lockKey string) (appdto.RegisterConfirmViewDTO, error) {
+	// Soltar a trava não pode depender do request: se o cliente caiu, a trava ainda precisa sair.
+	releaseCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+	defer cancel()
+	defer func() {
+		if err := uc.opts.State.Unlock(releaseCtx, lockKey); err != nil {
+			uc.logger.Warn("Falha ao soltar a trava do cadastro (expira pelo prazo)",
+				zap.String("correlation_id", command.CorrelationID),
+				zap.Error(err))
+		}
+	}()
+
+	view, err := uc.runOnce(ctx, command)
+	if err != nil {
+		return view, err
+	}
+	uc.storeReplay(releaseCtx, resultKey, material, view, command.CorrelationID)
+	return view, nil
+}
+
+// loadReplay devolve o resultado já concluído do mesmo confirm. Falha de leitura ou de decifra vira "não há".
+func (uc *registerConfirmUseCaseImpl) loadReplay(ctx context.Context, resultKey, material, correlationID string) (appdto.RegisterConfirmViewDTO, bool) {
+	sealed, found, err := uc.opts.State.GetResult(ctx, resultKey)
+	if err != nil {
+		uc.logger.Warn("Leitura do resultado do cadastro falhou; seguindo sem replay",
+			zap.String("correlation_id", correlationID),
+			zap.Error(err))
+		return appdto.RegisterConfirmViewDTO{}, false
+	}
+	if !found {
+		return appdto.RegisterConfirmViewDTO{}, false
+	}
+	plain, err := openReplay(material, sealed)
+	if err != nil {
+		uc.logger.Warn("Resultado do cadastro não pôde ser aberto; ignorado",
+			zap.String("correlation_id", correlationID))
+		return appdto.RegisterConfirmViewDTO{}, false
+	}
+	var stored struct {
+		Token          string `json:"token"`
+		TokenExpiresIn int64  `json:"tokenExpiresIn"`
+	}
+	if err := json.Unmarshal(plain, &stored); err != nil {
+		return appdto.RegisterConfirmViewDTO{}, false
+	}
+	uc.logger.Info("Confirmação repetida: devolvendo o resultado já concluído",
+		zap.String("correlation_id", correlationID))
+	return appdto.RegisterConfirmViewDTO{Token: stored.Token, TokenExpiresIn: stored.TokenExpiresIn}, true
+}
+
+// storeReplay guarda o resultado cifrado por registerResultTTL. Falha só vira log: o cadastro já foi feito.
+func (uc *registerConfirmUseCaseImpl) storeReplay(ctx context.Context, resultKey, material string, view appdto.RegisterConfirmViewDTO, correlationID string) {
+	plain, err := json.Marshal(struct {
+		Token          string `json:"token"`
+		TokenExpiresIn int64  `json:"tokenExpiresIn"`
+	}{Token: view.Token, TokenExpiresIn: view.TokenExpiresIn})
+	if err != nil {
+		uc.logger.Warn("Falha ao montar o resultado do cadastro para replay", zap.String("correlation_id", correlationID))
+		return
+	}
+	sealed, err := sealReplay(material, plain)
+	if err != nil {
+		uc.logger.Warn("Falha ao cifrar o resultado do cadastro para replay", zap.String("correlation_id", correlationID))
+		return
+	}
+	if err := uc.opts.State.SetResult(ctx, resultKey, sealed, uc.resultTTL); err != nil {
+		uc.logger.Warn("Falha ao guardar o resultado do cadastro para replay",
+			zap.String("correlation_id", correlationID),
+			zap.Error(err))
+		uc.metrics().RecordStep("ConfirmResult", "store_error")
+	}
+}
+
+// runOnce executa a saga uma vez (sem trava nem replay) e envia o e-mail de boas-vindas se ela completou.
+func (uc *registerConfirmUseCaseImpl) runOnce(ctx context.Context, command appdto.RegisterConfirmCommand) (appdto.RegisterConfirmViewDTO, error) {
 	uc.logger.Info("Iniciando confirmação de registro com SAGA",
-		zap.String("email", command.Email),
 		zap.String("correlation_id", command.CorrelationID))
 
 	// Preparar dados para o SAGA
@@ -64,7 +206,6 @@ func (uc *registerConfirmUseCaseImpl) Execute(ctx context.Context, command appdt
 	err := uc.sagaExecutor.Execute(ctx, registerSaga, sagaData)
 	if err != nil {
 		uc.logger.Error("SAGA de registro falhou",
-			zap.String("email", command.Email),
 			zap.String("correlation_id", command.CorrelationID),
 			zap.Error(err))
 		return appdto.RegisterConfirmViewDTO{}, err
@@ -80,7 +221,6 @@ func (uc *registerConfirmUseCaseImpl) Execute(ctx context.Context, command appdt
 	uc.sendWelcomeEmail(ctx, sagaData, command.TenantId, command.CorrelationID)
 
 	uc.logger.Info("Registro confirmado com sucesso via SAGA",
-		zap.String("email", command.Email),
 		zap.String("correlation_id", command.CorrelationID))
 
 	return appdto.RegisterConfirmViewDTO{
@@ -91,211 +231,287 @@ func (uc *registerConfirmUseCaseImpl) Execute(ctx context.Context, command appdt
 
 // buildRegisterConfirmSaga constrói os steps da SAGA de confirmação de registro
 func (uc *registerConfirmUseCaseImpl) buildRegisterConfirmSaga() saga.InMemorySaga {
-	return saga.InMemorySaga{
-		Name: "RegisterConfirmSaga",
-		Steps: []saga.InMemoryStep{
-			// Step 1: Validar Company (read-only, sem compensação)
-			{
-				Name: "ValidateCompany",
-				Execute: func(ctx context.Context, data map[string]interface{}) error {
-					command := data["command"].(appdto.RegisterConfirmCommand)
-					if company, ok := data["company"].(appdto.MSCompanyResponseDTO); ok {
-						ctx = client.WithCompanyID(ctx, company.ID)
-					}
-					company, err := uc.companyClient.GetByTenantId(ctx, command.TenantId, command.CorrelationID)
-					if err != nil {
-						return err
-					}
-					data["company"] = company
-					return nil
-				},
-				Compensate: nil, // read-only
-				MaxRetries: 1,   // Sem retry - delegado ao decorator se necessário
-				Timeout:    5 * time.Second,
-			},
-			// Step 2: Confirmar Registro (stateless, sem compensação)
-			{
-				Name: "ConfirmRegisterSession",
-				Execute: func(ctx context.Context, data map[string]interface{}) error {
-					command := data["command"].(appdto.RegisterConfirmCommand)
-					if company, ok := data["company"].(appdto.MSCompanyResponseDTO); ok {
-						ctx = client.WithCompanyID(ctx, company.ID)
-					}
-					confirmRequest := appdto.MSUserRegisterConfirmRequestDTO{
-						Email:                 command.Email,
-						RegistrationSessionID: command.RegistrationSessionId,
-						Token:                 command.Token,
-						EmailToken:            command.EmailToken,
-						SmsToken:              command.SmsToken,
-						WhatsAppToken:         command.WhatsAppToken,
-					}
-					confirmResponse, err := uc.userClient.ConfirmRegister(ctx, confirmRequest, command.TenantId, command.CorrelationID)
-					if err != nil {
-						return err
-					}
-					data["confirmResponse"] = confirmResponse
-					return nil
-				},
-				Compensate: nil, // stateless
-				MaxRetries: 1,   // Sem retry - delegado ao decorator se necessário
-				Timeout:    5 * time.Second,
-			},
-			// Step 3: Criar Usuário (COM compensação)
-			{
-				Name: "CreateUser",
-				Execute: func(ctx context.Context, data map[string]interface{}) error {
-					command := data["command"].(appdto.RegisterConfirmCommand)
-					if company, ok := data["company"].(appdto.MSCompanyResponseDTO); ok {
-						ctx = client.WithCompanyID(ctx, company.ID)
-					}
-					company := data["company"].(appdto.MSCompanyResponseDTO)
-					confirmResponse := data["confirmResponse"].(appdto.MSUserRegisterConfirmResponseDTO)
-
-					userRequest := appdto.MSUserCreateRequestDTO{
-						CompanyID:       company.ID,
-						Type:            confirmResponse.Type,
-						Email:           confirmResponse.Email,
-						PhoneE164:       confirmResponse.Phone,
-						PreferredLocale: "pt-BR",
-						Timezone:        "America/Sao_Paulo",
-						Status:          "ACTIVE",
-						PersonProfile: &appdto.PersonProfileDTO{
-							FullName:  confirmResponse.NameFull,
-							KYCLevel:  "BASIC",
-							KYCStatus: "NOT_STARTED",
-							PEP:       false,
-						},
-					}
-					userResponse, err := uc.userClient.CreateUser(ctx, userRequest, command.TenantId, command.CorrelationID)
-					if err != nil {
-						return err
-					}
-					data["user"] = userResponse
-					return nil
-				},
-				Compensate: func(ctx context.Context, data map[string]interface{}) error {
-					command := data["command"].(appdto.RegisterConfirmCommand)
-					user := data["user"].(appdto.MSUserResponseDTO)
-					return uc.userClient.DeleteUser(ctx, user.ID, command.TenantId, command.CorrelationID)
-				},
-				MaxRetries: 1, // Sem retry - delegado ao decorator se necessário
-				Timeout:    10 * time.Second,
-			},
-			// Step 4: Criar NotifyPreferences (compensação em cascata via User)
-			{
-				Name: "CreateUserNotify",
-				Execute: func(ctx context.Context, data map[string]interface{}) error {
-					command := data["command"].(appdto.RegisterConfirmCommand)
-					if company, ok := data["company"].(appdto.MSCompanyResponseDTO); ok {
-						ctx = client.WithCompanyID(ctx, company.ID)
-					}
-					user := data["user"].(appdto.MSUserResponseDTO)
-
-					notifyRequest := appdto.MSUserNotifyCreateRequestDTO{
-						UserID:          user.ID,
-						EmailEnabled:    true,
-						SmsEnabled:      true,
-						PushEnabled:     true,
-						WhatsAppEnabled: true,
-					}
-					_, err := uc.userClient.CreateUserNotify(ctx, notifyRequest, command.TenantId, command.CorrelationID)
+	steps := []saga.InMemoryStep{
+		// Step 1: Validar Company (read-only, sem compensação)
+		{
+			Name: "ValidateCompany",
+			Execute: func(ctx context.Context, data map[string]interface{}) error {
+				command := data["command"].(appdto.RegisterConfirmCommand)
+				if company, ok := data["company"].(appdto.MSCompanyResponseDTO); ok {
+					ctx = client.WithCompanyID(ctx, company.ID)
+				}
+				company, err := uc.companyClient.GetByTenantId(ctx, command.TenantId, command.CorrelationID)
+				if err != nil {
 					return err
-				},
-				Compensate: nil, // compensação em cascata via DELETE do User
-				MaxRetries: 1,   // Sem retry - delegado ao decorator se necessário
-				Timeout:    5 * time.Second,
+				}
+				data["company"] = company
+				return nil
 			},
-			// Step 5: Criar AuthUser (COM compensação)
-			{
-				Name: "CreateAuthUser",
-				Execute: func(ctx context.Context, data map[string]interface{}) error {
-					command := data["command"].(appdto.RegisterConfirmCommand)
-					if company, ok := data["company"].(appdto.MSCompanyResponseDTO); ok {
-						ctx = client.WithCompanyID(ctx, company.ID)
-					}
-					company := data["company"].(appdto.MSCompanyResponseDTO)
-					confirmResponse := data["confirmResponse"].(appdto.MSUserRegisterConfirmResponseDTO)
-					user := data["user"].(appdto.MSUserResponseDTO)
-
-					authUserRequest := appdto.AuthUserCreateRequestDTO{
-						Username:       user.Email,
-						Email:          user.Email,
-						Password:       confirmResponse.PasswordHash,
-						IDUserExternal: user.ID,
-						CodeUser:       user.CodeUser,
-						CompanyID:      user.CompanyID,
-						CompanyCode:    company.CodeCompany,
-						TenantId:       command.TenantId,
-					}
-					_, err := uc.authClient.CreateUser(ctx, authUserRequest, command.TenantId, command.CorrelationID)
-					return err
-				},
-				Compensate: func(ctx context.Context, data map[string]interface{}) error {
-					command := data["command"].(appdto.RegisterConfirmCommand)
-					user := data["user"].(appdto.MSUserResponseDTO)
-					return uc.authClient.HardDeleteUser(ctx, user.ID, command.TenantId, command.CorrelationID)
-				},
-				MaxRetries: 1, // Sem retry - delegado ao decorator se necessário
-				Timeout:    10 * time.Second,
-			},
-			// Step 6: Aceitar Consentimentos (COM compensação)
-			{
-				Name: "AcceptConsents",
-				Execute: func(ctx context.Context, data map[string]interface{}) error {
-					command := data["command"].(appdto.RegisterConfirmCommand)
-					if company, ok := data["company"].(appdto.MSCompanyResponseDTO); ok {
-						ctx = client.WithCompanyID(ctx, company.ID)
-					}
-					confirmResponse := data["confirmResponse"].(appdto.MSUserRegisterConfirmResponseDTO)
-					user := data["user"].(appdto.MSUserResponseDTO)
-
-					acceptAllRequest := appdto.UserConsentAcceptAllRequestDTO{
-						UserID:      user.ID,
-						Email:       user.Email,
-						AcceptedAt:  time.Now(),
-						Geolocation: confirmResponse.Geolocation,
-					}
-					_, err := uc.userConsentClient.AcceptAll(ctx, acceptAllRequest, command.TenantId, command.CorrelationID)
-					return err
-				},
-				Compensate: func(ctx context.Context, data map[string]interface{}) error {
-					command := data["command"].(appdto.RegisterConfirmCommand)
-					user := data["user"].(appdto.MSUserResponseDTO)
-					return uc.userConsentClient.DeleteAllByUserId(ctx, user.ID, command.TenantId, command.CorrelationID)
-				},
-				MaxRetries: 1, // Sem retry - delegado ao decorator se necessário
-				// accept-all no ms-user-consents costuma levar ~4s+; 5s gerava falso timeout e retries sem sessão Redis
-				Timeout: 30 * time.Second,
-			},
-			// Step 7: Fazer Login (gera token, sem compensação)
-			{
-				Name: "ExecuteLogin",
-				Execute: func(ctx context.Context, data map[string]interface{}) error {
-					command := data["command"].(appdto.RegisterConfirmCommand)
-					if company, ok := data["company"].(appdto.MSCompanyResponseDTO); ok {
-						ctx = client.WithCompanyID(ctx, company.ID)
-					}
-					confirmResponse := data["confirmResponse"].(appdto.MSUserRegisterConfirmResponseDTO)
-					user := data["user"].(appdto.MSUserResponseDTO)
-
-					registerLoginRequest := appdto.AuthRegisterLoginRequestDTO{
-						Username:     user.Email,
-						PasswordHash: confirmResponse.PasswordHash,
-						TenantId:     command.TenantId,
-						CompanyID:    user.CompanyID,
-					}
-					loginResponse, err := uc.authClient.RegisterLogin(ctx, registerLoginRequest, command.TenantId, command.CorrelationID, command.ClientId)
-					if err != nil {
-						return err
-					}
-					data["loginResponse"] = loginResponse
-					return nil
-				},
-				Compensate: nil, // token expira naturalmente
-				MaxRetries: 1,   // Sem retry - delegado ao decorator se necessário
-				Timeout:    15 * time.Second,
-			},
+			Compensate: nil, // read-only
+			MaxRetries: 1,   // Sem retry - delegado ao decorator se necessário
+			Timeout:    5 * time.Second,
 		},
+		// Step 2: Confirmar Registro (stateless, sem compensação)
+		{
+			Name: "ConfirmRegisterSession",
+			Execute: func(ctx context.Context, data map[string]interface{}) error {
+				command := data["command"].(appdto.RegisterConfirmCommand)
+				if company, ok := data["company"].(appdto.MSCompanyResponseDTO); ok {
+					ctx = client.WithCompanyID(ctx, company.ID)
+				}
+				confirmRequest := appdto.MSUserRegisterConfirmRequestDTO{
+					Email:                 command.Email,
+					RegistrationSessionID: command.RegistrationSessionId,
+					Token:                 command.Token,
+					EmailToken:            command.EmailToken,
+					SmsToken:              command.SmsToken,
+					WhatsAppToken:         command.WhatsAppToken,
+				}
+				confirmResponse, err := uc.userClient.ConfirmRegister(ctx, confirmRequest, command.TenantId, command.CorrelationID)
+				if err != nil {
+					return err
+				}
+				data["confirmResponse"] = confirmResponse
+				return nil
+			},
+			Compensate: nil, // stateless
+			MaxRetries: 1,   // Sem retry - delegado ao decorator se necessário
+			Timeout:    5 * time.Second,
+		},
+		// Step 3: Criar Usuário (COM compensação)
+		{
+			Name: "CreateUser",
+			Execute: func(ctx context.Context, data map[string]interface{}) error {
+				command := data["command"].(appdto.RegisterConfirmCommand)
+				if company, ok := data["company"].(appdto.MSCompanyResponseDTO); ok {
+					ctx = client.WithCompanyID(ctx, company.ID)
+				}
+				company := data["company"].(appdto.MSCompanyResponseDTO)
+				confirmResponse := data["confirmResponse"].(appdto.MSUserRegisterConfirmResponseDTO)
+
+				userRequest := appdto.MSUserCreateRequestDTO{
+					CompanyID:       company.ID,
+					Type:            confirmResponse.Type,
+					Email:           confirmResponse.Email,
+					PhoneE164:       confirmResponse.Phone,
+					PreferredLocale: "pt-BR",
+					Timezone:        "America/Sao_Paulo",
+					Status:          "ACTIVE",
+					PersonProfile: &appdto.PersonProfileDTO{
+						FullName:  confirmResponse.NameFull,
+						KYCLevel:  "BASIC",
+						KYCStatus: "NOT_STARTED",
+						PEP:       false,
+					},
+				}
+				userResponse, err := uc.userClient.CreateUser(ctx, userRequest, command.TenantId, command.CorrelationID)
+				if err != nil {
+					return err
+				}
+				data["user"] = userResponse
+				return nil
+			},
+			Compensate: func(ctx context.Context, data map[string]interface{}) error {
+				command := data["command"].(appdto.RegisterConfirmCommand)
+				user := data["user"].(appdto.MSUserResponseDTO)
+				return uc.userClient.DeleteUser(ctx, user.ID, command.TenantId, command.CorrelationID)
+			},
+			MaxRetries: 1, // Sem retry - delegado ao decorator se necessário
+			Timeout:    10 * time.Second,
+		},
+		// Step 4: Criar NotifyPreferences (compensação em cascata via User)
+		{
+			Name: "CreateUserNotify",
+			Execute: func(ctx context.Context, data map[string]interface{}) error {
+				command := data["command"].(appdto.RegisterConfirmCommand)
+				if company, ok := data["company"].(appdto.MSCompanyResponseDTO); ok {
+					ctx = client.WithCompanyID(ctx, company.ID)
+				}
+				user := data["user"].(appdto.MSUserResponseDTO)
+
+				notifyRequest := appdto.MSUserNotifyCreateRequestDTO{
+					UserID:          user.ID,
+					EmailEnabled:    true,
+					SmsEnabled:      true,
+					PushEnabled:     true,
+					WhatsAppEnabled: true,
+				}
+				_, err := uc.userClient.CreateUserNotify(ctx, notifyRequest, command.TenantId, command.CorrelationID)
+				return err
+			},
+			Compensate: nil, // compensação em cascata via DELETE do User
+			MaxRetries: 1,   // Sem retry - delegado ao decorator se necessário
+			Timeout:    5 * time.Second,
+		},
+		// Step 5: Criar AuthUser (COM compensação)
+		{
+			Name: "CreateAuthUser",
+			Execute: func(ctx context.Context, data map[string]interface{}) error {
+				command := data["command"].(appdto.RegisterConfirmCommand)
+				if company, ok := data["company"].(appdto.MSCompanyResponseDTO); ok {
+					ctx = client.WithCompanyID(ctx, company.ID)
+				}
+				company := data["company"].(appdto.MSCompanyResponseDTO)
+				confirmResponse := data["confirmResponse"].(appdto.MSUserRegisterConfirmResponseDTO)
+				user := data["user"].(appdto.MSUserResponseDTO)
+
+				authUserRequest := appdto.AuthUserCreateRequestDTO{
+					Username:       user.Email,
+					Email:          user.Email,
+					Password:       confirmResponse.PasswordHash,
+					IDUserExternal: user.ID,
+					CodeUser:       user.CodeUser,
+					CompanyID:      user.CompanyID,
+					CompanyCode:    company.CodeCompany,
+					TenantId:       command.TenantId,
+				}
+				_, err := uc.authClient.CreateUser(ctx, authUserRequest, command.TenantId, command.CorrelationID)
+				if err == nil {
+					return nil
+				}
+				if !uc.opts.SagaHardening || !isAmbiguousTimeout(err) {
+					return err
+				}
+				return uc.recoverAuthUserCreate(ctx, err, user.ID, command)
+			},
+			Compensate: func(ctx context.Context, data map[string]interface{}) error {
+				command := data["command"].(appdto.RegisterConfirmCommand)
+				user := data["user"].(appdto.MSUserResponseDTO)
+				return uc.authClient.HardDeleteUser(ctx, user.ID, command.TenantId, command.CorrelationID)
+			},
+			MaxRetries: 1, // Sem retry - delegado ao decorator se necessário
+			Timeout:    10 * time.Second,
+		},
+		// Step 6: Aceitar Consentimentos (COM compensação)
+		{
+			Name: "AcceptConsents",
+			Execute: func(ctx context.Context, data map[string]interface{}) error {
+				command := data["command"].(appdto.RegisterConfirmCommand)
+				if company, ok := data["company"].(appdto.MSCompanyResponseDTO); ok {
+					ctx = client.WithCompanyID(ctx, company.ID)
+				}
+				confirmResponse := data["confirmResponse"].(appdto.MSUserRegisterConfirmResponseDTO)
+				user := data["user"].(appdto.MSUserResponseDTO)
+
+				acceptAllRequest := appdto.UserConsentAcceptAllRequestDTO{
+					UserID:      user.ID,
+					Email:       user.Email,
+					AcceptedAt:  time.Now(),
+					Geolocation: confirmResponse.Geolocation,
+				}
+				_, err := uc.userConsentClient.AcceptAll(ctx, acceptAllRequest, command.TenantId, command.CorrelationID)
+				return err
+			},
+			Compensate: func(ctx context.Context, data map[string]interface{}) error {
+				command := data["command"].(appdto.RegisterConfirmCommand)
+				user := data["user"].(appdto.MSUserResponseDTO)
+				return uc.userConsentClient.DeleteAllByUserId(ctx, user.ID, command.TenantId, command.CorrelationID)
+			},
+			MaxRetries: 1, // Sem retry - delegado ao decorator se necessário
+			// accept-all no ms-user-consents costuma levar ~4s+; 5s gerava falso timeout e retries sem sessão Redis
+			Timeout: 30 * time.Second,
+		},
+		// Step 7: Fazer Login (gera token, sem compensação)
+		{
+			Name: "ExecuteLogin",
+			Execute: func(ctx context.Context, data map[string]interface{}) error {
+				command := data["command"].(appdto.RegisterConfirmCommand)
+				if company, ok := data["company"].(appdto.MSCompanyResponseDTO); ok {
+					ctx = client.WithCompanyID(ctx, company.ID)
+				}
+				confirmResponse := data["confirmResponse"].(appdto.MSUserRegisterConfirmResponseDTO)
+				user := data["user"].(appdto.MSUserResponseDTO)
+
+				registerLoginRequest := appdto.AuthRegisterLoginRequestDTO{
+					Username:     user.Email,
+					PasswordHash: confirmResponse.PasswordHash,
+					TenantId:     command.TenantId,
+					CompanyID:    user.CompanyID,
+				}
+				loginResponse, err := uc.authClient.RegisterLogin(ctx, registerLoginRequest, command.TenantId, command.CorrelationID, command.ClientId)
+				if err != nil {
+					return err
+				}
+				data["loginResponse"] = loginResponse
+				return nil
+			},
+			Compensate: nil, // token expira naturalmente
+			MaxRetries: 1,   // Sem retry - delegado ao decorator se necessário
+			Timeout:    15 * time.Second,
+		},
+	}
+
+	// Métricas por passo e por compensação (o executor não conhece métricas).
+	for i := range steps {
+		steps[i].Execute = uc.observeStep(steps[i].Name, steps[i].Execute)
+		if steps[i].Compensate != nil {
+			steps[i].Compensate = uc.observeCompensation(steps[i].Name, steps[i].Compensate)
+		}
+	}
+
+	return saga.InMemorySaga{
+		Name:  "RegisterConfirmSaga",
+		Steps: steps,
+	}
+}
+
+// recoverAuthUserCreate trata o passo 5 com timeout ambíguo: o ms-auth pode ter gravado a conta e a resposta
+// se perdido. Consulta por id_user_external; se existe, o passo é tratado como executado (e a compensação
+// do passo 5 continua disponível se a saga cair depois). Se não existe ou a consulta falha, devolve o erro original.
+func (uc *registerConfirmUseCaseImpl) recoverAuthUserCreate(ctx context.Context, original error, userID string, command appdto.RegisterConfirmCommand) error {
+	recoveryCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), authRecoveryTimeout)
+	defer cancel()
+
+	exists, err := uc.authClient.ExistsByIDExternal(recoveryCtx, userID, command.TenantId, command.CorrelationID)
+	if err != nil {
+		uc.logger.Warn("Passo 5 com timeout: não foi possível confirmar a conta no ms-auth",
+			zap.String("correlation_id", command.CorrelationID),
+			zap.Error(err))
+		return original
+	}
+	if !exists {
+		return original
+	}
+	uc.logger.Warn("Passo 5 com timeout, mas a conta existe no ms-auth: tratando como executada",
+		zap.String("correlation_id", command.CorrelationID))
+	uc.metrics().RecordStep("CreateAuthUser", "ambiguous_recovered")
+	return nil
+}
+
+// isAmbiguousTimeout: a chamada estourou o prazo (não se sabe se o serviço executou).
+func isAmbiguousTimeout(err error) bool {
+	if errors.Is(err, context.DeadlineExceeded) {
+		return true
+	}
+	var netErr net.Error
+	return errors.As(err, &netErr) && netErr.Timeout()
+}
+
+// observeStep conta o resultado de um passo (ok | error).
+func (uc *registerConfirmUseCaseImpl) observeStep(name string, fn func(context.Context, map[string]interface{}) error) func(context.Context, map[string]interface{}) error {
+	metrics := metricsOrNoop(uc.opts.Metrics)
+	return func(ctx context.Context, data map[string]interface{}) error {
+		err := fn(ctx, data)
+		if err != nil {
+			metrics.RecordStep(name, "error")
+			return err
+		}
+		metrics.RecordStep(name, "ok")
+		return nil
+	}
+}
+
+// observeCompensation conta o resultado de uma compensação (ok | error).
+func (uc *registerConfirmUseCaseImpl) observeCompensation(name string, fn func(context.Context, map[string]interface{}) error) func(context.Context, map[string]interface{}) error {
+	metrics := metricsOrNoop(uc.opts.Metrics)
+	return func(ctx context.Context, data map[string]interface{}) error {
+		err := fn(ctx, data)
+		if err != nil {
+			metrics.RecordCompensation(name, "error")
+			return err
+		}
+		metrics.RecordCompensation(name, "ok")
+		return nil
 	}
 }
 
@@ -329,12 +545,12 @@ func (uc *registerConfirmUseCaseImpl) sendWelcomeEmail(ctx context.Context, saga
 	err := uc.messagePublisher.PublishMessage(ctx, messageReq)
 	if err != nil {
 		uc.logger.Error("Erro ao enviar email de boas-vindas",
-			zap.String("email", confirmResponse.Email),
 			zap.String("code_user", user.CodeUser),
+			zap.String("correlation_id", correlationID),
 			zap.Error(err))
 	} else {
 		uc.logger.Info("Email de boas-vindas enviado com sucesso",
-			zap.String("email", confirmResponse.Email),
-			zap.String("code_user", user.CodeUser))
+			zap.String("code_user", user.CodeUser),
+			zap.String("correlation_id", correlationID))
 	}
 }

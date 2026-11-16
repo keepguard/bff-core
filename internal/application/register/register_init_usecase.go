@@ -3,6 +3,7 @@ package register
 import (
 	"context"
 	"fmt"
+	"time"
 
 	appdto "github.com/keepguard/bff-core/internal/application/dto"
 	client "github.com/keepguard/bff-core/internal/application/port"
@@ -19,6 +20,7 @@ type registerInitUseCaseImpl struct {
 	communicationClient client.CommunicationClient
 	messagePublisher    outport.MessagePublisher
 	logger              *zap.Logger
+	opts                RegisterOptions
 }
 
 // NewRegisterInitUseCase cria um novo caso de uso de inicialização de registro
@@ -29,6 +31,7 @@ func NewRegisterInitUseCase(
 	communicationClient client.CommunicationClient,
 	messagePublisher outport.MessagePublisher,
 	logger *zap.Logger,
+	opts RegisterOptions,
 ) RegisterInitUseCase {
 	return &registerInitUseCaseImpl{
 		authClient:          authClient,
@@ -37,6 +40,7 @@ func NewRegisterInitUseCase(
 		communicationClient: communicationClient,
 		messagePublisher:    messagePublisher,
 		logger:              logger,
+		opts:                opts,
 	}
 }
 
@@ -122,7 +126,7 @@ func (uc *registerInitUseCaseImpl) Execute(ctx context.Context, command appdto.R
 						CodeUser:          registerResponse.RegistrationSessionID,
 						Variables:         emailVars,
 					}
-					_ = uc.messagePublisher.PublishMessage(ctx, emailReq)
+					uc.sendCode(ctx, emailReq, "EMAIL")
 					emailSent = true
 				}
 			case "SMS":
@@ -148,7 +152,7 @@ func (uc *registerInitUseCaseImpl) Execute(ctx context.Context, command appdto.R
 						CodeUser:          registerResponse.RegistrationSessionID,
 						Variables:         smsVars,
 					}
-					_ = uc.messagePublisher.PublishMessage(ctx, smsReq)
+					uc.sendCode(ctx, smsReq, "SMS")
 					smsSent = true
 				}
 			case "WHATSAPP":
@@ -174,7 +178,7 @@ func (uc *registerInitUseCaseImpl) Execute(ctx context.Context, command appdto.R
 						CodeUser:          registerResponse.RegistrationSessionID,
 						Variables:         whatsVars,
 					}
-					_ = uc.messagePublisher.PublishMessage(ctx, whatsReq)
+					uc.sendCode(ctx, whatsReq, "WHATSAPP")
 				}
 			}
 		}
@@ -192,7 +196,7 @@ func (uc *registerInitUseCaseImpl) Execute(ctx context.Context, command appdto.R
 			CodeUser:          registerResponse.RegistrationSessionID,
 			Variables:         interfaceVariables,
 		}
-		_ = uc.messagePublisher.PublishMessage(ctx, messageReq)
+		uc.sendCode(ctx, messageReq, "EMAIL")
 	}
 
 	// Passo 7: Retornar resposta com canais exigidos
@@ -203,6 +207,50 @@ func (uc *registerInitUseCaseImpl) Execute(ctx context.Context, command appdto.R
 		ExpiresIn:             registerResponse.ExpiresIn,
 		RequiredChannels:      requiredChannels,
 	}
+	if uc.opts.SagaHardening {
+		// Aditivo: o front sabe que o reenvio (resend) é a saída se o código não chegou.
+		resendAvailable := true
+		response.ResendAvailable = &resendAvailable
+	}
 
 	return response, nil
+}
+
+// sendCodeAttempts: com saga_hardening, o envio do código tenta 3 vezes com backoff curto (200 ms, 400 ms).
+// Sem a flag, uma tentativa só, como antes (o erro é contado e logado, mas não muda a resposta).
+const sendCodeAttempts = 3
+
+// sendCode envia um código de cadastro. Falha não derruba o init (a resposta segue 201), mas é contada e logada
+// sem dado pessoal (sem destinatário, código ou template com valores).
+func (uc *registerInitUseCaseImpl) sendCode(ctx context.Context, msg outport.MessageDTO, channel string) {
+	attempts := 1
+	if uc.opts.SagaHardening {
+		attempts = sendCodeAttempts
+	}
+	backoff := 200 * time.Millisecond
+	metrics := metricsOrNoop(uc.opts.Metrics)
+
+	for attempt := 1; attempt <= attempts; attempt++ {
+		err := uc.messagePublisher.PublishMessage(ctx, msg)
+		if err == nil {
+			metrics.RecordStep("InitSendCode", "ok")
+			return
+		}
+		metrics.RecordStep("InitSendCode", "error")
+		uc.logger.Warn("Envio do código de cadastro falhou",
+			zap.String("channel", channel),
+			zap.Int("attempt", attempt),
+			zap.Int("max_attempts", attempts),
+			zap.String("correlation_id", msg.CorrelationID),
+			zap.Error(err))
+
+		if attempt < attempts {
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(backoff):
+			}
+			backoff *= 2
+		}
+	}
 }

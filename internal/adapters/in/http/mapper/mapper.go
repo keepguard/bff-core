@@ -17,6 +17,7 @@ func ToRegisterInitResponse(view appdto.RegisterInitViewDTO) inboundDto.Register
 		RequiredChannels:      view.RequiredChannels,
 		Token:                 view.Token,
 		TokenExpiresIn:        view.TokenExpiresIn,
+		ResendAvailable:       view.ResendAvailable,
 	}
 }
 

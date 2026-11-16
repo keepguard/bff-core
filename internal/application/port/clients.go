@@ -24,6 +24,8 @@ type AuthClient interface {
 	CreateUser(ctx context.Context, req appdto.AuthUserCreateRequestDTO, tenantId, correlationID string) (appdto.AuthUserCreateResponseDTO, error)
 	RegisterLogin(ctx context.Context, req appdto.AuthRegisterLoginRequestDTO, tenantId, correlationID, clientId string) (appdto.AuthLoginResponseDTO, error)
 	HardDeleteUser(ctx context.Context, idUserExternal, tenantId, correlationID string) error
+	// ExistsByIDExternal consulta a conta no ms-auth por id_user_external (company do ctx). 404 = false, sem erro.
+	ExistsByIDExternal(ctx context.Context, idUserExternal, tenantId, correlationID string) (bool, error)
 }
 
 type CompanyClient interface {

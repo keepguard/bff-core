@@ -383,6 +383,10 @@ func (c *userClient) DeleteUser(ctx context.Context, userID, tenantId, correlati
 		return fmt.Errorf("erro ao comunicar com user service: %w", err)
 	}
 
+	// 404: o perfil já não existe (compensação repetida). Para a compensação, é sucesso.
+	if resp.StatusCode() == http.StatusNotFound {
+		return nil
+	}
 	if resp.StatusCode() != http.StatusNoContent {
 		return MapHTTPError(resp.StatusCode(), resp.Body(), "user service")
 	}

@@ -24,7 +24,7 @@ func TestNewRegisterInitUseCase(t *testing.T) {
 	logger := zap.NewNop()
 
 	// Act
-	useCase := NewRegisterInitUseCase(mockAuthClient, mockUserClient, mockCompanyClient, mockCommunicationClient, mockMessagePublisher, logger)
+	useCase := NewRegisterInitUseCase(mockAuthClient, mockUserClient, mockCompanyClient, mockCommunicationClient, mockMessagePublisher, logger, RegisterOptions{})
 
 	// Assert
 	assert.NotNil(t, useCase)

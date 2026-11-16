@@ -285,6 +285,16 @@ func main() {
 	}
 
 	// Inicializa use cases de registro
+	// Saga endurecida do cadastro: flag registration.saga_hardening.enabled; trava e replay só no Redis.
+	registerOptions := register.RegisterOptions{
+		SagaHardening: cfg.Registration.SagaHardening.Enabled,
+		State:         redisstore.NewRegisterStateStore(redisClient),
+		Metrics:       metrics.NewRegistrationMetrics(),
+	}
+	zapLogger.Info("Saga de cadastro",
+		zap.Bool("saga_hardening", registerOptions.SagaHardening),
+		zap.String("component", "bff-core"))
+
 	registerInitUseCase := register.NewRegisterInitUseCase(
 		authClient,
 		userClient,
@@ -292,6 +302,7 @@ func main() {
 		communicationClient,
 		messagePublisher,
 		zapLogger,
+		registerOptions,
 	)
 
 	registerConfirmUseCase := register.NewRegisterConfirmUseCase(
@@ -302,6 +313,7 @@ func main() {
 		communicationClient,
 		messagePublisher,
 		zapLogger,
+		registerOptions,
 	)
 
 	registerResendUseCase := register.NewRegisterResendUseCase(

@@ -212,11 +212,39 @@ func (c *authClient) HardDeleteUser(ctx context.Context, idUserExternal, tenantI
 		return fmt.Errorf("erro ao comunicar com auth service: %w", err)
 	}
 
+	// 404: a conta já não existe (compensação repetida ou já removida). Para a compensação, é sucesso.
+	if resp.StatusCode() == http.StatusNotFound {
+		return nil
+	}
 	if resp.StatusCode() != http.StatusNoContent {
 		return MapHTTPError(resp.StatusCode(), resp.Body(), "auth service")
 	}
 
 	return nil
+}
+
+// ExistsByIDExternal consulta GET /api/v1/users/id-user-external/:id no ms-auth (público, exige X-Company-Id).
+// 200 = existe; 404 = não existe (false, sem erro); demais códigos e falha de rede são erro.
+func (c *authClient) ExistsByIDExternal(ctx context.Context, idUserExternal, tenantId, correlationID string) (bool, error) {
+	url := fmt.Sprintf("%s/api/v1/users/id-user-external/%s", c.config.Services.Auth.BaseURL, idUserExternal)
+
+	resp, err := c.httpClient.R().
+		SetContext(ctx).
+		SetHeader("X-Correlation-ID", correlationID).
+		SetHeader("X-Company-Id", companyHeader(ctx)).
+		Get(url)
+	if err != nil {
+		return false, fmt.Errorf("erro ao comunicar com auth service: %w", err)
+	}
+
+	switch resp.StatusCode() {
+	case http.StatusOK:
+		return true, nil
+	case http.StatusNotFound:
+		return false, nil
+	default:
+		return false, MapHTTPError(resp.StatusCode(), resp.Body(), "auth service")
+	}
 }
 
 // serviceBearer devolve "Bearer <token>" do bff-core para a company, ou "" (sem provedor, sem company ou falha).

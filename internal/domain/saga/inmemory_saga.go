@@ -2,6 +2,7 @@ package saga
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -65,7 +66,8 @@ func (e *InMemorySagaExecutor) Execute(ctx context.Context, saga InMemorySaga, d
 					e.logger.Error("Compensação falhou",
 						zap.String("saga_name", saga.Name),
 						zap.Error(compErr))
-					return fmt.Errorf("saga falhou e compensação falhou: %w", compErr)
+					// Carrega a causa original e as falhas de compensação (o diagnóstico precisa das duas).
+					return fmt.Errorf("saga falhou e compensação falhou: %w", errors.Join(err, compErr))
 				}
 
 				// Preservar o tipo do erro original (HTTPError, AppError, etc)
@@ -154,11 +156,17 @@ func (e *InMemorySagaExecutor) executeWithRetry(ctx context.Context, step InMemo
 	return lastErr
 }
 
-// compensate executa a compensação em ordem reversa
+// compensationTimeout limita cada compensação. O contexto é derivado de context.WithoutCancel: o cancelamento
+// do cliente (ou do request) não pode interromper a compensação no meio.
+const compensationTimeout = 30 * time.Second
+
+// compensate executa a compensação em ordem reversa. Não para no primeiro erro: tenta todas as compensações e
+// devolve os erros acumulados (errors.Join), para que um passo que falha não impeça o desfazer dos outros.
 func (e *InMemorySagaExecutor) compensate(ctx context.Context, executedSteps []InMemoryStep, data map[string]interface{}) error {
 	e.logger.Info("Iniciando compensação",
 		zap.Int("steps_to_compensate", len(executedSteps)))
 
+	var errs []error
 	// Compensar em ordem reversa (do último executado até o primeiro)
 	for i := len(executedSteps) - 1; i >= 0; i-- {
 		step := executedSteps[i]
@@ -173,20 +181,16 @@ func (e *InMemorySagaExecutor) compensate(ctx context.Context, executedSteps []I
 		e.logger.Info("Compensando step",
 			zap.String("step_name", step.Name))
 
-		// Criar contexto com timeout para a compensação
-		stepCtx := ctx
-		if step.Timeout > 0 {
-			var cancel context.CancelFunc
-			stepCtx, cancel = context.WithTimeout(ctx, step.Timeout)
-			defer cancel()
-		}
+		compCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), compensationTimeout)
+		err := step.Compensate(compCtx, data)
+		cancel()
 
-		// Executar compensação
-		if err := step.Compensate(stepCtx, data); err != nil {
+		if err != nil {
 			e.logger.Error("Compensação falhou",
 				zap.String("step_name", step.Name),
 				zap.Error(err))
-			return fmt.Errorf("compensação falhou no step %s: %w", step.Name, err)
+			errs = append(errs, fmt.Errorf("compensação falhou no step %s: %w", step.Name, err))
+			continue
 		}
 
 		// Registrar compensação executada
@@ -194,6 +198,10 @@ func (e *InMemorySagaExecutor) compensate(ctx context.Context, executedSteps []I
 
 		e.logger.Info("Step compensado com sucesso",
 			zap.String("step_name", step.Name))
+	}
+
+	if len(errs) > 0 {
+		return errors.Join(errs...)
 	}
 
 	e.logger.Info("Compensação completa com sucesso")

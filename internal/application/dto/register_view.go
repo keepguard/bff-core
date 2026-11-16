@@ -9,6 +9,8 @@ type RegisterInitViewDTO struct {
 	RequiredChannels      []string
 	Token                 string
 	TokenExpiresIn        int64
+	// ResendAvailable é preenchido só com saga_hardening ligado (aditivo): true indica que o reenvio está disponível.
+	ResendAvailable *bool
 }
 
 // RegisterConfirmViewDTO é a visão de aplicação da confirmação de registro.

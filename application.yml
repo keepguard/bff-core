@@ -88,3 +88,8 @@ log:
 
 env: "dev"
 
+
+# Cadastro: flags da saga endurecida (padrão desligado; ver SagaHardeningConfig).
+registration:
+  saga_hardening:
+    enabled: false
