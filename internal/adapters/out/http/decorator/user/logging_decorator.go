@@ -321,46 +321,6 @@ func (d *userLoggingDecorator) ConfirmRegister(ctx context.Context, req userDto.
 	return response, nil
 }
 
-// DeleteUser implementa DeleteUser com logging
-func (d *userLoggingDecorator) DeleteUser(ctx context.Context, userID, tenantId, correlationID string) error {
-	start := time.Now()
-
-	d.logger.Info("Iniciando requisição",
-		zap.String("service", d.serviceName),
-		zap.String("operation", "DeleteUser"),
-		zap.String("correlationID", correlationID),
-		zap.String("tenantId", tenantId),
-		zap.String("userID", userID),
-	)
-
-	err := d.inner.DeleteUser(ctx, userID, tenantId, correlationID)
-	duration := time.Since(start)
-
-	if err != nil {
-		d.logger.Error("Erro na requisição",
-			zap.String("service", d.serviceName),
-			zap.String("operation", "DeleteUser"),
-			zap.String("correlationID", correlationID),
-			zap.String("tenantId", tenantId),
-			zap.String("userID", userID),
-			zap.Duration("duration", duration),
-			zap.Error(err),
-		)
-		return err
-	}
-
-	d.logger.Info("Requisição concluída com sucesso",
-		zap.String("service", d.serviceName),
-		zap.String("operation", "DeleteUser"),
-		zap.String("correlationID", correlationID),
-		zap.String("tenantId", tenantId),
-		zap.String("userID", userID),
-		zap.Duration("duration", duration),
-	)
-
-	return nil
-}
-
 // ResendRegisterToken implementa ResendRegisterToken com logging
 func (d *userLoggingDecorator) ResendRegisterToken(ctx context.Context, req userDto.MSUserRegisterResendRequestDTO, tenantId, correlationID string) (userDto.MSUserRegisterResendResponseDTO, error) {
 	start := time.Now()

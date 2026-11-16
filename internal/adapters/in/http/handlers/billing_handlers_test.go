@@ -348,9 +348,6 @@ func (s *stubUserClient) InitRegister(context.Context, appdto.MSUserRegisterInit
 func (s *stubUserClient) ConfirmRegister(context.Context, appdto.MSUserRegisterConfirmRequestDTO, string, string) (appdto.MSUserRegisterConfirmResponseDTO, error) {
 	return appdto.MSUserRegisterConfirmResponseDTO{}, nil
 }
-func (s *stubUserClient) DeleteUser(context.Context, string, string, string) error {
-	return nil
-}
 func (s *stubUserClient) ResendRegisterToken(context.Context, appdto.MSUserRegisterResendRequestDTO, string, string) (appdto.MSUserRegisterResendResponseDTO, error) {
 	return appdto.MSUserRegisterResendResponseDTO{}, nil
 }

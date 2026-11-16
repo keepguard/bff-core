@@ -36,52 +36,6 @@ type requestSeen struct {
 	method, path, company string
 }
 
-// A compensação repetida (ou depois de um cadastro já desfeito) encontra 404: para a saga, é sucesso.
-func TestHardDeleteUser_404EhSucesso(t *testing.T) {
-	srv := upstreamReturning(t, http.StatusNotFound, nil)
-	cfg := &config.Config{}
-	cfg.Services.Auth.BaseURL = srv.URL
-	c := &authClient{httpClient: resty.New(), config: cfg, logger: zap.NewNop()}
-
-	if err := c.HardDeleteUser(port.WithCompanyID(context.Background(), "company-1"), compensationTestUserID, "tenant", "corr"); err != nil {
-		t.Fatalf("404 deve ser tolerado, veio erro: %v", err)
-	}
-}
-
-// 500 continua erro: a tolerância é só para 404.
-func TestHardDeleteUser_500ContinuaErro(t *testing.T) {
-	srv := upstreamReturning(t, http.StatusInternalServerError, nil)
-	cfg := &config.Config{}
-	cfg.Services.Auth.BaseURL = srv.URL
-	c := &authClient{httpClient: resty.New(), config: cfg, logger: zap.NewNop()}
-
-	if err := c.HardDeleteUser(port.WithCompanyID(context.Background(), "company-1"), compensationTestUserID, "tenant", "corr"); err == nil {
-		t.Fatal("500 deve continuar sendo erro")
-	}
-}
-
-func TestDeleteUser_404EhSucesso(t *testing.T) {
-	srv := upstreamReturning(t, http.StatusNotFound, nil)
-	cfg := &config.Config{}
-	cfg.Services.User.BaseURL = srv.URL
-	c := &userClient{httpClient: resty.New(), config: cfg, logger: zap.NewNop()}
-
-	if err := c.DeleteUser(port.WithCompanyID(context.Background(), "company-1"), compensationTestUserID, "tenant", "corr"); err != nil {
-		t.Fatalf("404 deve ser tolerado, veio erro: %v", err)
-	}
-}
-
-func TestDeleteUser_500ContinuaErro(t *testing.T) {
-	srv := upstreamReturning(t, http.StatusBadGateway, nil)
-	cfg := &config.Config{}
-	cfg.Services.User.BaseURL = srv.URL
-	c := &userClient{httpClient: resty.New(), config: cfg, logger: zap.NewNop()}
-
-	if err := c.DeleteUser(port.WithCompanyID(context.Background(), "company-1"), compensationTestUserID, "tenant", "corr"); err == nil {
-		t.Fatal("502 deve continuar sendo erro")
-	}
-}
-
 func TestDeleteAllByUserId_404EhSucesso(t *testing.T) {
 	srv := upstreamReturning(t, http.StatusNotFound, nil)
 	cfg := &config.Config{}

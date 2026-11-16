@@ -48,11 +48,6 @@ func (m *MockUserClient) ConfirmRegister(ctx context.Context, req userDto.MSUser
 	return args.Get(0).(userDto.MSUserRegisterConfirmResponseDTO), args.Error(1)
 }
 
-func (m *MockUserClient) DeleteUser(ctx context.Context, userID, tenantId, correlationID string) error {
-	args := m.Called(ctx, userID, tenantId, correlationID)
-	return args.Error(0)
-}
-
 func (m *MockUserClient) ResendRegisterToken(ctx context.Context, req userDto.MSUserRegisterResendRequestDTO, tenantId, correlationID string) (userDto.MSUserRegisterResendResponseDTO, error) {
 	args := m.Called(ctx, req, tenantId, correlationID)
 	return args.Get(0).(userDto.MSUserRegisterResendResponseDTO), args.Error(1)

@@ -404,64 +404,6 @@ func TestRetryDecorator_ConfirmRegister_Success(t *testing.T) {
 	mockInner.AssertExpectations(t)
 }
 
-func TestRetryDecorator_DeleteUser_Success(t *testing.T) {
-	// Arrange
-	mockInner := new(MockUserClient)
-	config := RetryConfig{
-		MaxAttempts:  1,
-		InitialDelay: 1 * time.Millisecond,
-		MaxDelay:     1 * time.Millisecond,
-		Multiplier:   1.0,
-		Jitter:       false,
-	}
-
-	decorator := NewRetryDecorator(mockInner, config).(*retryDecorator)
-
-	ctx := context.Background()
-	userID := "user123"
-	tenantId := "test-app"
-	correlationID := "corr-123"
-
-	mockInner.On("DeleteUser", ctx, userID, tenantId, correlationID).Return(nil).Once()
-
-	// Act
-	err := decorator.DeleteUser(ctx, userID, tenantId, correlationID)
-
-	// Assert
-	assert.NoError(t, err)
-	mockInner.AssertExpectations(t)
-}
-
-func TestRetryDecorator_DeleteUser_Error(t *testing.T) {
-	// Arrange
-	mockInner := new(MockUserClient)
-	config := RetryConfig{
-		MaxAttempts:  1,
-		InitialDelay: 1 * time.Millisecond,
-		MaxDelay:     1 * time.Millisecond,
-		Multiplier:   1.0,
-		Jitter:       false,
-	}
-
-	decorator := NewRetryDecorator(mockInner, config).(*retryDecorator)
-
-	ctx := context.Background()
-	userID := "user123"
-	tenantId := "test-app"
-	correlationID := "corr-123"
-
-	expectedError := errors.New("user not found")
-	mockInner.On("DeleteUser", ctx, userID, tenantId, correlationID).Return(expectedError).Once()
-
-	// Act
-	err := decorator.DeleteUser(ctx, userID, tenantId, correlationID)
-
-	// Assert
-	assert.Error(t, err)
-	assert.Equal(t, expectedError, err)
-	mockInner.AssertExpectations(t)
-}
-
 func TestRetryDecorator_ContextCancellation(t *testing.T) {
 	// Arrange
 	mockInner := new(MockUserClient)

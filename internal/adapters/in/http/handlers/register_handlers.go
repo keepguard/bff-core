@@ -2,9 +2,13 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"github.com/keepguard/bff-core/internal/application/port"
 	"github.com/keepguard/bff-core/internal/infrastructure/clientip"
+	"math"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/keepguard/bff-core/internal/adapters/in/http/dto"
@@ -315,7 +319,16 @@ func handleError(c echo.Context, err error, correlationID string) error {
 	}
 
 	// Trata erros HTTP (HTTPError) - MapHTTPError já extraiu a mensagem detalhada
-	if httpErr, ok := err.(*appdto.HTTPError); ok {
+	var httpErr *appdto.HTTPError
+	if errors.As(err, &httpErr) {
+		if retryAfter, ok := registrationInProgress(httpErr); ok {
+			appErr := pkg.NewAppError("REGISTRATION_IN_PROGRESS", registrationInProgressMessage(retryAfter), http.StatusConflict)
+			appErr.RetryAfter = retryAfter
+			if retryAfter > 0 {
+				c.Response().Header().Set("Retry-After", strconv.FormatInt(retryAfter, 10))
+			}
+			return c.JSON(appErr.StatusCode, appErr.WithTraceID(correlationID).ToResponse())
+		}
 		code := "HTTP_ERROR"
 		if upstream := upstreamErrorCode(httpErr.Details); upstream != "" {
 			code = upstream
@@ -330,6 +343,56 @@ func handleError(c echo.Context, err error, correlationID string) error {
 		Message:       "Erro interno do servidor",
 		CorrelationID: correlationID,
 	})
+}
+
+// registrationInProgress detects the ms-auth 409 REGISTRATION_IN_PROGRESS (a PENDING_ACTIVATION account still inside
+// its window, left by a failed registration that the reaper will clean). ms-auth sends a ProblemDetail with
+// errorCode/retryAfter nested in "properties"; root-level fields are accepted too. Nothing else from the upstream
+// body is forwarded.
+func registrationInProgress(httpErr *appdto.HTTPError) (int64, bool) {
+	if httpErr == nil || httpErr.Code != http.StatusConflict {
+		return 0, false
+	}
+	details := strings.TrimSpace(httpErr.Details)
+	if details == "" || details[0] != '{' {
+		return 0, false
+	}
+	type fields struct {
+		ErrorCode  string   `json:"errorCode"`
+		Error      string   `json:"error"`
+		RetryAfter *float64 `json:"retryAfter"`
+	}
+	var payload struct {
+		fields
+		Properties fields `json:"properties"`
+	}
+	if err := json.Unmarshal([]byte(details), &payload); err != nil {
+		return 0, false
+	}
+	for _, f := range []fields{payload.Properties, payload.fields} {
+		if f.ErrorCode == "REGISTRATION_IN_PROGRESS" || f.Error == "REGISTRATION_IN_PROGRESS" {
+			var retryAfter int64
+			if f.RetryAfter != nil && *f.RetryAfter > 0 {
+				retryAfter = int64(math.Ceil(*f.RetryAfter))
+			} else if payload.Properties.RetryAfter != nil && *payload.Properties.RetryAfter > 0 {
+				retryAfter = int64(math.Ceil(*payload.Properties.RetryAfter))
+			}
+			return retryAfter, true
+		}
+	}
+	return 0, false
+}
+
+// registrationInProgressMessage is the single pt-BR text for REGISTRATION_IN_PROGRESS shown to the person.
+func registrationInProgressMessage(retryAfter int64) string {
+	if retryAfter <= 0 {
+		return "Já existe um cadastro em andamento com estes dados. Tente novamente em alguns minutos."
+	}
+	minutes := (retryAfter + 59) / 60
+	if minutes == 1 {
+		return "Já existe um cadastro em andamento com estes dados. Tente novamente em 1 minuto."
+	}
+	return fmt.Sprintf("Já existe um cadastro em andamento com estes dados. Tente novamente em %d minutos.", minutes)
 }
 
 func upstreamErrorCode(details string) string {

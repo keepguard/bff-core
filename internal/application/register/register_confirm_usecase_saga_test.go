@@ -57,11 +57,6 @@ func (m *MockUserClient) ConfirmRegister(ctx context.Context, req userDto.MSUser
 	return args.Get(0).(userDto.MSUserRegisterConfirmResponseDTO), args.Error(1)
 }
 
-func (m *MockUserClient) DeleteUser(ctx context.Context, userID, tenantId, correlationID string) error {
-	args := m.Called(ctx, userID, tenantId, correlationID)
-	return args.Error(0)
-}
-
 func (m *MockUserClient) ResendRegisterToken(ctx context.Context, req userDto.MSUserRegisterResendRequestDTO, tenantId, correlationID string) (userDto.MSUserRegisterResendResponseDTO, error) {
 	args := m.Called(ctx, req, tenantId, correlationID)
 	return args.Get(0).(userDto.MSUserRegisterResendResponseDTO), args.Error(1)
@@ -89,11 +84,6 @@ func (m *MockAuthClient) ValidateToken(ctx context.Context, token, tenantId, cor
 func (m *MockAuthClient) GenerateResetToken(ctx context.Context, req authDto.GenerateResetTokenMSRequestDTO, tenantId, correlationID string) (authDto.GenerateResetTokenMSResponseDTO, error) {
 	args := m.Called(ctx, req, tenantId, correlationID)
 	return args.Get(0).(authDto.GenerateResetTokenMSResponseDTO), args.Error(1)
-}
-
-func (m *MockAuthClient) HardDeleteUser(ctx context.Context, idUserExternal, tenantId, correlationID string) error {
-	args := m.Called(ctx, idUserExternal, tenantId, correlationID)
-	return args.Error(0)
 }
 
 func (m *MockAuthClient) ExistsByIDExternal(ctx context.Context, idUserExternal, tenantId, correlationID string) (bool, error) {
@@ -356,10 +346,7 @@ func TestRegisterConfirmUseCase_SAGAFailureWithCompensation(t *testing.T) {
 	mockUserConsentClient.On("AcceptAll", mock.Anything, mock.Anything, "test-app", "corr-123").Return(userConsentDto.UserConsentAcceptAllResponseDTO{}, assert.AnError)
 
 	// Compensação - DeleteAllByUserId não deve ser chamado pois AcceptAll falhou
-	// Compensação - HardDeleteUser deve ser chamado
-	mockAuthClient.On("HardDeleteUser", mock.Anything, "user-123", "test-app", "corr-123").Return(nil)
-	// Compensação - DeleteUser deve ser chamado
-	mockUserClient.On("DeleteUser", mock.Anything, "user-123", "test-app", "corr-123").Return(nil)
+	// ms-auth and ms-user cleanup is delegated to their reapers (no destructive call from the bff-core).
 
 	command := appdto.RegisterConfirmCommand{
 		Email:                 "test@example.com",
@@ -444,9 +431,6 @@ func TestRegisterConfirmUseCase_SAGATimeout(t *testing.T) {
 	}).Return(userDto.MSUserNotifyResponseDTO{}, context.DeadlineExceeded)
 
 	// Não configurar CreateAuthUser pois o teste deve falhar antes
-
-	// Compensação - DeleteUser deve ser chamado
-	mockUserClient.On("DeleteUser", mock.Anything, "user-123", "test-app", "corr-123").Return(nil)
 
 	command := appdto.RegisterConfirmCommand{
 		Email:                 "test@example.com",

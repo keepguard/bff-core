@@ -11,6 +11,9 @@ type ErrorResponse struct {
 	Message       string        `json:"message"`
 	CorrelationID string        `json:"correlationId,omitempty"`
 	Details       []ErrorDetail `json:"details,omitempty"`
+	// RetryAfter is the wait in seconds before trying again (only for retryable conflicts such as
+	// REGISTRATION_IN_PROGRESS).
+	RetryAfter int64 `json:"retryAfter,omitempty"`
 }
 
 // ErrorDetail representa detalhes específicos do erro
@@ -27,6 +30,7 @@ type AppError struct {
 	StatusCode    int
 	Details       []ErrorDetail
 	CorrelationID string
+	RetryAfter    int64
 }
 
 func (e *AppError) Error() string {
@@ -61,6 +65,7 @@ func (e *AppError) ToResponse() ErrorResponse {
 		Message:       e.Message,
 		CorrelationID: e.CorrelationID,
 		Details:       e.Details,
+		RetryAfter:    e.RetryAfter,
 	}
 }
 

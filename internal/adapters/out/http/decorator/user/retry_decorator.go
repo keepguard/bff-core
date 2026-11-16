@@ -332,13 +332,6 @@ func (d *retryDecorator) ConfirmRegister(ctx context.Context, req userDto.MSUser
 	return lastResult, lastErr
 }
 
-// DeleteUser implementa DeleteUser com retry
-func (d *retryDecorator) DeleteUser(ctx context.Context, userID, tenantId, correlationID string) error {
-	return d.retryError(ctx, func() error {
-		return d.inner.DeleteUser(ctx, userID, tenantId, correlationID)
-	})
-}
-
 // ResendRegisterToken implementa ResendRegisterToken com retry
 func (d *retryDecorator) ResendRegisterToken(ctx context.Context, req userDto.MSUserRegisterResendRequestDTO, tenantId, correlationID string) (userDto.MSUserRegisterResendResponseDTO, error) {
 	return d.retryResend(ctx, func() (userDto.MSUserRegisterResendResponseDTO, error) {

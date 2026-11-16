@@ -120,15 +120,6 @@ func (d *circuitBreakerDecorator) ConfirmRegister(ctx context.Context, req userD
 	return result.(userDto.MSUserRegisterConfirmResponseDTO), nil
 }
 
-// DeleteUser implementa DeleteUser com circuit breaker
-func (d *circuitBreakerDecorator) DeleteUser(ctx context.Context, userID, tenantId, correlationID string) error {
-	_, err := d.circuitBreaker.Execute(ctx, d.serviceName, func() (interface{}, error) {
-		return nil, d.inner.DeleteUser(ctx, userID, tenantId, correlationID)
-	})
-
-	return err
-}
-
 // ResendRegisterToken implementa ResendRegisterToken com circuit breaker
 func (d *circuitBreakerDecorator) ResendRegisterToken(ctx context.Context, req userDto.MSUserRegisterResendRequestDTO, tenantId, correlationID string) (userDto.MSUserRegisterResendResponseDTO, error) {
 	result, err := d.circuitBreaker.Execute(ctx, d.serviceName, func() (interface{}, error) {

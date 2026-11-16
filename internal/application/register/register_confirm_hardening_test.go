@@ -171,8 +171,6 @@ func newConfirmFixture(overrides func(f *confirmFixture)) *confirmFixture {
 	f.consent.On("AcceptAll", mock.Anything, mock.Anything, "test-app", "corr-123").Return(userConsentDto.UserConsentAcceptAllResponseDTO{}, nil)
 	f.auth.On("RegisterLogin", mock.Anything, mock.Anything, "test-app", "corr-123", mock.Anything).Return(hfLogin, nil)
 	f.pub.On("PublishMessage", mock.Anything, mock.Anything).Return(nil)
-	f.auth.On("HardDeleteUser", mock.Anything, "user-123", "test-app", "corr-123").Return(nil)
-	f.user.On("DeleteUser", mock.Anything, "user-123", "test-app", "corr-123").Return(nil)
 	f.consent.On("DeleteAllByUserId", mock.Anything, "user-123", "test-app", "corr-123").Return(nil)
 	f.auth.On("ExistsByIDExternal", mock.Anything, "user-123", "test-app", "corr-123").Return(false, nil)
 	return f
@@ -419,7 +417,6 @@ func TestCreateAuthUser_AmbiguousTimeoutButAccountExists_Continues(t *testing.T)
 	require.NoError(t, err)
 	assert.Equal(t, "jwt-token-123", view.Token)
 	f.auth.AssertCalled(t, "ExistsByIDExternal", mock.Anything, "user-123", "test-app", "corr-123")
-	f.auth.AssertNotCalled(t, "HardDeleteUser", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 	assert.Equal(t, 1, metrics.step("CreateAuthUser", "ambiguous_recovered"))
 }
 
@@ -429,14 +426,14 @@ func TestCreateAuthUser_AmbiguousTimeoutNoAccount_FailsWithOriginalAndCompensate
 		f.auth.On("CreateUser", mock.Anything, mock.Anything, "test-app", "corr-123").
 			Return(authDto.AuthUserCreateResponseDTO{}, timeoutErr())
 	})
-	uc := newConfirmUC(f, RegisterOptions{SagaHardening: true, Metrics: newFakeRegistrationMetrics()})
+	metrics := newFakeRegistrationMetrics()
+	uc := newConfirmUC(f, RegisterOptions{SagaHardening: true, Metrics: metrics})
 
 	_, err := uc.Execute(context.Background(), testConfirmCommand())
 
 	require.Error(t, err)
 	assert.ErrorIs(t, err, context.DeadlineExceeded)
-	f.auth.AssertNotCalled(t, "HardDeleteUser", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
-	f.user.AssertNumberOfCalls(t, "DeleteUser", 1)
+	assert.Equal(t, 1, metrics.comp("CreateUser", "delegated_to_reaper"))
 }
 
 // A consulta ao ms-auth também falha: fica com o erro original (não inventa sucesso).
@@ -471,13 +468,15 @@ func TestCreateAuthUser_FlagOffTimeoutIsNotRecovered(t *testing.T) {
 // Compensação (sempre ligada, independe da flag)
 // ---------------------------------------------------------------------------------------------------------------
 
-// HardDeleteUser falha: o DeleteUser do passo 3 ainda roda (antes parava no primeiro erro).
-func TestCompensation_ContinuesWhenHardDeleteFails(t *testing.T) {
+// The saga no longer calls destructive routes of ms-auth or ms-user: HardDeleteUser and DeleteUser were removed
+// from port.AuthClient/port.UserClient, so reintroducing them in the compensation does not compile. These tests
+// pin the observable contract: delegated metric, no extra calls, original error preserved.
+
+// Step 5 (CreateAuthUser) fails: step 3 cleanup is delegated to the ms-user reaper; nothing else is called.
+func TestCompensation_Step5Failure_DelegatesToReaper(t *testing.T) {
 	f := newConfirmFixture(func(f *confirmFixture) {
-		f.consent.On("AcceptAll", mock.Anything, mock.Anything, "test-app", "corr-123").
-			Return(userConsentDto.UserConsentAcceptAllResponseDTO{}, errors.New("consents fora"))
-		f.auth.On("HardDeleteUser", mock.Anything, "user-123", "test-app", "corr-123").
-			Return(errors.New("ms-auth 500"))
+		f.auth.On("CreateUser", mock.Anything, mock.Anything, "test-app", "corr-123").
+			Return(authDto.AuthUserCreateResponseDTO{}, errors.New("ms-auth recusou"))
 	})
 	metrics := newFakeRegistrationMetrics()
 	uc := newConfirmUC(f, RegisterOptions{SagaHardening: false, Metrics: metrics})
@@ -485,41 +484,65 @@ func TestCompensation_ContinuesWhenHardDeleteFails(t *testing.T) {
 	_, err := uc.Execute(context.Background(), testConfirmCommand())
 
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "consents fora")
-	assert.Contains(t, err.Error(), "ms-auth 500")
-	f.user.AssertNumberOfCalls(t, "DeleteUser", 1)
-	assert.Equal(t, 1, metrics.comp("CreateAuthUser", "error"))
-	assert.Equal(t, 1, metrics.comp("CreateUser", "ok"))
+	assert.Contains(t, err.Error(), "ms-auth recusou")
+	assert.Equal(t, 1, metrics.comp("CreateUser", "delegated_to_reaper"))
+	assert.Equal(t, 0, metrics.comp("CreateUser", "ok"))
+	assert.Equal(t, 0, metrics.comp("CreateAuthUser", "delegated_to_reaper"), "failed step is not compensated")
+	f.consent.AssertNotCalled(t, "DeleteAllByUserId", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 }
 
-// O cliente desconecta no meio: a compensação roda com contexto não cancelado e com prazo.
-func TestCompensation_ClientCancellationDoesNotStopCompensation(t *testing.T) {
+// Step 6 (AcceptConsents) fails: steps 5 and 3 are delegated; the original error is the only error returned.
+func TestCompensation_Step6Failure_DelegatesToReaper(t *testing.T) {
+	f := newConfirmFixture(func(f *confirmFixture) {
+		f.consent.On("AcceptAll", mock.Anything, mock.Anything, "test-app", "corr-123").
+			Return(userConsentDto.UserConsentAcceptAllResponseDTO{}, errors.New("consents fora"))
+	})
+	metrics := newFakeRegistrationMetrics()
+	uc := newConfirmUC(f, RegisterOptions{SagaHardening: true, Metrics: metrics})
+
+	_, err := uc.Execute(context.Background(), testConfirmCommand())
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "consents fora")
+	assert.NotContains(t, err.Error(), "compensa")
+	assert.Equal(t, 1, metrics.comp("CreateAuthUser", "delegated_to_reaper"))
+	assert.Equal(t, 1, metrics.comp("CreateUser", "delegated_to_reaper"))
+	assert.Equal(t, 0, metrics.comp("CreateAuthUser", "error"))
+	f.consent.AssertNotCalled(t, "DeleteAllByUserId", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+}
+
+// Step 7 (ExecuteLogin) fails after the client disconnects: the remaining compensation (consents, same company)
+// still runs with its own non-cancelled context and deadline; ms-auth/ms-user stay delegated.
+func TestCompensation_RemainingConsentCompensationStaysComplete(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	var hardCtxErr, delCtxErr error
-	var hardDeadline bool
+	var consentCtxErr error
+	var consentDeadline bool
 	f := newConfirmFixture(func(f *confirmFixture) {
-		f.consent.On("AcceptAll", mock.Anything, mock.Anything, "test-app", "corr-123").
+		f.auth.On("RegisterLogin", mock.Anything, mock.Anything, "test-app", "corr-123", mock.Anything).
 			Run(func(mock.Arguments) { cancel() }).
-			Return(userConsentDto.UserConsentAcceptAllResponseDTO{}, errors.New("consents fora"))
-		f.auth.On("HardDeleteUser", mock.Anything, "user-123", "test-app", "corr-123").
+			Return(authDto.AuthLoginResponseDTO{}, errors.New("login fora"))
+		f.consent.On("DeleteAllByUserId", mock.Anything, "user-123", "test-app", "corr-123").
 			Run(func(a mock.Arguments) {
 				c := a.Get(0).(context.Context)
-				hardCtxErr = c.Err()
-				_, hardDeadline = c.Deadline()
+				consentCtxErr = c.Err()
+				_, consentDeadline = c.Deadline()
 			}).Return(nil)
-		f.user.On("DeleteUser", mock.Anything, "user-123", "test-app", "corr-123").
-			Run(func(a mock.Arguments) { delCtxErr = a.Get(0).(context.Context).Err() }).Return(nil)
 	})
-	uc := newConfirmUC(f, RegisterOptions{SagaHardening: false, Metrics: newFakeRegistrationMetrics()})
+	metrics := newFakeRegistrationMetrics()
+	uc := newConfirmUC(f, RegisterOptions{SagaHardening: false, Metrics: metrics})
 
 	_, err := uc.Execute(ctx, testConfirmCommand())
 
 	require.Error(t, err)
-	assert.NoError(t, hardCtxErr, "HardDeleteUser recebeu contexto cancelado")
-	assert.NoError(t, delCtxErr, "DeleteUser recebeu contexto cancelado")
-	assert.True(t, hardDeadline, "compensação sem prazo próprio")
+	assert.Contains(t, err.Error(), "login fora")
+	f.consent.AssertNumberOfCalls(t, "DeleteAllByUserId", 1)
+	assert.NoError(t, consentCtxErr, "consent compensation got a cancelled context")
+	assert.True(t, consentDeadline, "compensation without its own deadline")
+	assert.Equal(t, 1, metrics.comp("AcceptConsents", "ok"))
+	assert.Equal(t, 1, metrics.comp("CreateAuthUser", "delegated_to_reaper"))
+	assert.Equal(t, 1, metrics.comp("CreateUser", "delegated_to_reaper"))
 }
 
 // Sem flag, sem Redis: o caminho de sucesso continua igual.

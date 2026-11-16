@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/go-resty/resty/v2"
@@ -189,40 +188,6 @@ func (c *authClient) CreateUser(ctx context.Context, req authDto.AuthUserCreateR
 	return userResponse, nil
 }
 
-// HardDeleteUser remove permanentemente um usuário (para compensação de SAGA). Vai com o token de serviço do
-// bff-core da company do cadastro (claim company_id = X-Company-Id, authority user:service-hard-delete): o ms-auth
-// em account_hard_delete.mode=enforce recusa sem ele. Sem token (sem provedor ou falha ao obter), a chamada segue
-// sem Authorization, como antes: em observe o ms-auth aceita e registra hard_delete_sem_token; a compensação
-// não pode parar por isso.
-func (c *authClient) HardDeleteUser(ctx context.Context, idUserExternal, tenantId, correlationID string) error {
-	url := fmt.Sprintf("%s/api/v1/users/hard-delete/%s", c.config.Services.Auth.BaseURL, idUserExternal)
-	companyID := companyHeader(ctx)
-
-	req := c.httpClient.R().
-		SetContext(ctx).
-		SetHeader("X-Correlation-ID", correlationID).
-		SetHeader("X-Company-Id", companyID).
-		SetHeader("Content-Type", "application/json")
-	if bearer := c.serviceBearer(ctx, companyID); bearer != "" {
-		req.SetHeader("Authorization", bearer)
-	}
-	resp, err := req.Delete(url)
-
-	if err != nil {
-		return fmt.Errorf("erro ao comunicar com auth service: %w", err)
-	}
-
-	// 404: a conta já não existe (compensação repetida ou já removida). Para a compensação, é sucesso.
-	if resp.StatusCode() == http.StatusNotFound {
-		return nil
-	}
-	if resp.StatusCode() != http.StatusNoContent {
-		return MapHTTPError(resp.StatusCode(), resp.Body(), "auth service")
-	}
-
-	return nil
-}
-
 // ExistsByIDExternal consulta GET /api/v1/users/id-user-external/:id no ms-auth (público, exige X-Company-Id).
 // 200 = existe; 404 = não existe (false, sem erro); demais códigos e falha de rede são erro.
 func (c *authClient) ExistsByIDExternal(ctx context.Context, idUserExternal, tenantId, correlationID string) (bool, error) {
@@ -245,23 +210,4 @@ func (c *authClient) ExistsByIDExternal(ctx context.Context, idUserExternal, ten
 	default:
 		return false, MapHTTPError(resp.StatusCode(), resp.Body(), "auth service")
 	}
-}
-
-// serviceBearer devolve "Bearer <token>" do bff-core para a company, ou "" (sem provedor, sem company ou falha).
-// Nunca loga o token.
-func (c *authClient) serviceBearer(ctx context.Context, companyID string) string {
-	if c.tokens == nil || strings.TrimSpace(companyID) == "" {
-		return ""
-	}
-	tok, err := c.tokens.GetToken(ctx, companyID)
-	if err != nil || strings.TrimSpace(tok) == "" {
-		if c.logger != nil {
-			c.logger.Warn("hard delete sem token de serviço do bff-core", zap.String("company_id", companyID), zap.Error(err))
-		}
-		return ""
-	}
-	if !strings.HasPrefix(strings.ToLower(tok), "bearer ") {
-		tok = "Bearer " + tok
-	}
-	return tok
 }

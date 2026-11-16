@@ -205,29 +205,6 @@ func (d *userMetricsDecorator) ConfirmRegister(ctx context.Context, req userDto.
 	return response, err
 }
 
-// DeleteUser implementa DeleteUser com métricas
-func (d *userMetricsDecorator) DeleteUser(ctx context.Context, userID, tenantId, correlationID string) error {
-	start := time.Now()
-
-	err := d.inner.DeleteUser(ctx, userID, tenantId, correlationID)
-
-	duration := time.Since(start)
-	statusCode := d.getStatusCodeFromError(err)
-
-	// Registra métricas
-	d.metrics.RecordUpstreamRequest(d.serviceName, "DELETE", "/users", statusCode, duration)
-
-	if err != nil {
-		errorType := "unknown"
-		if httpErr, ok := err.(*appdto.HTTPError); ok {
-			errorType = httpErr.Message
-		}
-		d.metrics.RecordUpstreamError(d.serviceName, "DELETE", "/users", errorType)
-	}
-
-	return err
-}
-
 // ResendRegisterToken implementa ResendRegisterToken com métricas
 func (d *userMetricsDecorator) ResendRegisterToken(ctx context.Context, req userDto.MSUserRegisterResendRequestDTO, tenantId, correlationID string) (userDto.MSUserRegisterResendResponseDTO, error) {
 	start := time.Now()

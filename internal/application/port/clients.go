@@ -14,7 +14,6 @@ type UserClient interface {
 	CreateUserNotify(ctx context.Context, req appdto.MSUserNotifyCreateRequestDTO, tenantId, correlationID string) (appdto.MSUserNotifyResponseDTO, error)
 	InitRegister(ctx context.Context, req appdto.MSUserRegisterInitRequestDTO, tenantId, correlationID string) (appdto.MSUserRegisterInitResponseDTO, error)
 	ConfirmRegister(ctx context.Context, req appdto.MSUserRegisterConfirmRequestDTO, tenantId, correlationID string) (appdto.MSUserRegisterConfirmResponseDTO, error)
-	DeleteUser(ctx context.Context, userID, tenantId, correlationID string) error
 	ResendRegisterToken(ctx context.Context, req appdto.MSUserRegisterResendRequestDTO, tenantId, correlationID string) (appdto.MSUserRegisterResendResponseDTO, error)
 }
 
@@ -23,7 +22,6 @@ type AuthClient interface {
 	GenerateResetToken(ctx context.Context, req appdto.GenerateResetTokenMSRequestDTO, tenantId, correlationID string) (appdto.GenerateResetTokenMSResponseDTO, error)
 	CreateUser(ctx context.Context, req appdto.AuthUserCreateRequestDTO, tenantId, correlationID string) (appdto.AuthUserCreateResponseDTO, error)
 	RegisterLogin(ctx context.Context, req appdto.AuthRegisterLoginRequestDTO, tenantId, correlationID, clientId string) (appdto.AuthLoginResponseDTO, error)
-	HardDeleteUser(ctx context.Context, idUserExternal, tenantId, correlationID string) error
 	// ExistsByIDExternal consulta a conta no ms-auth por id_user_external (company do ctx). 404 = false, sem erro.
 	ExistsByIDExternal(ctx context.Context, idUserExternal, tenantId, correlationID string) (bool, error)
 }

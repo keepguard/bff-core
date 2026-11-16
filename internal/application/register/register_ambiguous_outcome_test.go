@@ -83,7 +83,6 @@ func TestCreateAuthUser_AmbiguityByErrorType(t *testing.T) {
 			if tc.ambiguous {
 				require.NoError(t, err)
 				f.auth.AssertCalled(t, "ExistsByIDExternal", mock.Anything, "user-123", "test-app", "corr-123")
-				f.auth.AssertNotCalled(t, "HardDeleteUser", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 				return
 			}
 			require.Error(t, err)

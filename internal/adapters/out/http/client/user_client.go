@@ -397,41 +397,6 @@ func (c *userClient) ConfirmRegister(ctx context.Context, req userDto.MSUserRegi
 	}
 }
 
-// DeleteUser deleta um usuário (para compensação de SAGA)
-func (c *userClient) DeleteUser(ctx context.Context, userID, tenantId, correlationID string) error {
-	url := fmt.Sprintf("%s/api/v1/users/%s", c.config.Services.User.BaseURL, userID)
-
-	req := c.httpClient.R().
-		SetContext(ctx).
-		SetHeader("X-Correlation-ID", correlationID).
-		SetHeader("X-Company-Id", companyHeader(ctx)).
-		SetHeader("Content-Type", "application/json")
-	// Rota administrativa do ms-user: manda o token de serviço do bff-core quando o client existe
-	// (sem ele segue anônimo, como antes; o ms-user em AUTHZ_MODE=enforce só aceita com token).
-	if c.oauth != nil {
-		if tk, terr := c.oauth.Token(); terr != nil {
-			c.logger.Warn("sem token de serviço para o DELETE no ms-user; seguindo sem token", zap.Error(terr))
-		} else {
-			req.SetAuthToken(tk)
-		}
-	}
-	resp, err := req.Delete(url)
-
-	if err != nil {
-		return fmt.Errorf("erro ao comunicar com user service: %w", err)
-	}
-
-	// 404: o perfil já não existe (compensação repetida). Para a compensação, é sucesso.
-	if resp.StatusCode() == http.StatusNotFound {
-		return nil
-	}
-	if resp.StatusCode() != http.StatusNoContent {
-		return MapHTTPError(resp.StatusCode(), resp.Body(), "user service")
-	}
-
-	return nil
-}
-
 // ResendRegisterToken reenvia o token de registro
 func (c *userClient) ResendRegisterToken(ctx context.Context,
 	req userDto.MSUserRegisterResendRequestDTO,

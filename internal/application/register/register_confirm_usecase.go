@@ -313,11 +313,8 @@ func (uc *registerConfirmUseCaseImpl) buildRegisterConfirmSaga() saga.InMemorySa
 				data["user"] = userResponse
 				return nil
 			},
-			Compensate: func(ctx context.Context, data map[string]interface{}) error {
-				command := data["command"].(appdto.RegisterConfirmCommand)
-				user := data["user"].(appdto.MSUserResponseDTO)
-				return uc.userClient.DeleteUser(ctx, user.ID, command.TenantId, command.CorrelationID)
-			},
+			// Cleanup delegated to the ms-user reaper (PENDING profile expires in 30 min, with reconciliation).
+			Compensate: uc.delegateToReaper("CreateUser", "ms-user"),
 			MaxRetries: 1, // Sem retry - delegado ao decorator se necessário
 			Timeout:    10 * time.Second,
 		},
@@ -341,7 +338,7 @@ func (uc *registerConfirmUseCaseImpl) buildRegisterConfirmSaga() saga.InMemorySa
 				_, err := uc.userClient.CreateUserNotify(ctx, notifyRequest, command.TenantId, command.CorrelationID)
 				return err
 			},
-			Compensate: nil, // compensação em cascata via DELETE do User
+			Compensate: nil, // removed together with the user profile by the ms-user reaper
 			MaxRetries: 1,   // Sem retry - delegado ao decorator se necessário
 			Timeout:    5 * time.Second,
 		},
@@ -376,11 +373,8 @@ func (uc *registerConfirmUseCaseImpl) buildRegisterConfirmSaga() saga.InMemorySa
 				}
 				return uc.recoverAuthUserCreate(ctx, err, user.ID, command)
 			},
-			Compensate: func(ctx context.Context, data map[string]interface{}) error {
-				command := data["command"].(appdto.RegisterConfirmCommand)
-				user := data["user"].(appdto.MSUserResponseDTO)
-				return uc.authClient.HardDeleteUser(ctx, user.ID, command.TenantId, command.CorrelationID)
-			},
+			// Cleanup delegated to the ms-auth reaper (PENDING_ACTIVATION account expires in 15 min).
+			Compensate: uc.delegateToReaper("CreateAuthUser", "ms-auth"),
 			MaxRetries: 1, // Sem retry - delegado ao decorator se necessário
 			Timeout:    10 * time.Second,
 		},
@@ -446,7 +440,7 @@ func (uc *registerConfirmUseCaseImpl) buildRegisterConfirmSaga() saga.InMemorySa
 	// Métricas por passo e por compensação (o executor não conhece métricas).
 	for i := range steps {
 		steps[i].Execute = uc.observeStep(steps[i].Name, steps[i].Execute)
-		if steps[i].Compensate != nil {
+		if steps[i].Compensate != nil && !delegatedSteps[steps[i].Name] {
 			steps[i].Compensate = uc.observeCompensation(steps[i].Name, steps[i].Compensate)
 		}
 	}
@@ -522,6 +516,27 @@ func (uc *registerConfirmUseCaseImpl) observeStep(name string, fn func(context.C
 			return err
 		}
 		metrics.RecordStep(name, "ok")
+		return nil
+	}
+}
+
+// delegatedSteps are the saga steps whose cleanup belongs to the owning service's reaper: the bff-core no longer
+// calls destructive routes of ms-auth or ms-user (spec-cadastro-saga-reaper §4.4/§4.6).
+var delegatedSteps = map[string]bool{"CreateUser": true, "CreateAuthUser": true}
+
+// delegateToReaper returns a compensation that only logs and counts result="delegated_to_reaper". It never fails,
+// so the saga keeps compensating the remaining steps and returns the original error.
+func (uc *registerConfirmUseCaseImpl) delegateToReaper(step, owner string) func(context.Context, map[string]interface{}) error {
+	return func(_ context.Context, data map[string]interface{}) error {
+		correlationID := ""
+		if command, ok := data["command"].(appdto.RegisterConfirmCommand); ok {
+			correlationID = command.CorrelationID
+		}
+		uc.logger.Info("Registration compensation delegated to reaper",
+			zap.String("step", step),
+			zap.String("owner", owner),
+			zap.String("correlation_id", correlationID))
+		metricsOrNoop(uc.opts.Metrics).RecordCompensation(step, "delegated_to_reaper")
 		return nil
 	}
 }
