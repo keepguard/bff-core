@@ -101,4 +101,4 @@ env: "dev"
 # Cadastro: flags da saga endurecida (padrão desligado; ver SagaHardeningConfig).
 registration:
   saga_hardening:
-    enabled: false
+    enabled: true   # ON 16/11 (QA in prod): idempotent confirm + lock, ambiguous step 5, send-code retry. Rollback = false.

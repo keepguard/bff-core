@@ -24,8 +24,9 @@ func TestLoad_SecurityFlagsOffByDefault(t *testing.T) {
 	if cfg.Authz.CompanyScopedCalls.Enabled {
 		t.Fatal("authz.company_scoped_calls.enabled must default to false")
 	}
-	if cfg.Registration.SagaHardening.Enabled {
-		t.Fatal("registration.saga_hardening.enabled must default to false")
+	// saga_hardening is ON in application.yml since 16/11 (QA in production); W5/W11 above stay off.
+	if !cfg.Registration.SagaHardening.Enabled {
+		t.Fatal("registration.saga_hardening.enabled must be true in application.yml")
 	}
 }
 
