@@ -56,6 +56,15 @@ services:
 oauth:
   client_id: "bff-core"
   token_renew_before_sec: 600
+  # W5: service token per company (client per company, cache only in Redis). Off = single client.
+  per_company:
+    enabled: false
+    client_ids: {}
+
+# W11: PatchPersonDocument/GetByEmail with the target company's token; cross-company refused before the call.
+authz:
+  company_scoped_calls:
+    enabled: false
 
 rabbitmq:
   host: "localhost"

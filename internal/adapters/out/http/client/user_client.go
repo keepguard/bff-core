@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -23,6 +24,37 @@ type userClient struct {
 	config     *config.Config
 	logger     *zap.Logger
 	oauth      tokenServico // KEEPGUARD_OAUTH_*: token de serviço do bff-core nas rotas administrativas do ms-user
+	// companyScoped (W11, authz.company_scoped_calls.enabled): PatchPersonDocument and GetByEmail use the
+	// target company's service token (tokens) and refuse cross-company calls before sending them.
+	companyScoped bool
+	tokens        domainclient.ServiceTokenClient
+}
+
+// ErrCrossCompanyCall: the call would act on a user of another company (refused before sending).
+var ErrCrossCompanyCall = errors.New("cross-company call refused")
+
+// WithCompanyScopedCalls turns on W11 on a client built by NewUserClient/NewUserClientWithoutRetry.
+func WithCompanyScopedCalls(uc domainclient.UserClient, tokens domainclient.ServiceTokenClient) domainclient.UserClient {
+	if c, ok := uc.(*userClient); ok && tokens != nil {
+		c.companyScoped = true
+		c.tokens = tokens
+	}
+	return uc
+}
+
+// scopedBearer returns the service token of companyID, refusing a token bound to another company. Never logs it.
+func (c *userClient) scopedBearer(ctx context.Context, companyID string) (string, error) {
+	tok, err := c.tokens.GetToken(ctx, companyID)
+	if err != nil {
+		return "", err
+	}
+	if !strings.HasPrefix(strings.ToLower(tok), "bearer ") {
+		tok = "Bearer " + tok
+	}
+	if TokenCompanyID(tok) != strings.ToLower(strings.TrimSpace(companyID)) {
+		return "", fmt.Errorf("%w: token company differs from X-Company-Id", ErrCrossCompanyCall)
+	}
+	return tok, nil
 }
 
 // NewUserClient cria uma nova instância do UserClient
@@ -128,6 +160,9 @@ func (c *userClient) PatchPersonDocument(ctx context.Context, userID, cpf, token
 	if companyID == "" {
 		return userDto.MSUserResponseDTO{}, fmt.Errorf("companyId é obrigatório para gravar documento")
 	}
+	if c.companyScoped {
+		return c.patchPersonDocumentScoped(ctx, url, userID, cpf, companyID, correlationID)
+	}
 
 	req := c.httpClient.R().
 		SetContext(ctx).
@@ -179,6 +214,9 @@ func (c *userClient) PatchPersonDocument(ctx context.Context, userID, cpf, token
 // GetByEmail busca um usuário por email consultando prioritariamente o ms-auth (canônico para busca por email)
 // e enriquecendo os dados cadastrais (nome completo) via endpoint interno do ms-user.
 func (c *userClient) GetByEmail(ctx context.Context, email, tenantId, companyId, correlationID string) (authDto.UserByEmailResponseDTO, error) {
+	if c.companyScoped {
+		return c.getByEmailScoped(ctx, email, companyId, correlationID)
+	}
 	authBaseURL := strings.TrimRight(c.config.Services.Auth.BaseURL, "/")
 	if authBaseURL != "" {
 		url := fmt.Sprintf("%s/api/v1/users/email/%s", authBaseURL, email)

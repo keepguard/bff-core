@@ -167,7 +167,16 @@ func main() {
 	// =============================================================================
 	// Token OAuth de serviço do bff-core por company (client_id bff-core): knowledge, collector, LLM e o hard delete
 	// da compensação do cadastro no ms-auth.
-	serviceTokenClient := tokendecorator.New(httpclient.NewBffOAuthTokenClient(cfg, zapLogger), zapLogger, metricsInstance, "ms-auth")
+	// oauth.per_company.enabled (W5): client per company, token cached only in Redis (no process memory).
+	baseServiceTokenClient := httpclient.NewBffOAuthTokenClient(cfg, zapLogger)
+	if cfg.OAuth.PerCompany.Enabled {
+		baseServiceTokenClient = httpclient.NewPerCompanyOAuthTokenClient(cfg, httpclient.NewRedisOAuthTokenCache(redisClient), zapLogger)
+	}
+	zapLogger.Info("service token mode",
+		zap.Bool("oauth_per_company", cfg.OAuth.PerCompany.Enabled),
+		zap.Int("oauth_per_company_clients", len(cfg.OAuth.PerCompany.ClientIDs)),
+		zap.Bool("authz_company_scoped_calls", cfg.Authz.CompanyScopedCalls.Enabled))
+	serviceTokenClient := tokendecorator.New(baseServiceTokenClient, zapLogger, metricsInstance, "ms-auth")
 	baseAuthClient := httpclient.NewAuthClient(cfg, serviceTokenClient, zapLogger)
 	authClient := baseAuthClient
 
@@ -175,6 +184,9 @@ func main() {
 	// INICIALIZAÇÃO DO USER CLIENT COM DECORATORS
 	// =============================================================================
 	baseUserClient := httpclient.NewUserClient(cfg, zapLogger)
+	if cfg.Authz.CompanyScopedCalls.Enabled {
+		baseUserClient = httpclient.WithCompanyScopedCalls(baseUserClient, serviceTokenClient)
+	}
 
 	userMetricsClient := userdecorator.NewUserMetricsDecorator(baseUserClient, metricsInstance, "ms-user")
 

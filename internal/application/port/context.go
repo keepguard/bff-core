@@ -56,3 +56,19 @@ func DeviceIDFromContext(ctx context.Context) string {
 	v, _ := ctx.Value(deviceIDContextKey{}).(string)
 	return v
 }
+
+type targetCompanyIDContextKey struct{}
+
+// WithTargetCompanyID records the company of the user a call acts on (W11 company-scoped calls).
+func WithTargetCompanyID(ctx context.Context, companyID string) context.Context {
+	if companyID == "" {
+		return ctx
+	}
+	return context.WithValue(ctx, targetCompanyIDContextKey{}, companyID)
+}
+
+// TargetCompanyIDFromContext returns the company of the target user, or "".
+func TargetCompanyIDFromContext(ctx context.Context) string {
+	v, _ := ctx.Value(targetCompanyIDContextKey{}).(string)
+	return v
+}

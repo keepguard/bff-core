@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
+	"syscall"
 	"time"
 
 	appdto "github.com/keepguard/bff-core/internal/application/dto"
@@ -369,7 +371,7 @@ func (uc *registerConfirmUseCaseImpl) buildRegisterConfirmSaga() saga.InMemorySa
 				if err == nil {
 					return nil
 				}
-				if !uc.opts.SagaHardening || !isAmbiguousTimeout(err) {
+				if !uc.opts.SagaHardening || !isAmbiguousOutcome(err) {
 					return err
 				}
 				return uc.recoverAuthUserCreate(ctx, err, user.ID, command)
@@ -478,13 +480,36 @@ func (uc *registerConfirmUseCaseImpl) recoverAuthUserCreate(ctx context.Context,
 	return nil
 }
 
-// isAmbiguousTimeout: a chamada estourou o prazo (não se sabe se o serviço executou).
-func isAmbiguousTimeout(err error) bool {
+// isAmbiguousOutcome reports whether the call may have been executed by the remote service even though no
+// answer arrived: deadline/timeout, connection reset or broken pipe, or the response lost mid-way (EOF).
+// An explicit HTTP answer (4xx/5xx) and a refused connection (request never sent) are NOT ambiguous.
+func isAmbiguousOutcome(err error) bool {
+	if err == nil {
+		return false
+	}
+	var httpErr *appdto.HTTPError
+	if errors.As(err, &httpErr) {
+		return false
+	}
+	if errors.Is(err, syscall.ECONNREFUSED) {
+		return false
+	}
 	if errors.Is(err, context.DeadlineExceeded) {
 		return true
 	}
+	if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) ||
+		errors.Is(err, syscall.ECONNRESET) || errors.Is(err, syscall.ECONNABORTED) || errors.Is(err, syscall.EPIPE) {
+		return true
+	}
 	var netErr net.Error
-	return errors.As(err, &netErr) && netErr.Timeout()
+	if errors.As(err, &netErr) && netErr.Timeout() {
+		return true
+	}
+	var opErr *net.OpError
+	if errors.As(err, &opErr) && opErr.Op == "read" {
+		return true
+	}
+	return false
 }
 
 // observeStep conta o resultado de um passo (ok | error).

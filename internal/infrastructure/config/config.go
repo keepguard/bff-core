@@ -21,6 +21,7 @@ type Config struct {
 	ConnectionsHealth ConnectionsHealthConfig `mapstructure:"connections_health"`
 	OAuth             OAuthConfig             `mapstructure:"oauth"`
 	Registration      RegistrationConfig      `mapstructure:"registration"`
+	Authz             AuthzConfig             `mapstructure:"authz"`
 	BillingCore       BillingCoreConfig       `mapstructure:"-"`
 	Env               string                  `mapstructure:"env"`
 }
@@ -122,6 +123,40 @@ type OAuthConfig struct {
 	ClientID            string `mapstructure:"client_id"`
 	SecretBase          string `mapstructure:"secret_base"`
 	TokenRenewBeforeSec int    `mapstructure:"token_renew_before_sec"`
+	// PerCompany (W5): service token per company, cached only in Redis. Off = single client, previous behavior.
+	PerCompany OAuthPerCompanyConfig `mapstructure:"per_company"`
+}
+
+// OAuthPerCompanyConfig maps each company to its own OAuth client (no fallback to another company's client).
+type OAuthPerCompanyConfig struct {
+	Enabled bool `mapstructure:"enabled"`
+	// ClientIDs maps company_id -> client_id. Env OAUTH_PER_COMPANY_CLIENT_IDS ("company=client,...") overrides.
+	ClientIDs map[string]string `mapstructure:"client_ids"`
+}
+
+// AuthzConfig groups authorization flags of outgoing calls.
+type AuthzConfig struct {
+	// CompanyScopedCalls (W11): PatchPersonDocument and GetByEmail use the target company's service token and
+	// refuse cross-company calls before sending them. Off = previous behavior.
+	CompanyScopedCalls FlagConfig `mapstructure:"company_scoped_calls"`
+}
+
+// FlagConfig is a plain on/off flag.
+type FlagConfig struct {
+	Enabled bool `mapstructure:"enabled"`
+}
+
+// ParseCompanyClientIDs parses "company=client,company=client" (blank entries ignored).
+func ParseCompanyClientIDs(raw string) map[string]string {
+	out := map[string]string{}
+	for _, pair := range strings.Split(raw, ",") {
+		k, v, ok := strings.Cut(strings.TrimSpace(pair), "=")
+		k, v = strings.ToLower(strings.TrimSpace(k)), strings.TrimSpace(v)
+		if ok && k != "" && v != "" {
+			out[k] = v
+		}
+	}
+	return out
 }
 
 // ServiceConfig configurações de um microserviço
@@ -227,6 +262,9 @@ func Load() (*Config, error) {
 	if v := strings.TrimSpace(os.Getenv("AUTH_CLIENT_SECRET_BASE")); v != "" {
 		config.OAuth.SecretBase = v
 	}
+	if v := strings.TrimSpace(os.Getenv("OAUTH_PER_COMPANY_CLIENT_IDS")); v != "" {
+		config.OAuth.PerCompany.ClientIDs = ParseCompanyClientIDs(v)
+	}
 	config.BillingCore = BillingCoreConfig{
 		WriteCompanyIDs: strings.TrimSpace(os.Getenv("BILLING_CORE_WRITE_COMPANY_IDS")),
 		ServiceKey:      strings.TrimSpace(os.Getenv("BILLING_CORE_SERVICE_KEY")),
@@ -295,6 +333,8 @@ func setDefaults() {
 
 	viper.SetDefault("oauth.client_id", "bff-core")
 	viper.SetDefault("oauth.token_renew_before_sec", 600)
+	viper.SetDefault("oauth.per_company.enabled", false)
+	viper.SetDefault("authz.company_scoped_calls.enabled", false)
 
 	// RabbitMQ
 	viper.SetDefault("rabbitmq.host", "localhost")

@@ -134,7 +134,7 @@ func (c *bffOAuthTokenHTTP) plainSecretForCompany(ctx context.Context, companyID
 	if entry, ok := c.secretCache[companyID]; ok && entry.plain != "" {
 		return entry.plain, entry.clientID, nil
 	}
-	plain, clientID, err := c.fetchAndDecryptSecret(ctx, companyID)
+	plain, clientID, err := c.fetchAndDecryptSecret(ctx, companyID, c.clientID)
 	if err != nil {
 		return "", "", err
 	}
@@ -142,9 +142,9 @@ func (c *bffOAuthTokenHTTP) plainSecretForCompany(ctx context.Context, companyID
 	return plain, clientID, nil
 }
 
-func (c *bffOAuthTokenHTTP) fetchAndDecryptSecret(ctx context.Context, companyID string) (string, string, error) {
+func (c *bffOAuthTokenHTTP) fetchAndDecryptSecret(ctx context.Context, companyID, wantClientID string) (string, string, error) {
 	query := url.Values{}
-	query.Set("clientId", c.clientID)
+	query.Set("clientId", wantClientID)
 	reqURL := c.authBaseURL + "/api/v1/auth/oauth/runtime/secret?" + query.Encode()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
 	if err != nil {
@@ -178,7 +178,7 @@ func (c *bffOAuthTokenHTTP) fetchAndDecryptSecret(ctx context.Context, companyID
 	}
 	clientID := material.ClientID
 	if clientID == "" {
-		clientID = c.clientID
+		clientID = wantClientID
 	}
 	return plain, clientID, nil
 }

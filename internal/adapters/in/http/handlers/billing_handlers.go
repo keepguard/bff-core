@@ -673,7 +673,7 @@ func (h *BillingHandlers) firstWritePayerDocument(c echo.Context, user *appdto.M
 		return pkg.NewAppError("PAYER_DOCUMENT_MISSING", "Informe um CPF válido.", http.StatusUnprocessableEntity)
 	}
 	patched, err := h.users.PatchPersonDocument(
-		c.Request().Context(),
+		port.WithTargetCompanyID(c.Request().Context(), strings.TrimSpace(user.CompanyID)),
 		userID,
 		clientDoc,
 		middlewarePkg.GetTokenFromContext(c),

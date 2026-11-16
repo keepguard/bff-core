@@ -39,7 +39,7 @@ func (d *userLoggingDecorator) CreateUser(ctx context.Context, req userDto.MSUse
 		zap.String("operation", "CreateUser"),
 		zap.String("correlationID", correlationID),
 		zap.String("tenantId", tenantId),
-		zap.String("email", req.Email),
+		zap.Bool("email_present", req.Email != ""),
 	)
 
 	response, err := d.inner.CreateUser(ctx, req, tenantId, correlationID)
@@ -51,7 +51,7 @@ func (d *userLoggingDecorator) CreateUser(ctx context.Context, req userDto.MSUse
 			zap.String("operation", "CreateUser"),
 			zap.String("correlationID", correlationID),
 			zap.String("tenantId", tenantId),
-			zap.String("email", req.Email),
+			zap.Bool("email_present", req.Email != ""),
 			zap.Duration("duration", duration),
 			zap.Error(err),
 		)
@@ -63,7 +63,7 @@ func (d *userLoggingDecorator) CreateUser(ctx context.Context, req userDto.MSUse
 		zap.String("operation", "CreateUser"),
 		zap.String("correlationID", correlationID),
 		zap.String("tenantId", tenantId),
-		zap.String("email", req.Email),
+		zap.Bool("email_present", req.Email != ""),
 		zap.String("userID", response.ID),
 		zap.String("codeUser", response.CodeUser),
 		zap.Duration("duration", duration),
@@ -107,7 +107,7 @@ func (d *userLoggingDecorator) GetUserByCodeUser(ctx context.Context, codeUser, 
 		zap.String("tenantId", tenantId),
 		zap.String("codeUser", codeUser),
 		zap.String("userID", response.ID),
-		zap.String("email", response.Email),
+		zap.Bool("email_present", response.Email != ""),
 		zap.Duration("duration", duration),
 	)
 
@@ -163,7 +163,7 @@ func (d *userLoggingDecorator) GetByEmail(ctx context.Context, email, tenantId, 
 		zap.String("operation", "GetByEmail"),
 		zap.String("correlationID", correlationID),
 		zap.String("tenantId", tenantId),
-		zap.String("email", email),
+		zap.Bool("email_present", email != ""),
 	)
 
 	response, err := d.inner.GetByEmail(ctx, email, tenantId, companyId, correlationID)
@@ -175,7 +175,7 @@ func (d *userLoggingDecorator) GetByEmail(ctx context.Context, email, tenantId, 
 			zap.String("operation", "GetByEmail"),
 			zap.String("correlationID", correlationID),
 			zap.String("tenantId", tenantId),
-			zap.String("email", email),
+			zap.Bool("email_present", email != ""),
 			zap.Duration("duration", duration),
 			zap.Error(err),
 		)
@@ -187,7 +187,7 @@ func (d *userLoggingDecorator) GetByEmail(ctx context.Context, email, tenantId, 
 		zap.String("operation", "GetByEmail"),
 		zap.String("correlationID", correlationID),
 		zap.String("tenantId", tenantId),
-		zap.String("email", email),
+		zap.Bool("email_present", email != ""),
 		zap.String("userID", response.ID),
 		zap.String("codeUser", response.CodeUser),
 		zap.Duration("duration", duration),
@@ -246,7 +246,7 @@ func (d *userLoggingDecorator) InitRegister(ctx context.Context, req userDto.MSU
 		zap.String("operation", "InitRegister"),
 		zap.String("correlationID", correlationID),
 		zap.String("tenantId", tenantId),
-		zap.String("email", req.Email),
+		zap.Bool("email_present", req.Email != ""),
 		zap.String("nameFull", req.NameFull),
 	)
 
@@ -259,7 +259,7 @@ func (d *userLoggingDecorator) InitRegister(ctx context.Context, req userDto.MSU
 			zap.String("operation", "InitRegister"),
 			zap.String("correlationID", correlationID),
 			zap.String("tenantId", tenantId),
-			zap.String("email", req.Email),
+			zap.Bool("email_present", req.Email != ""),
 			zap.Duration("duration", duration),
 			zap.Error(err),
 		)
@@ -271,7 +271,7 @@ func (d *userLoggingDecorator) InitRegister(ctx context.Context, req userDto.MSU
 		zap.String("operation", "InitRegister"),
 		zap.String("correlationID", correlationID),
 		zap.String("tenantId", tenantId),
-		zap.String("email", req.Email),
+		zap.Bool("email_present", req.Email != ""),
 		zap.String("sessionID", response.RegistrationSessionID),
 		zap.Duration("duration", duration),
 	)
@@ -288,7 +288,7 @@ func (d *userLoggingDecorator) ConfirmRegister(ctx context.Context, req userDto.
 		zap.String("operation", "ConfirmRegister"),
 		zap.String("correlationID", correlationID),
 		zap.String("tenantId", tenantId),
-		zap.String("email", req.Email),
+		zap.Bool("email_present", req.Email != ""),
 		zap.String("sessionID", req.RegistrationSessionID),
 	)
 
@@ -301,7 +301,7 @@ func (d *userLoggingDecorator) ConfirmRegister(ctx context.Context, req userDto.
 			zap.String("operation", "ConfirmRegister"),
 			zap.String("correlationID", correlationID),
 			zap.String("tenantId", tenantId),
-			zap.String("email", req.Email),
+			zap.Bool("email_present", req.Email != ""),
 			zap.Duration("duration", duration),
 			zap.Error(err),
 		)
@@ -313,7 +313,7 @@ func (d *userLoggingDecorator) ConfirmRegister(ctx context.Context, req userDto.
 		zap.String("operation", "ConfirmRegister"),
 		zap.String("correlationID", correlationID),
 		zap.String("tenantId", tenantId),
-		zap.String("email", req.Email),
+		zap.Bool("email_present", req.Email != ""),
 		zap.String("message", response.Message),
 		zap.Duration("duration", duration),
 	)
@@ -370,7 +370,7 @@ func (d *userLoggingDecorator) ResendRegisterToken(ctx context.Context, req user
 		zap.String("operation", "ResendRegisterToken"),
 		zap.String("correlationID", correlationID),
 		zap.String("tenantId", tenantId),
-		zap.String("email", req.Email),
+		zap.Bool("email_present", req.Email != ""),
 		zap.String("registrationSessionID", req.RegistrationSessionID),
 	)
 
@@ -383,7 +383,7 @@ func (d *userLoggingDecorator) ResendRegisterToken(ctx context.Context, req user
 			zap.String("operation", "ResendRegisterToken"),
 			zap.String("correlationID", correlationID),
 			zap.String("tenantId", tenantId),
-			zap.String("email", req.Email),
+			zap.Bool("email_present", req.Email != ""),
 			zap.String("registrationSessionID", req.RegistrationSessionID),
 			zap.Duration("duration", duration),
 			zap.Error(err),
@@ -396,7 +396,7 @@ func (d *userLoggingDecorator) ResendRegisterToken(ctx context.Context, req user
 		zap.String("operation", "ResendRegisterToken"),
 		zap.String("correlationID", correlationID),
 		zap.String("tenantId", tenantId),
-		zap.String("email", req.Email),
+		zap.Bool("email_present", req.Email != ""),
 		zap.String("registrationSessionID", req.RegistrationSessionID),
 		zap.Duration("duration", duration),
 	)
