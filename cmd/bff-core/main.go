@@ -165,7 +165,10 @@ func main() {
 	// NOTA: Usado apenas para CRIAR usuários no MS-Auth, NÃO para validar JWT
 	// JWT é validado localmente em cada BFF com secret compartilhado
 	// =============================================================================
-	baseAuthClient := httpclient.NewAuthClient(cfg, zapLogger)
+	// Token OAuth de serviço do bff-core por company (client_id bff-core): knowledge, collector, LLM e o hard delete
+	// da compensação do cadastro no ms-auth.
+	serviceTokenClient := tokendecorator.New(httpclient.NewBffOAuthTokenClient(cfg, zapLogger), zapLogger, metricsInstance, "ms-auth")
+	baseAuthClient := httpclient.NewAuthClient(cfg, serviceTokenClient, zapLogger)
 	authClient := baseAuthClient
 
 	// =============================================================================
@@ -332,7 +335,6 @@ func main() {
 	oauthClientHTTP := oauthdecorator.New(httpclient.NewOAuthClientHTTP(cfg, zapLogger), zapLogger, metricsInstance, "ms-auth")
 	collectorClient := collectordecorator.New(httpclient.NewCollectorClient(cfg, zapLogger), zapLogger, metricsInstance, "srv-collector")
 	knowledgeClient := knowledgedecorator.New(httpclient.NewKnowledgeClient(cfg, zapLogger), zapLogger, metricsInstance, "srv-knowledge")
-	serviceTokenClient := tokendecorator.New(httpclient.NewBffOAuthTokenClient(cfg, zapLogger), zapLogger, metricsInstance, "ms-auth")
 	oauthClientHandlers := handlersPkg.NewOAuthClientHandlers(
 		appoauth.NewOAuthPort(oauthClientHTTP, companyClient, collectorClient, zapLogger),
 		zapLogger,

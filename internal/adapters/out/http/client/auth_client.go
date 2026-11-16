@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/go-resty/resty/v2"
@@ -20,10 +21,13 @@ type authClient struct {
 	httpClient *resty.Client
 	config     *config.Config
 	logger     *zap.Logger
+	// tokens é o token OAuth de serviço do bff-core por company (client_id bff-core, o mesmo de knowledge, collector
+	// e LLM). Só o hard delete usa. Nil = sem token (o ms-auth em account_hard_delete.mode=observe aceita e registra).
+	tokens client.ServiceTokenClient
 }
 
-// NewAuthClient cria uma nova instância do AuthClient
-func NewAuthClient(config *config.Config, logger *zap.Logger) client.AuthClient {
+// NewAuthClient cria uma nova instância do AuthClient. tokens pode ser nil.
+func NewAuthClient(config *config.Config, tokens client.ServiceTokenClient, logger *zap.Logger) client.AuthClient {
 	httpClient := resty.New()
 	httpClient.SetTimeout(30 * time.Second)
 	httpClient.SetRetryCount(2)
@@ -33,11 +37,12 @@ func NewAuthClient(config *config.Config, logger *zap.Logger) client.AuthClient 
 		httpClient: httpClient,
 		config:     config,
 		logger:     logger,
+		tokens:     tokens,
 	}
 }
 
-// NewAuthClientWithoutRetry cria uma nova instância do AuthClient SEM retry automático
-func NewAuthClientWithoutRetry(config *config.Config, logger *zap.Logger) client.AuthClient {
+// NewAuthClientWithoutRetry cria uma nova instância do AuthClient SEM retry automático. tokens pode ser nil.
+func NewAuthClientWithoutRetry(config *config.Config, tokens client.ServiceTokenClient, logger *zap.Logger) client.AuthClient {
 	httpClient := resty.New()
 	httpClient.SetTimeout(30 * time.Second)
 	// SEM SetRetryCount - sem retry no Resty
@@ -46,6 +51,7 @@ func NewAuthClientWithoutRetry(config *config.Config, logger *zap.Logger) client
 		httpClient: httpClient,
 		config:     config,
 		logger:     logger,
+		tokens:     tokens,
 	}
 }
 
@@ -183,16 +189,24 @@ func (c *authClient) CreateUser(ctx context.Context, req authDto.AuthUserCreateR
 	return userResponse, nil
 }
 
-// HardDeleteUser remove permanentemente um usuário (para compensação de SAGA)
+// HardDeleteUser remove permanentemente um usuário (para compensação de SAGA). Vai com o token de serviço do
+// bff-core da company do cadastro (claim company_id = X-Company-Id, authority user:service-hard-delete): o ms-auth
+// em account_hard_delete.mode=enforce recusa sem ele. Sem token (sem provedor ou falha ao obter), a chamada segue
+// sem Authorization, como antes: em observe o ms-auth aceita e registra hard_delete_sem_token; a compensação
+// não pode parar por isso.
 func (c *authClient) HardDeleteUser(ctx context.Context, idUserExternal, tenantId, correlationID string) error {
 	url := fmt.Sprintf("%s/api/v1/users/hard-delete/%s", c.config.Services.Auth.BaseURL, idUserExternal)
+	companyID := companyHeader(ctx)
 
-	resp, err := c.httpClient.R().
+	req := c.httpClient.R().
 		SetContext(ctx).
 		SetHeader("X-Correlation-ID", correlationID).
-		SetHeader("X-Company-Id", companyHeader(ctx)).
-		SetHeader("Content-Type", "application/json").
-		Delete(url)
+		SetHeader("X-Company-Id", companyID).
+		SetHeader("Content-Type", "application/json")
+	if bearer := c.serviceBearer(ctx, companyID); bearer != "" {
+		req.SetHeader("Authorization", bearer)
+	}
+	resp, err := req.Delete(url)
 
 	if err != nil {
 		return fmt.Errorf("erro ao comunicar com auth service: %w", err)
@@ -203,4 +217,23 @@ func (c *authClient) HardDeleteUser(ctx context.Context, idUserExternal, tenantI
 	}
 
 	return nil
+}
+
+// serviceBearer devolve "Bearer <token>" do bff-core para a company, ou "" (sem provedor, sem company ou falha).
+// Nunca loga o token.
+func (c *authClient) serviceBearer(ctx context.Context, companyID string) string {
+	if c.tokens == nil || strings.TrimSpace(companyID) == "" {
+		return ""
+	}
+	tok, err := c.tokens.GetToken(ctx, companyID)
+	if err != nil || strings.TrimSpace(tok) == "" {
+		if c.logger != nil {
+			c.logger.Warn("hard delete sem token de serviço do bff-core", zap.String("company_id", companyID), zap.Error(err))
+		}
+		return ""
+	}
+	if !strings.HasPrefix(strings.ToLower(tok), "bearer ") {
+		tok = "Bearer " + tok
+	}
+	return tok
 }
