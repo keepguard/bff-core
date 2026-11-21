@@ -296,7 +296,8 @@ func (uc *registerConfirmUseCaseImpl) buildRegisterConfirmSaga() saga.InMemorySa
 					Type:            confirmResponse.Type,
 					Email:           confirmResponse.Email,
 					PhoneE164:       confirmResponse.Phone,
-					PreferredLocale: "pt-BR",
+					PreferredLocale: registerLocale(confirmResponse.PreferredLocale),
+					CountryCode:     confirmResponse.CountryCode,
 					Timezone:        "America/Sao_Paulo",
 					Status:          "ACTIVE",
 					PersonProfile: &appdto.PersonProfileDTO{
@@ -449,6 +450,17 @@ func (uc *registerConfirmUseCaseImpl) buildRegisterConfirmSaga() saga.InMemorySa
 		Name:  "RegisterConfirmSaga",
 		Steps: steps,
 	}
+}
+
+// defaultRegisterLocale is the locale of every registration before the country field (21/11/2026).
+const defaultRegisterLocale = "pt-BR"
+
+// registerLocale: the locale the person sent at init (already accepted by the ms-user), else pt-BR as before.
+func registerLocale(fromSession string) string {
+	if fromSession == "" {
+		return defaultRegisterLocale
+	}
+	return fromSession
 }
 
 // recoverAuthUserCreate trata o passo 5 com timeout ambíguo: o ms-auth pode ter gravado a conta e a resposta

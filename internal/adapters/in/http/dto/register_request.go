@@ -13,6 +13,10 @@ type RegisterInitRequestDTO struct {
 	UserAgent                  string `json:"userAgent,omitempty" validate:"omitempty,max=500"`
 	Geolocation                string `json:"geolocation,omitempty" validate:"omitempty,max=255"`
 	Type                       string `json:"type" validate:"required,oneof=PERSON COMPANY"`
+	// CountryCode (optional, ISO 3166-1 alpha-2) and PreferredLocale (optional, pt-BR/en-US/es-ES): passed to the
+	// ms-user, which validates the country (400) and ignores an unknown locale. Absent = behavior of today.
+	CountryCode     string `json:"countryCode,omitempty" validate:"omitempty,max=16"`
+	PreferredLocale string `json:"preferredLocale,omitempty" validate:"omitempty,max=16"`
 }
 
 // RegisterInitResponseDTO representa a resposta da inicialização do registro

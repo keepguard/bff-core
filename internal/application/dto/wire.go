@@ -50,6 +50,7 @@ type MSUserCreateRequestDTO struct {
 	Email           string             `json:"email"`
 	PhoneE164       string             `json:"phoneE164,omitempty"`
 	PreferredLocale string             `json:"preferredLocale,omitempty"`
+	CountryCode     string             `json:"countryCode,omitempty"`
 	Timezone        string             `json:"timezone,omitempty"`
 	AvatarURL       string             `json:"avatarUrl,omitempty"`
 	Status          string             `json:"status,omitempty"`
@@ -100,6 +101,7 @@ type MSUserResponseDTO struct {
 	Email           string            `json:"email"`
 	PhoneE164       string            `json:"phoneE164,omitempty"`
 	PreferredLocale string            `json:"preferredLocale,omitempty"`
+	CountryCode     *string           `json:"countryCode,omitempty"` // ISO 3166-1 alpha-2; nil = not known
 	Timezone        string            `json:"timezone,omitempty"`
 	AvatarURL       string            `json:"avatarUrl,omitempty"`
 	DisplayHandle   string            `json:"displayHandle,omitempty"`
@@ -120,6 +122,9 @@ type MSUserRegisterInitRequestDTO struct {
 	UserAgent                  string `json:"userAgent"`
 	Geolocation                string `json:"geolocation"`
 	Type                       string `json:"type"`
+	// omitempty: without the new fields the body sent to the ms-user is byte for byte the one of before.
+	CountryCode     string `json:"countryCode,omitempty"`
+	PreferredLocale string `json:"preferredLocale,omitempty"`
 }
 
 type MSUserRegisterConfirmRequestDTO struct {
@@ -162,6 +167,8 @@ type MSUserRegisterConfirmResponseDTO struct {
 	Attempts                   int    `json:"attempts"`
 	Message                    string `json:"message"`
 	PasswordHash               string `json:"passwordHash"`
+	CountryCode                string `json:"country_code"`     // resolved by the ms-user at init; "" = old session
+	PreferredLocale            string `json:"preferred_locale"` // "" = not informed
 }
 
 type MSUserRegisterResendResponseDTO struct {

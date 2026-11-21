@@ -51,6 +51,7 @@ func toMeProfile(user appdto.MSUserResponseDTO) appdto.MeProfileViewDTO {
 		Email:           user.Email,
 		PhoneE164:       user.PhoneE164,
 		PreferredLocale: user.PreferredLocale,
+		CountryCode:     user.CountryCode,
 		Timezone:        user.Timezone,
 		AvatarURL:       user.AvatarURL,
 		DisplayHandle:   user.DisplayHandle,

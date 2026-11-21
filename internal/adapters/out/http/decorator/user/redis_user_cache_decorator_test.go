@@ -25,7 +25,7 @@ func TestRedisUserCacheDecorator_HitSkipsHTTP(t *testing.T) {
 	inner := new(MockUserClient)
 	cache := new(mockStringCache)
 	cache.On("Get", mock.Anything, "user_cache:user:codeuser:user-1").
-		Return(`{"id":"id-1","codeUser":"user-1","companyId":"co-1","email":"a@b.c"}`, nil)
+		Return(`{"id":"id-1","codeUser":"user-1","companyId":"co-1","email":"a@b.c","countryCode":"PT"}`, nil)
 
 	decorator := NewRedisUserCacheDecorator(inner, cache, nil, nil)
 	ctx := portsclient.WithCompanyID(context.Background(), "co-1")
@@ -33,7 +33,43 @@ func TestRedisUserCacheDecorator_HitSkipsHTTP(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, "a@b.c", result.Email)
+	if assert.NotNil(t, result.CountryCode) {
+		assert.Equal(t, "PT", *result.CountryCode)
+	}
 	inner.AssertNotCalled(t, "GetUserByCodeUser")
+}
+
+// countryCode null is a present key (user without a country): still a hit.
+func TestRedisUserCacheDecorator_NullCountryIsHit(t *testing.T) {
+	inner := new(MockUserClient)
+	cache := new(mockStringCache)
+	cache.On("Get", mock.Anything, "user_cache:user:codeuser:user-1").
+		Return(`{"id":"id-1","codeUser":"user-1","companyId":"co-1","email":"a@b.c","countryCode":null}`, nil)
+
+	decorator := NewRedisUserCacheDecorator(inner, cache, nil, nil)
+	result, err := decorator.GetUserByCodeUser(context.Background(), "user-1", "tok", "tenant-1", "corr-1")
+
+	assert.NoError(t, err)
+	assert.Nil(t, result.CountryCode)
+	inner.AssertNotCalled(t, "GetUserByCodeUser")
+}
+
+// Entry written before countryCode existed: treated as a miss, so the HTTP read (ms-user) brings the country.
+func TestRedisUserCacheDecorator_EntryWithoutCountryFallsBackToHTTP(t *testing.T) {
+	inner := new(MockUserClient)
+	cache := new(mockStringCache)
+	cache.On("Get", mock.Anything, "user_cache:user:codeuser:user-1").
+		Return(`{"id":"id-1","codeUser":"user-1","companyId":"co-1","email":"a@b.c"}`, nil)
+	br := "BR"
+	inner.On("GetUserByCodeUser", mock.Anything, "user-1", "tok", "tenant-1", "corr-1").
+		Return(userDto.MSUserResponseDTO{Email: "a@b.c", CountryCode: &br}, nil)
+
+	decorator := NewRedisUserCacheDecorator(inner, cache, nil, nil)
+	result, err := decorator.GetUserByCodeUser(context.Background(), "user-1", "tok", "tenant-1", "corr-1")
+
+	assert.NoError(t, err)
+	assert.Equal(t, "BR", *result.CountryCode)
+	inner.AssertExpectations(t)
 }
 
 func TestRedisUserCacheDecorator_MissFallsBackToHTTP(t *testing.T) {

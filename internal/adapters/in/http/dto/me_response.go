@@ -6,6 +6,7 @@ type MeProfileResponseDTO struct {
 	Email           string              `json:"email"`
 	PhoneE164       string              `json:"phoneE164,omitempty"`
 	PreferredLocale string              `json:"preferredLocale,omitempty"`
+	CountryCode     *string             `json:"countryCode"` // ISO 3166-1 alpha-2 or null
 	Timezone        string              `json:"timezone,omitempty"`
 	AvatarURL       string              `json:"avatarUrl,omitempty"`
 	DisplayHandle   string              `json:"displayHandle,omitempty"`

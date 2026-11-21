@@ -66,6 +66,8 @@ func (uc *registerInitUseCaseImpl) Execute(ctx context.Context, command appdto.R
 		UserAgent:                  command.UserAgent,
 		Geolocation:                command.Geolocation,
 		Type:                       command.Type,
+		CountryCode:                command.CountryCode,
+		PreferredLocale:            command.PreferredLocale,
 	}
 
 	// Passo 3: Inicializar registro no User Service

@@ -11,6 +11,7 @@ type MeProfileViewDTO struct {
 	Email           string
 	PhoneE164       string
 	PreferredLocale string
+	CountryCode     *string
 	Timezone        string
 	AvatarURL       string
 	DisplayHandle   string

@@ -41,6 +41,7 @@ func ToMeProfileResponse(view appdto.MeProfileViewDTO) inboundDto.MeProfileRespo
 		Email:           view.Email,
 		PhoneE164:       view.PhoneE164,
 		PreferredLocale: view.PreferredLocale,
+		CountryCode:     view.CountryCode,
 		Timezone:        view.Timezone,
 		AvatarURL:       view.AvatarURL,
 		DisplayHandle:   view.DisplayHandle,

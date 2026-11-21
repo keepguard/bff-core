@@ -19,6 +19,8 @@ type RegisterInitCommand struct {
 	Type                       string
 	TenantId                   string
 	CorrelationID              string
+	CountryCode                string // optional; validated by the ms-user
+	PreferredLocale            string // optional; unknown is ignored by the ms-user
 }
 
 // NewRegisterInitCommand cria um novo comando de inicialização de registro

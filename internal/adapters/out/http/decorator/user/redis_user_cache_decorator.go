@@ -91,12 +91,24 @@ func (d *redisUserCacheDecorator) lookup(ctx context.Context, codeUser string) (
 	if user.ID == "" && user.CodeUser == "" && user.Email == "" {
 		return userDto.MSUserResponseDTO{}, false
 	}
+	if !hasCountryCodeKey(val) {
+		// Entry written by the ms-user before countryCode (TTL 30 days): miss, so the HTTP read refreshes it.
+		return userDto.MSUserResponseDTO{}, false
+	}
 
 	if companyID := portsclient.CompanyIDFromContext(ctx); companyID != "" && user.CompanyID != "" && !strings.EqualFold(user.CompanyID, companyID) {
 		return userDto.MSUserResponseDTO{}, false
 	}
 
 	return user, true
+}
+
+// hasCountryCodeKey reports whether the cached JSON has the countryCode key (null included).
+func hasCountryCodeKey(val string) bool {
+	var probe struct {
+		CountryCode json.RawMessage `json:"countryCode"`
+	}
+	return json.Unmarshal([]byte(val), &probe) == nil && probe.CountryCode != nil
 }
 
 func (d *redisUserCacheDecorator) lookupByEmail(ctx context.Context, companyId, email string) (authDto.UserByEmailResponseDTO, bool) {

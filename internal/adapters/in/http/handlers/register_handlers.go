@@ -118,6 +118,8 @@ func (h *RegisterHandlers) InitRegisterHandler(c echo.Context) error {
 		tenantId,
 		correlationID,
 	)
+	command.CountryCode = req.CountryCode
+	command.PreferredLocale = req.PreferredLocale
 
 	// Validar comando
 	if err := command.Validate(); err != nil {
