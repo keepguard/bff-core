@@ -23,6 +23,15 @@ func New(inner port.BillingClient, logger *zap.Logger, metrics *metrics.Metrics,
 	return &decorated{inner: inner, cfg: observe.Config{Logger: logger, Metrics: metrics, ServiceName: serviceName, Retry: observe.DefaultRetry()}}
 }
 
+// write devolve a configuração sem nova tentativa: escrita de cobrança (assinar, trocar, cancelar, reativar...)
+// não pode ser repetida às cegas — um timeout pode ter sido aplicado no ms-billing, e a 2ª tentativa com a mesma
+// Idempotency-Key volta erro (REQUEST_IN_PROGRESS) com a troca já feita. Quem decide repetir é quem chama.
+func (d *decorated) write() observe.Config {
+	cfg := d.cfg
+	cfg.Retry = observe.RetryConfig{MaxAttempts: 1}
+	return cfg
+}
+
 func (d *decorated) GetEntitlement(ctx context.Context, scope port.BillingScope) (json.RawMessage, error) {
 	return observe.Call(d.cfg, "GetEntitlement", "GET", "/billing/entitlement", scope.CorrelationID, func() (json.RawMessage, error) {
 		return d.inner.GetEntitlement(ctx, scope)
@@ -42,19 +51,19 @@ func (d *decorated) ListPlans(ctx context.Context, scope port.BillingScope) (jso
 }
 
 func (d *decorated) SavePlan(ctx context.Context, scope port.BillingScope, body any) (json.RawMessage, error) {
-	return observe.Call(d.cfg, "SavePlan", "POST", "/billing/plans", scope.CorrelationID, func() (json.RawMessage, error) {
+	return observe.Call(d.write(), "SavePlan", "POST", "/billing/plans", scope.CorrelationID, func() (json.RawMessage, error) {
 		return d.inner.SavePlan(ctx, scope, body)
 	})
 }
 
 func (d *decorated) PatchPlan(ctx context.Context, scope port.BillingScope, code string, body any) (json.RawMessage, error) {
-	return observe.Call(d.cfg, "PatchPlan", "PATCH", "/billing/plans/{code}", scope.CorrelationID, func() (json.RawMessage, error) {
+	return observe.Call(d.write(), "PatchPlan", "PATCH", "/billing/plans/{code}", scope.CorrelationID, func() (json.RawMessage, error) {
 		return d.inner.PatchPlan(ctx, scope, code, body)
 	})
 }
 
 func (d *decorated) DeletePlan(ctx context.Context, scope port.BillingScope, code string) error {
-	_, err := observe.Call(d.cfg, "DeletePlan", "DELETE", "/billing/plans/{code}", scope.CorrelationID, func() (json.RawMessage, error) {
+	_, err := observe.Call(d.write(), "DeletePlan", "DELETE", "/billing/plans/{code}", scope.CorrelationID, func() (json.RawMessage, error) {
 		return nil, d.inner.DeletePlan(ctx, scope, code)
 	})
 	return err
@@ -67,7 +76,7 @@ func (d *decorated) GetGatewayAccount(ctx context.Context, scope port.BillingSco
 }
 
 func (d *decorated) PutGatewayAccount(ctx context.Context, scope port.BillingScope, body any) (json.RawMessage, error) {
-	return observe.Call(d.cfg, "PutGatewayAccount", "PUT", "/billing/gateway-account", scope.CorrelationID, func() (json.RawMessage, error) {
+	return observe.Call(d.write(), "PutGatewayAccount", "PUT", "/billing/gateway-account", scope.CorrelationID, func() (json.RawMessage, error) {
 		return d.inner.PutGatewayAccount(ctx, scope, body)
 	})
 }
@@ -79,13 +88,13 @@ func (d *decorated) ListGatewayAccounts(ctx context.Context, scope port.BillingS
 }
 
 func (d *decorated) PutGatewayAccountByGateway(ctx context.Context, scope port.BillingScope, gateway string, body any) (json.RawMessage, error) {
-	return observe.Call(d.cfg, "PutGatewayAccountByGateway", "PUT", "/billing/gateway-accounts/{gateway}", scope.CorrelationID, func() (json.RawMessage, error) {
+	return observe.Call(d.write(), "PutGatewayAccountByGateway", "PUT", "/billing/gateway-accounts/{gateway}", scope.CorrelationID, func() (json.RawMessage, error) {
 		return d.inner.PutGatewayAccountByGateway(ctx, scope, gateway, body)
 	})
 }
 
 func (d *decorated) SetPrimaryGateway(ctx context.Context, scope port.BillingScope, gateway string) (json.RawMessage, error) {
-	return observe.Call(d.cfg, "SetPrimaryGateway", "POST", "/billing/gateway-accounts/{gateway}/primary", scope.CorrelationID, func() (json.RawMessage, error) {
+	return observe.Call(d.write(), "SetPrimaryGateway", "POST", "/billing/gateway-accounts/{gateway}/primary", scope.CorrelationID, func() (json.RawMessage, error) {
 		return d.inner.SetPrimaryGateway(ctx, scope, gateway)
 	})
 }
@@ -101,7 +110,7 @@ func (d *decorated) CreateSubscription(ctx context.Context, scope port.BillingSc
 		raw    json.RawMessage
 		status int
 	}
-	out, err := observe.Call(d.cfg, "CreateSubscription", "POST", "/billing/subscriptions", scope.CorrelationID, func() (pair, error) {
+	out, err := observe.Call(d.write(), "CreateSubscription", "POST", "/billing/subscriptions", scope.CorrelationID, func() (pair, error) {
 		raw, status, callErr := d.inner.CreateSubscription(ctx, scope, body)
 		return pair{raw: raw, status: status}, callErr
 	})
@@ -112,19 +121,19 @@ func (d *decorated) CreateSubscription(ctx context.Context, scope port.BillingSc
 }
 
 func (d *decorated) GrantLifetimeSubscription(ctx context.Context, scope port.BillingScope, body any) (json.RawMessage, error) {
-	return observe.Call(d.cfg, "GrantLifetimeSubscription", "POST", "/billing/subscriptions/grant-lifetime", scope.CorrelationID, func() (json.RawMessage, error) {
+	return observe.Call(d.write(), "GrantLifetimeSubscription", "POST", "/billing/subscriptions/grant-lifetime", scope.CorrelationID, func() (json.RawMessage, error) {
 		return d.inner.GrantLifetimeSubscription(ctx, scope, body)
 	})
 }
 
 func (d *decorated) CancelSubscription(ctx context.Context, scope port.BillingScope, id string, immediate bool) (json.RawMessage, error) {
-	return observe.Call(d.cfg, "CancelSubscription", "POST", "/billing/subscriptions/{id}/cancel", scope.CorrelationID, func() (json.RawMessage, error) {
+	return observe.Call(d.write(), "CancelSubscription", "POST", "/billing/subscriptions/{id}/cancel", scope.CorrelationID, func() (json.RawMessage, error) {
 		return d.inner.CancelSubscription(ctx, scope, id, immediate)
 	})
 }
 
 func (d *decorated) ReactivateSubscription(ctx context.Context, scope port.BillingScope, id string, body any) (json.RawMessage, error) {
-	return observe.Call(d.cfg, "ReactivateSubscription", "POST", "/billing/subscriptions/{id}/reactivate", scope.CorrelationID, func() (json.RawMessage, error) {
+	return observe.Call(d.write(), "ReactivateSubscription", "POST", "/billing/subscriptions/{id}/reactivate", scope.CorrelationID, func() (json.RawMessage, error) {
 		return d.inner.ReactivateSubscription(ctx, scope, id, body)
 	})
 }
@@ -136,13 +145,13 @@ func (d *decorated) PreviewPlanChange(ctx context.Context, scope port.BillingSco
 }
 
 func (d *decorated) ChangePlan(ctx context.Context, scope port.BillingScope, id string, body any) (json.RawMessage, error) {
-	return observe.Call(d.cfg, "ChangePlan", "POST", "/billing/subscriptions/{id}/change-plan", scope.CorrelationID, func() (json.RawMessage, error) {
+	return observe.Call(d.write(), "ChangePlan", "POST", "/billing/subscriptions/{id}/change-plan", scope.CorrelationID, func() (json.RawMessage, error) {
 		return d.inner.ChangePlan(ctx, scope, id, body)
 	})
 }
 
 func (d *decorated) ClearScheduledChange(ctx context.Context, scope port.BillingScope, id string) (json.RawMessage, error) {
-	return observe.Call(d.cfg, "ClearScheduledChange", "DELETE", "/billing/subscriptions/{id}/scheduled-change", scope.CorrelationID, func() (json.RawMessage, error) {
+	return observe.Call(d.write(), "ClearScheduledChange", "DELETE", "/billing/subscriptions/{id}/scheduled-change", scope.CorrelationID, func() (json.RawMessage, error) {
 		return d.inner.ClearScheduledChange(ctx, scope, id)
 	})
 }
