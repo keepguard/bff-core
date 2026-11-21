@@ -152,3 +152,38 @@ func TestPaymentMethodNotAvailableKeepsCode(t *testing.T) {
 		})
 	}
 }
+
+// Conta de fora sem CPF: o bff não pede nem grava documento; o pedido segue ao ms-billing, que recusa pelo país.
+func TestPayerCountryAbroadSkipsDocument(t *testing.T) {
+	tc := payerCountryCases()[0]
+	tc.body = `{"planCode":"basic","interval":"month","paymentMethod":"pix","payerCpfCnpj":"52998224725"}`
+	billing := &stubBillingClient{}
+	users := brPayer()
+	users.user.CountryCode = countryPtr("PT")
+	users.user.PersonProfile = nil
+	rec := runPayerCountry(t, tc, billing, users, "")
+	if rec.Code >= 300 {
+		t.Fatalf("status %d body %s", rec.Code, rec.Body.String())
+	}
+	if users.patches != 0 {
+		t.Fatalf("CPF não pode ser gravado para conta de fora: %d gravações", users.patches)
+	}
+	if len(billing.payerScopes) != 1 || billing.payerScopes[0].PayerCountry != "PT" {
+		t.Fatalf("o pedido deve chegar ao ms-billing com PT: %+v", billing.payerScopes)
+	}
+}
+
+// Conta do Brasil sem CPF continua recebendo PAYER_DOCUMENT_MISSING (regra atual), sem chamar o billing.
+func TestPayerCountryBRStillNeedsDocument(t *testing.T) {
+	tc := payerCountryCases()[0]
+	billing := &stubBillingClient{}
+	users := brPayer()
+	users.user.PersonProfile = nil
+	rec := runPayerCountry(t, tc, billing, users, "")
+	if rec.Code != http.StatusUnprocessableEntity || !strings.Contains(rec.Body.String(), "PAYER_DOCUMENT_MISSING") {
+		t.Fatalf("esperado 422 PAYER_DOCUMENT_MISSING, veio %d %s", rec.Code, rec.Body.String())
+	}
+	if len(billing.payerScopes) != 0 {
+		t.Fatalf("billing não pode ser chamado: %+v", billing.payerScopes)
+	}
+}

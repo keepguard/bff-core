@@ -519,6 +519,12 @@ func (h *BillingHandlers) attachPayerCountry(c echo.Context, scope *port.Billing
 
 const payerCountryHeader = "X-Payer-Country"
 
+// payerCountryNeedsDocument: só conta do Brasil (ou sem país, que conta como BR) precisa de CPF/CNPJ para assinar.
+func payerCountryNeedsDocument(country string) bool {
+	c := strings.ToUpper(strings.TrimSpace(country))
+	return c == "" || c == "BR"
+}
+
 // payerCountryOf: país do ms-user em maiúsculas; null ou vazio = BR (regra atual).
 func payerCountryOf(country *string) string {
 	if country == nil || strings.TrimSpace(*country) == "" {
@@ -655,7 +661,9 @@ func (h *BillingHandlers) attachPayerProfile(c echo.Context, body map[string]any
 			name = fullName
 		}
 	}
-	if len(cpf) != 11 && len(cpf) != 14 {
+	// CPF/CNPJ é exigência do Brasil: conta de fora não informa nem grava documento; quem recusa a forma é o
+	// ms-billing (422 PAYMENT_METHOD_NOT_AVAILABLE), antes de qualquer efeito no gateway.
+	if (len(cpf) != 11 && len(cpf) != 14) && payerCountryNeedsDocument(scope.PayerCountry) {
 		if err := h.firstWritePayerDocument(c, &user, clientDoc, scope); err != nil {
 			return err
 		}
