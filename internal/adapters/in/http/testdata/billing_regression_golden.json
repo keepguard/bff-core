@@ -150,6 +150,9 @@
           "X-Correlation-Id": [
             "cccccccc-0000-4000-8000-000000000001"
           ],
+          "X-Payer-Country": [
+            "BR"
+          ],
           "X-User-Id": [
             "1a2b3c4d-0000-4000-8000-000000000001"
           ]
@@ -185,6 +188,9 @@
           ],
           "X-Correlation-Id": [
             "cccccccc-0000-4000-8000-000000000001"
+          ],
+          "X-Payer-Country": [
+            "BR"
           ],
           "X-User-Id": [
             "1a2b3c4d-0000-4000-8000-000000000001"
@@ -682,6 +688,9 @@
           "X-Correlation-Id": [
             "cccccccc-0000-4000-8000-000000000001"
           ],
+          "X-Payer-Country": [
+            "BR"
+          ],
           "X-User-Id": [
             "1a2b3c4d-0000-4000-8000-000000000001"
           ]
@@ -743,7 +752,7 @@
             "Bearer \u003ctoken\u003e"
           ],
           "Content-Length": [
-            "166"
+            "258"
           ],
           "Content-Type": [
             "application/json"
@@ -760,11 +769,14 @@
           "X-Correlation-Id": [
             "cccccccc-0000-4000-8000-000000000001"
           ],
+          "X-Payer-Country": [
+            "BR"
+          ],
           "X-User-Id": [
             "1a2b3c4d-0000-4000-8000-000000000001"
           ]
         },
-        "body": "{\"deviceId\":\"dev-claim\",\"interval\":\"month\",\"ipAddress\":\"127.0.0.1\",\"paymentMethod\":\"credit_card\",\"planCode\":\"PRO\",\"sessionId\":\"jti-fixo\",\"userAgent\":\"GoldenTest/1.0\"}"
+        "body": "{\"deviceId\":\"dev-claim\",\"interval\":\"month\",\"ipAddress\":\"127.0.0.1\",\"payerCpfCnpj\":\"52998224725\",\"payerEmail\":\"pagador@exemplo.test\",\"payerName\":\"Pessoa Teste\",\"paymentMethod\":\"credit_card\",\"planCode\":\"PRO\",\"sessionId\":\"jti-fixo\",\"userAgent\":\"GoldenTest/1.0\"}"
       }
     ]
   },
@@ -785,7 +797,7 @@
             "Bearer \u003ctoken\u003e"
           ],
           "Content-Length": [
-            "157"
+            "249"
           ],
           "Content-Type": [
             "application/json"
@@ -802,11 +814,14 @@
           "X-Correlation-Id": [
             "cccccccc-0000-4000-8000-000000000001"
           ],
+          "X-Payer-Country": [
+            "BR"
+          ],
           "X-User-Id": [
             "1a2b3c4d-0000-4000-8000-000000000001"
           ]
         },
-        "body": "{\"deviceId\":\"dev-header\",\"interval\":\"month\",\"ipAddress\":\"127.0.0.1\",\"paymentMethod\":\"pix\",\"planCode\":\"PRO\",\"sessionId\":\"sess-1\",\"userAgent\":\"GoldenTest/1.0\"}"
+        "body": "{\"deviceId\":\"dev-header\",\"interval\":\"month\",\"ipAddress\":\"127.0.0.1\",\"payerCpfCnpj\":\"52998224725\",\"payerEmail\":\"pagador@exemplo.test\",\"payerName\":\"Pessoa Teste\",\"paymentMethod\":\"pix\",\"planCode\":\"PRO\",\"sessionId\":\"sess-1\",\"userAgent\":\"GoldenTest/1.0\"}"
       }
     ]
   },
@@ -827,7 +842,7 @@
             "Bearer \u003ctoken\u003e"
           ],
           "Content-Length": [
-            "158"
+            "250"
           ],
           "Content-Type": [
             "application/json"
@@ -844,11 +859,14 @@
           "X-Correlation-Id": [
             "cccccccc-0000-4000-8000-000000000001"
           ],
+          "X-Payer-Country": [
+            "BR"
+          ],
           "X-User-Id": [
             "1a2b3c4d-0000-4000-8000-000000000001"
           ]
         },
-        "body": "{\"deviceId\":\"dev-claim\",\"interval\":\"month\",\"ipAddress\":\"127.0.0.1\",\"paymentMethod\":\"pix\",\"planCode\":\"PRO\",\"sessionId\":\"jti-fixo\",\"userAgent\":\"GoldenTest/1.0\"}"
+        "body": "{\"deviceId\":\"dev-claim\",\"interval\":\"month\",\"ipAddress\":\"127.0.0.1\",\"payerCpfCnpj\":\"52998224725\",\"payerEmail\":\"pagador@exemplo.test\",\"payerName\":\"Pessoa Teste\",\"paymentMethod\":\"pix\",\"planCode\":\"PRO\",\"sessionId\":\"jti-fixo\",\"userAgent\":\"GoldenTest/1.0\"}"
       }
     ]
   },

@@ -27,9 +27,12 @@ type stubBillingClient struct {
 	webhookTok  string
 
 	reactivateBody any
-	forwarded      []forwardedCall
-	forwardStatus  int
-	forwardErr     error
+	// payerScopes guarda o escopo de cada chamada às 4 rotas do país da conta.
+	payerScopes   []port.BillingScope
+	payerCallErr  error
+	forwarded     []forwardedCall
+	forwardStatus int
+	forwardErr    error
 }
 
 type forwardedCall struct {
@@ -79,9 +82,13 @@ func (s *stubBillingClient) SetPrimaryGateway(context.Context, port.BillingScope
 func (s *stubBillingClient) GetSubscription(context.Context, port.BillingScope) (json.RawMessage, error) {
 	return json.RawMessage(`{"status":"pending_gateway"}`), nil
 }
-func (s *stubBillingClient) CreateSubscription(_ context.Context, _ port.BillingScope, body any) (json.RawMessage, int, error) {
+func (s *stubBillingClient) CreateSubscription(_ context.Context, scope port.BillingScope, body any) (json.RawMessage, int, error) {
 	s.createCalls++
 	s.createBody = body
+	s.payerScopes = append(s.payerScopes, scope)
+	if s.payerCallErr != nil {
+		return nil, 0, s.payerCallErr
+	}
 	if s.created != nil {
 		code := s.createdCode
 		if code == 0 {
@@ -108,14 +115,26 @@ func (s *stubBillingClient) Forward(_ context.Context, scope port.BillingScope, 
 	}
 	return port.BillingResponse{Status: status, Body: json.RawMessage(`{"ok":true}`)}, nil
 }
-func (s *stubBillingClient) ReactivateSubscription(_ context.Context, _ port.BillingScope, _ string, body any) (json.RawMessage, error) {
+func (s *stubBillingClient) ReactivateSubscription(_ context.Context, scope port.BillingScope, _ string, body any) (json.RawMessage, error) {
 	s.reactivateBody = body
+	s.payerScopes = append(s.payerScopes, scope)
+	if s.payerCallErr != nil {
+		return nil, s.payerCallErr
+	}
 	return json.RawMessage(`{"status":"active","cancelAtPeriodEnd":false}`), nil
 }
-func (s *stubBillingClient) PreviewPlanChange(context.Context, port.BillingScope, string, map[string]string) (json.RawMessage, error) {
+func (s *stubBillingClient) PreviewPlanChange(_ context.Context, scope port.BillingScope, _ string, _ map[string]string) (json.RawMessage, error) {
+	s.payerScopes = append(s.payerScopes, scope)
+	if s.payerCallErr != nil {
+		return nil, s.payerCallErr
+	}
 	return json.RawMessage(`{"type":"upgrade","chargeCents":1000,"creditCents":900}`), nil
 }
-func (s *stubBillingClient) ChangePlan(context.Context, port.BillingScope, string, any) (json.RawMessage, error) {
+func (s *stubBillingClient) ChangePlan(_ context.Context, scope port.BillingScope, _ string, _ any) (json.RawMessage, error) {
+	s.payerScopes = append(s.payerScopes, scope)
+	if s.payerCallErr != nil {
+		return nil, s.payerCallErr
+	}
 	return json.RawMessage(`{"status":"active"}`), nil
 }
 func (s *stubBillingClient) ClearScheduledChange(context.Context, port.BillingScope, string) (json.RawMessage, error) {
@@ -177,7 +196,7 @@ func TestCreateSubscriptionAllowsCreditCardWithoutToken(t *testing.T) {
 		UserID: "user-1", Roles: []string{"USER"},
 	})
 	stub := &stubBillingClient{created: json.RawMessage(`{"status":"active"}`), createdCode: 201}
-	h := NewBillingHandlers(appbilling.NewBillingPort(stub), zap.NewNop())
+	h := NewBillingHandlers(appbilling.NewBillingPort(stub), zap.NewNop()).WithUsers(brPayer())
 	if err := h.CreateBillingSubscriptionHandler(c); err != nil {
 		t.Fatal(err)
 	}
@@ -260,7 +279,7 @@ func TestCreateSubscriptionAllowsAdminPayer(t *testing.T) {
 	c, rec := billingContext(http.MethodPost, "/api/v1/core/billing/subscriptions", `{"planCode":"basic","interval":"month","paymentMethod":"pix"}`, &pkg.JWTClaims{
 		UserID: "admin-1", Roles: []string{"ROLE_ADMIN"},
 	})
-	h := NewBillingHandlers(appbilling.NewBillingPort(&stubBillingClient{}), zap.NewNop())
+	h := NewBillingHandlers(appbilling.NewBillingPort(&stubBillingClient{}), zap.NewNop()).WithUsers(brPayer())
 	if err := h.CreateBillingSubscriptionHandler(c); err != nil {
 		t.Fatal(err)
 	}
@@ -273,7 +292,7 @@ func TestCreateSubscriptionAllowsUserPayer(t *testing.T) {
 	c, rec := billingContext(http.MethodPost, "/api/v1/core/billing/subscriptions", `{"planCode":"basic","interval":"month","paymentMethod":"pix"}`, &pkg.JWTClaims{
 		UserID: "user-1", Roles: []string{"ROLE_USER"}, Authorities: []string{"billing:read"},
 	})
-	h := NewBillingHandlers(appbilling.NewBillingPort(&stubBillingClient{}), zap.NewNop())
+	h := NewBillingHandlers(appbilling.NewBillingPort(&stubBillingClient{}), zap.NewNop()).WithUsers(brPayer())
 	if err := h.CreateBillingSubscriptionHandler(c); err != nil {
 		t.Fatal(err)
 	}
@@ -297,6 +316,14 @@ func TestCreateSubscriptionRejectsManagerOpsCaller(t *testing.T) {
 
 const testValidCPF = "52998224725"
 
+// brPayer é a pessoa de sempre no ms-user: conta no BR (countryCode null), com CPF. As rotas de
+// assinar, reativar e trocar de plano leem o país dela antes de chamar o ms-billing.
+func brPayer() *stubUserClient {
+	return &stubUserClient{user: appdto.MSUserResponseDTO{
+		ID: "ms-user-1", Email: "a@b.com", PersonProfile: &appdto.PersonProfileDTO{FullName: "Nome", CPF: testValidCPF},
+	}}
+}
+
 type stubUserClient struct {
 	user           appdto.MSUserResponseDTO
 	patched        appdto.MSUserResponseDTO
@@ -306,6 +333,7 @@ type stubUserClient struct {
 	patchCPF       string
 	getByEmailUser appdto.UserByEmailResponseDTO
 	getByEmailErr  error
+	getErr         error
 }
 
 func (s *stubUserClient) CreateUser(context.Context, appdto.MSUserCreateRequestDTO, string, string) (appdto.MSUserResponseDTO, error) {
@@ -313,6 +341,9 @@ func (s *stubUserClient) CreateUser(context.Context, appdto.MSUserCreateRequestD
 }
 func (s *stubUserClient) GetUserByCodeUser(context.Context, string, string, string, string) (appdto.MSUserResponseDTO, error) {
 	s.gets++
+	if s.getErr != nil {
+		return appdto.MSUserResponseDTO{}, s.getErr
+	}
 	if s.patches > 0 && s.patched.ID != "" {
 		return s.patched, nil
 	}
@@ -572,7 +603,7 @@ func TestCreateSubscriptionAttachesSessionSnapshot(t *testing.T) {
 	c.Request().Header.Set("X-Session-Id", "sess_header_1")
 
 	client := &stubBillingClient{}
-	h := NewBillingHandlers(appbilling.NewBillingPort(client), zap.NewNop())
+	h := NewBillingHandlers(appbilling.NewBillingPort(client), zap.NewNop()).WithUsers(brPayer())
 	if err := h.CreateBillingSubscriptionHandler(c); err != nil {
 		t.Fatal(err)
 	}
@@ -624,7 +655,7 @@ func TestDeleteBillingPlanHandler_Success(t *testing.T) {
 }
 
 func TestReactivateBillingSubscriptionHandler_Success(t *testing.T) {
-	h := NewBillingHandlers(appbilling.NewBillingPort(&stubBillingClient{}), zap.NewNop())
+	h := NewBillingHandlers(appbilling.NewBillingPort(&stubBillingClient{}), zap.NewNop()).WithUsers(brPayer())
 	c, rec := billingContext(http.MethodPost, "/api/v1/core/billing/subscriptions/sub-123/reactivate", "", &pkg.JWTClaims{
 		UserID:      "user-1",
 		TenantId:    "company-1",
@@ -709,7 +740,7 @@ func TestReactivateForwardsOptionalBody(t *testing.T) {
 		return c, rec
 	}
 	stub := &stubBillingClient{}
-	h := NewBillingHandlers(appbilling.NewBillingPort(stub), zap.NewNop())
+	h := NewBillingHandlers(appbilling.NewBillingPort(stub), zap.NewNop()).WithUsers(brPayer())
 	c, rec := newContext("")
 	if err := h.ReactivateBillingSubscriptionHandler(c); err != nil {
 		t.Fatal(err)

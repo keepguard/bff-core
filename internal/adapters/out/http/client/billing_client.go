@@ -13,6 +13,9 @@ import (
 	"go.uber.org/zap"
 )
 
+// PayerCountryHeader leva ao ms-billing o país da conta (contrato pais-pagamento).
+const PayerCountryHeader = "X-Payer-Country"
+
 type billingClient struct {
 	httpClient *resty.Client
 	baseURL    string
@@ -42,6 +45,9 @@ func (c *billingClient) headers(ctx context.Context, scope domainclient.BillingS
 	}
 	if scope.IdempotencyKey != "" {
 		req.SetHeader("Idempotency-Key", scope.IdempotencyKey)
+	}
+	if scope.PayerCountry != "" {
+		req.SetHeader(PayerCountryHeader, scope.PayerCountry)
 	}
 	if scope.OperatorID != "" {
 		// Escrita de Operador: credencial do bff-core e quem opera. A chave nunca vai a log.

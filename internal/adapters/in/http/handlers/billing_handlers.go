@@ -72,9 +72,9 @@ func (h *BillingHandlers) PatchBillingPlanHandler(c echo.Context) error {
 
 func (h *BillingHandlers) DeleteBillingPlanHandler(c echo.Context) error {
 	code := c.Param("code")
-	scope, unavailable := h.guard(c)
-	if unavailable != nil {
-		return unavailable
+	scope, ok, respErr := h.guard(c)
+	if !ok {
+		return respErr
 	}
 	if err := h.billing.DeletePlan(c.Request().Context(), scope, code); err != nil {
 		return handleError(c, err, scope.CorrelationID)
@@ -136,9 +136,9 @@ func (h *BillingHandlers) CreateBillingSubscriptionHandler(c echo.Context) error
 	if c.Response().Committed {
 		return nil
 	}
-	scope, unavailable := h.guard(c)
-	if unavailable != nil {
-		return unavailable
+	scope, ok, respErr := h.guard(c)
+	if !ok {
+		return respErr
 	}
 	claims := middlewarePkg.GetClaimsFromContext(c)
 	// MANAGER opera a org e não assina. ADMIN/SYSTEM podem ter plano próprio.
@@ -148,6 +148,9 @@ func (h *BillingHandlers) CreateBillingSubscriptionHandler(c echo.Context) error
 			"Quem opera a organização não assina",
 			http.StatusForbidden,
 		), scope.CorrelationID)
+	}
+	if ok, respErr := h.attachPayerCountry(c, &scope); !ok {
+		return respErr
 	}
 	if attachErr := h.attachPayerProfile(c, body, scope); attachErr != nil {
 		return handleError(c, attachErr, scope.CorrelationID)
@@ -177,9 +180,9 @@ func (h *BillingHandlers) GrantLifetimeBillingSubscriptionHandler(c echo.Context
 }
 
 func (h *BillingHandlers) LookupBillingUserHandler(c echo.Context) error {
-	scope, unavailable := h.guard(c)
-	if unavailable != nil {
-		return unavailable
+	scope, ok, respErr := h.guard(c)
+	if !ok {
+		return respErr
 	}
 	q := strings.TrimSpace(c.QueryParam("q"))
 	if q == "" {
@@ -248,7 +251,7 @@ func (h *BillingHandlers) ReactivateBillingSubscriptionHandler(c echo.Context) e
 		}
 		body = parsed
 	}
-	return h.proxy(c, http.StatusOK, func(ctx echo.Context, scope port.BillingScope) (json.RawMessage, error) {
+	return h.proxyWithPayerCountry(c, http.StatusOK, func(ctx echo.Context, scope port.BillingScope) (json.RawMessage, error) {
 		return h.billing.ReactivateSubscription(ctx.Request().Context(), scope, id, body)
 	})
 }
@@ -256,7 +259,7 @@ func (h *BillingHandlers) ReactivateBillingSubscriptionHandler(c echo.Context) e
 func (h *BillingHandlers) PreviewBillingPlanChangeHandler(c echo.Context) error {
 	id := c.Param("id")
 	query := billingListQuery(c, "planCode", "interval")
-	return h.proxy(c, http.StatusOK, func(ctx echo.Context, scope port.BillingScope) (json.RawMessage, error) {
+	return h.proxyWithPayerCountry(c, http.StatusOK, func(ctx echo.Context, scope port.BillingScope) (json.RawMessage, error) {
 		return h.billing.PreviewPlanChange(ctx.Request().Context(), scope, id, query)
 	})
 }
@@ -270,9 +273,9 @@ func (h *BillingHandlers) ChangeBillingPlanHandler(c echo.Context) error {
 		return nil
 	}
 	id := c.Param("id")
-	scope, unavailable := h.guard(c)
-	if unavailable != nil {
-		return unavailable
+	scope, ok, respErr := h.guard(c)
+	if !ok {
+		return respErr
 	}
 	claims := middlewarePkg.GetClaimsFromContext(c)
 	// Mesma regra do subscribe: quem só opera a organização não troca plano de ninguém.
@@ -282,6 +285,9 @@ func (h *BillingHandlers) ChangeBillingPlanHandler(c echo.Context) error {
 			"Quem opera a organização não troca de plano",
 			http.StatusForbidden,
 		), scope.CorrelationID)
+	}
+	if ok, respErr := h.attachPayerCountry(c, &scope); !ok {
+		return respErr
 	}
 	result, callErr := h.billing.ChangePlan(c.Request().Context(), scope, id, body)
 	if callErr != nil {
@@ -456,9 +462,9 @@ func (h *BillingHandlers) StripeWebhookHandler(c echo.Context) error {
 }
 
 func (h *BillingHandlers) proxy(c echo.Context, status int, fn func(echo.Context, port.BillingScope) (json.RawMessage, error)) error {
-	scope, unavailable := h.guard(c)
-	if unavailable != nil {
-		return unavailable
+	scope, ok, respErr := h.guard(c)
+	if !ok {
+		return respErr
 	}
 	result, err := fn(c, scope)
 	if err != nil {
@@ -467,10 +473,74 @@ func (h *BillingHandlers) proxy(c echo.Context, status int, fn func(echo.Context
 	return writeRaw(c, status, result)
 }
 
-func (h *BillingHandlers) guard(c echo.Context) (port.BillingScope, error) {
+// proxyWithPayerCountry é o proxy das rotas em que o país da conta decide a forma de pagar.
+func (h *BillingHandlers) proxyWithPayerCountry(c echo.Context, status int, fn func(echo.Context, port.BillingScope) (json.RawMessage, error)) error {
+	scope, ok, respErr := h.guard(c)
+	if !ok {
+		return respErr
+	}
+	if ok, respErr := h.attachPayerCountry(c, &scope); !ok {
+		return respErr
+	}
+	result, err := fn(c, scope)
+	if err != nil {
+		return handleError(c, err, scope.CorrelationID)
+	}
+	return writeRaw(c, status, result)
+}
+
+// attachPayerCountry põe em scope.PayerCountry o país da conta lido no ms-user (com o cache Redis),
+// pelo code_user do JWT. O X-Payer-Country do navegador é descartado. Sem país (null) = BR. Sem
+// conseguir ler: 503 PAYER_COUNTRY_UNAVAILABLE e o ms-billing não é chamado (não cobrar sem saber o país).
+// ok=false: a resposta já foi escrita (c.JSON devolve nil), e quem chama só retorna err.
+func (h *BillingHandlers) attachPayerCountry(c echo.Context, scope *port.BillingScope) (bool, error) {
+	c.Request().Header.Del(payerCountryHeader)
+	if h.users == nil {
+		return false, payerCountryUnavailable(c, scope.CorrelationID)
+	}
+	user, err := h.users.GetUserByCodeUser(
+		c.Request().Context(),
+		middlewarePkg.GetUserIDFromContext(c),
+		middlewarePkg.GetTokenFromContext(c),
+		middlewarePkg.GetTenantId(c),
+		scope.CorrelationID,
+	)
+	if err != nil {
+		h.logger.Warn("país da conta indisponível; cobrança não enviada ao ms-billing",
+			zap.String("correlationId", scope.CorrelationID),
+			zap.String("companyId", scope.CompanyID),
+			zap.Error(err),
+		)
+		return false, payerCountryUnavailable(c, scope.CorrelationID)
+	}
+	scope.PayerCountry = payerCountryOf(user.CountryCode)
+	return true, nil
+}
+
+const payerCountryHeader = "X-Payer-Country"
+
+// payerCountryOf: país do ms-user em maiúsculas; null ou vazio = BR (regra atual).
+func payerCountryOf(country *string) string {
+	if country == nil || strings.TrimSpace(*country) == "" {
+		return "BR"
+	}
+	return strings.ToUpper(strings.TrimSpace(*country))
+}
+
+func payerCountryUnavailable(c echo.Context, correlationID string) error {
+	return c.JSON(http.StatusServiceUnavailable, pkg.ErrorResponse{
+		Error:         "PAYER_COUNTRY_UNAVAILABLE",
+		Message:       "Não foi possível confirmar o país da sua conta. Tente de novo em instantes.",
+		CorrelationID: correlationID,
+	})
+}
+
+// guard monta o escopo do billing. ok=false: a resposta de erro já foi escrita (c.JSON devolve nil
+// em sucesso, por isso o retorno de erro sozinho não basta) e quem chama retorna respErr sem chamar o billing.
+func (h *BillingHandlers) guard(c echo.Context) (scope port.BillingScope, ok bool, respErr error) {
 	correlationID := middlewarePkg.GetCorrelationID(c)
 	if h.billing == nil {
-		return port.BillingScope{}, c.JSON(http.StatusServiceUnavailable, pkg.ErrorResponse{
+		return port.BillingScope{}, false, c.JSON(http.StatusServiceUnavailable, pkg.ErrorResponse{
 			Error:         "SERVICE_UNAVAILABLE",
 			Message:       "Billing indisponível",
 			CorrelationID: correlationID,
@@ -479,7 +549,7 @@ func (h *BillingHandlers) guard(c echo.Context) (port.BillingScope, error) {
 	claims := middlewarePkg.GetClaimsFromContext(c)
 	companyID := port.CompanyIDFromContext(c.Request().Context())
 	if companyID == "" {
-		return port.BillingScope{}, c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
+		return port.BillingScope{}, false, c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
 			Error:         "MISSING_TENANT",
 			Message:       "company do token JWT é obrigatória",
 			CorrelationID: correlationID,
@@ -495,7 +565,7 @@ func (h *BillingHandlers) guard(c echo.Context) (port.BillingScope, error) {
 		admin = middlewarePkg.IsBillingOrgCaller(claims)
 	}
 	if userID == "" {
-		return port.BillingScope{}, c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
+		return port.BillingScope{}, false, c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
 			Error:         "BAD_REQUEST",
 			Message:       "userId do token JWT é obrigatório",
 			CorrelationID: correlationID,
@@ -511,7 +581,7 @@ func (h *BillingHandlers) guard(c echo.Context) (port.BillingScope, error) {
 		CorrelationID:  correlationID,
 		Admin:          admin,
 		IdempotencyKey: strings.TrimSpace(c.Request().Header.Get("Idempotency-Key")),
-	}, nil
+	}, true, nil
 }
 
 func bindBillingJSON(c echo.Context) (map[string]any, error) {

@@ -55,6 +55,9 @@ type BillingScope struct {
 	// credencial do bff-core (contrato C2 §3).
 	OperatorID string
 	ClientIP   string
+	// PayerCountry é o país da conta lido no ms-user (nunca do navegador), só nas rotas de assinar,
+	// reativar e trocar de plano. Vazio: o cabeçalho X-Payer-Country não sai.
+	PayerCountry string
 }
 
 type BillingClient interface {

@@ -44,9 +44,9 @@ func (h *BillingHandlers) RemoveBillingCardHandler(c echo.Context) error {
 // para a tela saber pelo servidor se a escrita está ligada. Quem trava segue sendo o
 // 403 CORE_WRITE_DISABLED.
 func (h *BillingHandlers) GetBillingSettingsHandler(c echo.Context) error {
-	scope, unavailable := h.guard(c)
-	if unavailable != nil {
-		return unavailable
+	scope, ok, respErr := h.guard(c)
+	if !ok {
+		return respErr
 	}
 	resp, err := h.billing.Forward(c.Request().Context(), scope, port.BillingCall{Operation: "GetBillingSettings", Method: http.MethodGet, Path: billingAPIBase + "/billing-settings", Endpoint: "/billing/billing-settings"})
 	if err != nil {
@@ -170,9 +170,9 @@ func (h *BillingHandlers) ResolveBillingReviewHandler(c echo.Context) error {
 
 // forward repassa uma rota nova com a identidade de quem chama.
 func (h *BillingHandlers) forward(c echo.Context, call port.BillingCall) error {
-	scope, unavailable := h.guard(c)
-	if unavailable != nil {
-		return unavailable
+	scope, ok, respErr := h.guard(c)
+	if !ok {
+		return respErr
 	}
 	return h.send(c, scope, call)
 }
@@ -189,9 +189,9 @@ func (h *BillingHandlers) forwardMoney(c echo.Context, call port.BillingCall) er
 
 // forwardOperator anexa a credencial do bff-core, quem opera (sub do token) e o IP real.
 func (h *BillingHandlers) forwardOperator(c echo.Context, call port.BillingCall) error {
-	scope, unavailable := h.guard(c)
-	if unavailable != nil {
-		return unavailable
+	scope, ok, respErr := h.guard(c)
+	if !ok {
+		return respErr
 	}
 	claims := middlewarePkg.GetClaimsFromContext(c)
 	if claims != nil {

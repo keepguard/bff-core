@@ -51,6 +51,16 @@ func (companyStub) GetByTenantId(context.Context, string, string) (appdto.MSComp
 	return appdto.MSCompanyResponseDTO{ID: testCompany}, nil
 }
 
+// brPayerUsers é o ms-user falso: a mesma pessoa de conta no BR em toda leitura.
+type brPayerUsers struct{ port.UserClient }
+
+func (brPayerUsers) GetUserByCodeUser(context.Context, string, string, string, string) (appdto.MSUserResponseDTO, error) {
+	return appdto.MSUserResponseDTO{
+		ID: "ms-user-1", CodeUser: testUser, CompanyID: testCompany, Email: "pagador@exemplo.test",
+		PersonProfile: &appdto.PersonProfileDTO{FullName: "Pessoa Teste", CPF: "52998224725"},
+	}, nil
+}
+
 // upstreamCall é o que chegou ao ms-billing falso.
 type upstreamCall struct {
 	Method  string              `json:"method"`
@@ -147,7 +157,8 @@ func startBillingRouter(t *testing.T, cfg *config.Config, options ...func(httpse
 
 	zapLogger := zap.NewNop()
 	client := billingdecorator.New(httpclient.NewBillingClient(cfg, zapLogger), zapLogger, nil, "ms-billing")
-	billingHandlers := handlers.NewBillingHandlers(appbilling.NewBillingPort(client), zapLogger)
+	// Pessoa de conta no BR (countryCode null), com CPF: assinar, reativar e trocar leem o país no ms-user.
+	billingHandlers := handlers.NewBillingHandlers(appbilling.NewBillingPort(client), zapLogger).WithUsers(brPayerUsers{})
 	combined := handlers.NewCombinedHandlers(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, billingHandlers)
 	rateLimiter := middlewarePkg.NewRateLimiterMiddleware(nil, cfg.RateLimit, zapLogger, nil)
 	server := httpserver.NewServer(cfg, logger.NewNop(), nil, rateLimiter, nil, companyStub{}, nil).WithBillingClient(client)
@@ -312,5 +323,36 @@ func TestBillingRegressionGolden(t *testing.T) {
 	if string(want) != string(got) {
 		_ = os.WriteFile(os.TempDir()+"/billing_regression_got.json", got, 0o644)
 		t.Fatalf("resposta ou pedido ao ms-billing mudou em company sem configuração; veja %s/billing_regression_got.json", os.TempDir())
+	}
+}
+
+// O X-Payer-Country do navegador não chega ao ms-billing: vale o país do ms-user (null = BR), e as
+// rotas fora das 4 de assinatura não levam o cabeçalho.
+func TestPayerCountryHeaderComesFromMsUserOnly(t *testing.T) {
+	upstream := newFakeBilling(t)
+	upstream.replies["POST /api/v1/billing/subscriptions"] = fakeReply{http.StatusCreated, `{"status":"pending_gateway"}`}
+	router := startBillingRouter(t, baseConfig(upstream.server.URL))
+	user := signToken(t, testUser, []string{"ROLE_USER"}, []string{"billing:read"}, nil)
+	const base = "/api/v1/core/billing"
+	sub := base + "/subscriptions/" + testSubID
+	spoof := map[string]string{"X-Payer-Country": "PT"}
+	for _, tc := range []goldenCase{
+		{name: "assinar", method: http.MethodPost, path: base + "/subscriptions", token: user, body: `{"planCode":"PRO","interval":"month","paymentMethod":"pix"}`, headers: spoof},
+		{name: "reativar", method: http.MethodPost, path: sub + "/reactivate", token: user, headers: spoof},
+		{name: "prévia", method: http.MethodGet, path: sub + "/change-preview?planCode=PRO&interval=year", token: user, headers: spoof},
+		{name: "trocar", method: http.MethodPost, path: sub + "/change-plan", token: user, body: `{"planCode":"PRO","interval":"year"}`, headers: spoof},
+	} {
+		status, _, body := doRequest(t, router, tc)
+		calls := upstream.drain()
+		if status >= 300 || len(calls) != 1 {
+			t.Fatalf("%s: status %d body %s chamadas %d", tc.name, status, body, len(calls))
+		}
+		if got := calls[0].Headers["X-Payer-Country"]; len(got) != 1 || got[0] != "BR" {
+			t.Fatalf("%s: X-Payer-Country %v", tc.name, got)
+		}
+	}
+	_, _, _ = doRequest(t, router, goldenCase{method: http.MethodPost, path: sub + "/cancel", token: user, headers: spoof})
+	if calls := upstream.drain(); len(calls) != 1 || calls[0].Headers["X-Payer-Country"] != nil {
+		t.Fatalf("cancelar não leva o país: %+v", calls)
 	}
 }
