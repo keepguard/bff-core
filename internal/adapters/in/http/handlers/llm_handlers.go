@@ -79,8 +79,8 @@ func (h *LlmHandlers) CompleteLlmHandler(c echo.Context) error {
 	if err != nil {
 		return err
 	}
-	query, unavailable := h.guard(c)
-	if unavailable != nil {
+	query, ok, unavailable := h.guard(c)
+	if !ok {
 		return unavailable
 	}
 	result, callErr := h.llm.Complete(c.Request().Context(), llm.CompleteCommand{
@@ -96,8 +96,8 @@ func (h *LlmHandlers) CompleteLlmHandler(c echo.Context) error {
 }
 
 func (h *LlmHandlers) ListLlmUsageHandler(c echo.Context) error {
-	query, unavailable := h.guard(c)
-	if unavailable != nil {
+	query, ok, unavailable := h.guard(c)
+	if !ok {
 		return unavailable
 	}
 	filters := map[string]string{}
@@ -118,8 +118,8 @@ func (h *LlmHandlers) ListLlmUsageHandler(c echo.Context) error {
 }
 
 func (h *LlmHandlers) GetLlmUsageHandler(c echo.Context) error {
-	query, unavailable := h.guard(c)
-	if unavailable != nil {
+	query, ok, unavailable := h.guard(c)
+	if !ok {
 		return unavailable
 	}
 	id := c.Param("id")
@@ -190,8 +190,8 @@ func (h *LlmHandlers) ListLlmAlertFiringsHandler(c echo.Context) error {
 }
 
 func (h *LlmHandlers) proxyRaw(c echo.Context, status int, fn func(echo.Context, llm.TenantQuery) (json.RawMessage, error)) error {
-	query, unavailable := h.guard(c)
-	if unavailable != nil {
+	query, ok, unavailable := h.guard(c)
+	if !ok {
 		return unavailable
 	}
 	result, err := fn(c, query)
@@ -202,10 +202,12 @@ func (h *LlmHandlers) proxyRaw(c echo.Context, status int, fn func(echo.Context,
 	return writeRaw(c, status, result)
 }
 
-func (h *LlmHandlers) guard(c echo.Context) (llm.TenantQuery, error) {
+// guard valida o escopo. c.JSON devolve nil depois de escrever a resposta, por isso o ok: sem ele o handler
+// seguia adiante (cliente nil ou consulta sem tenant).
+func (h *LlmHandlers) guard(c echo.Context) (llm.TenantQuery, bool, error) {
 	correlationID := middlewarePkg.GetCorrelationID(c)
 	if h.llm == nil {
-		return llm.TenantQuery{}, c.JSON(http.StatusServiceUnavailable, pkg.ErrorResponse{
+		return llm.TenantQuery{}, false, c.JSON(http.StatusServiceUnavailable, pkg.ErrorResponse{
 			Error:         "SERVICE_UNAVAILABLE",
 			Message:       "Consulta LLM indisponível",
 			CorrelationID: correlationID,
@@ -213,7 +215,7 @@ func (h *LlmHandlers) guard(c echo.Context) (llm.TenantQuery, error) {
 	}
 	tenantID := middlewarePkg.ResolveTenantId(c, middlewarePkg.GetClaimsFromContext(c))
 	if tenantID == "" {
-		return llm.TenantQuery{}, c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
+		return llm.TenantQuery{}, false, c.JSON(http.StatusBadRequest, pkg.ErrorResponse{
 			Error:         "MISSING_TENANT",
 			Message:       "tenant_id do token JWT é obrigatório",
 			CorrelationID: correlationID,
@@ -222,7 +224,7 @@ func (h *LlmHandlers) guard(c echo.Context) (llm.TenantQuery, error) {
 	// O token de quem está logado não é repassado ao gateway: o BFF já autorizou
 	// a pessoa nas middlewares de rota e chama o gateway com a própria identidade
 	// de serviço (client OAuth bff-core).
-	return llm.TenantQuery{TenantID: tenantID, CorrelationID: correlationID}, nil
+	return llm.TenantQuery{TenantID: tenantID, CorrelationID: correlationID}, true, nil
 }
 
 func bindJSON(c echo.Context) (map[string]any, error) {

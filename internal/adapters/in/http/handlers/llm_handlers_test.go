@@ -135,3 +135,70 @@ func TestCreateLlmProviderHandler_DoesNotForwardInboundBearer(t *testing.T) {
 		t.Fatalf("bearer=%q", stub.gotBearer)
 	}
 }
+
+// countingLlmClient conta as chamadas que chegariam ao gateway LLM.
+type countingLlmClient struct {
+	stubLlmClient
+	calls int
+}
+
+func (s *countingLlmClient) ListUsage(ctx context.Context, a, b string, f map[string]string) (appdto.PaginatedLlmUsageResponse, error) {
+	s.calls++
+	return s.stubLlmClient.ListUsage(ctx, a, b, f)
+}
+func (s *countingLlmClient) GetUsage(ctx context.Context, a, b, c string) (appdto.LlmUsageResponse, error) {
+	s.calls++
+	return s.stubLlmClient.GetUsage(ctx, a, b, c)
+}
+func (s *countingLlmClient) Complete(ctx context.Context, a, b, c string, body any) (json.RawMessage, error) {
+	s.calls++
+	return s.stubLlmClient.Complete(ctx, a, b, c, body)
+}
+func (s *countingLlmClient) ListProviders(ctx context.Context, a, b string) (json.RawMessage, error) {
+	s.calls++
+	return s.stubLlmClient.ListProviders(ctx, a, b)
+}
+
+// Sem tenant, o guard interrompe de verdade: resposta 400 e nenhuma chamada ao gateway (antes c.JSON devolvia nil e o
+// handler seguia adiante).
+func TestLlmGuardStopsWithoutTenant(t *testing.T) {
+	cases := []struct {
+		name   string
+		method string
+		path   string
+		body   string
+		call   func(h *LlmHandlers, c echo.Context) error
+	}{
+		{"usage", http.MethodGet, "/api/v1/core/llm/usage", "", func(h *LlmHandlers, c echo.Context) error { return h.ListLlmUsageHandler(c) }},
+		{"usage-id", http.MethodGet, "/api/v1/core/llm/usage/u1", "", func(h *LlmHandlers, c echo.Context) error { return h.GetLlmUsageHandler(c) }},
+		{"complete", http.MethodPost, "/api/v1/core/llm/complete", `{"prompt":"oi"}`, func(h *LlmHandlers, c echo.Context) error { return h.CompleteLlmHandler(c) }},
+		{"providers", http.MethodGet, "/api/v1/core/llm/providers", "", func(h *LlmHandlers, c echo.Context) error { return h.ListLlmProvidersHandler(c) }},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := echo.New()
+			var body *strings.Reader
+			if tc.body != "" {
+				body = strings.NewReader(tc.body)
+			} else {
+				body = strings.NewReader("")
+			}
+			req := httptest.NewRequest(tc.method, tc.path, body)
+			req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+			c.Set("claims", &pkg.JWTClaims{Roles: []string{"ADMIN"}})
+			client := &countingLlmClient{}
+			h := NewLlmHandlers(appllm.NewLlmPort(client), zap.NewNop())
+			if err := tc.call(h, c); err != nil {
+				t.Fatal(err)
+			}
+			if rec.Code != http.StatusBadRequest {
+				t.Fatalf("esperado 400, veio %d %s", rec.Code, rec.Body.String())
+			}
+			if client.calls != 0 {
+				t.Fatalf("gateway LLM não pode ser chamado sem tenant: %d chamadas", client.calls)
+			}
+		})
+	}
+}
