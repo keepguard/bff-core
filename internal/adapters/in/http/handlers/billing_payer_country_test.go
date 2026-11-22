@@ -187,3 +187,28 @@ func TestPayerCountryBRStillNeedsDocument(t *testing.T) {
 		t.Fatalf("billing não pode ser chamado: %+v", billing.payerScopes)
 	}
 }
+
+// Stripe S1a: conta de fora assina com cartão (credit_card + aceite do débito). O bff-core não decide a forma
+// nem a moeda: o pedido chega inteiro ao ms-billing, com o país do ms-user e sem documento.
+func TestPayerCountryAbroadCreditCardReachesBilling(t *testing.T) {
+	tc := payerCountryCases()[0]
+	tc.body = `{"planCode":"ECHOUNO-PRO","interval":"month","paymentMethod":"credit_card","cardDebitConsent":{"textVersion":"v1"}}`
+	billing := &stubBillingClient{}
+	users := brPayer()
+	users.user.CountryCode = countryPtr("us")
+	users.user.PersonProfile = nil
+	rec := runPayerCountry(t, tc, billing, users, "BR")
+	if rec.Code >= 300 {
+		t.Fatalf("status %d body %s", rec.Code, rec.Body.String())
+	}
+	if len(billing.payerScopes) != 1 || billing.payerScopes[0].PayerCountry != "US" {
+		t.Fatalf("o pedido deve chegar ao ms-billing com US (e não o BR do navegador): %+v", billing.payerScopes)
+	}
+	body, _ := billing.createBody.(map[string]any)
+	if body["paymentMethod"] != "credit_card" || body["cardDebitConsent"] == nil {
+		t.Fatalf("forma e aceite precisam seguir intactos: %+v", body)
+	}
+	if _, ok := body["payerCpfCnpj"]; ok || users.patches != 0 {
+		t.Fatalf("sem CPF para conta de fora: %+v patches=%d", body, users.patches)
+	}
+}
