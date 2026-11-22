@@ -32,7 +32,7 @@ type BillingPort interface {
 	ListEntitlements(ctx context.Context, scope port.BillingScope, query map[string]string) (json.RawMessage, error)
 	GetInvoice(ctx context.Context, scope port.BillingScope, id string) (json.RawMessage, error)
 	ForwardAsaasWebhook(ctx context.Context, accessToken string, body []byte) (json.RawMessage, int, error)
-	ForwardStripeWebhook(ctx context.Context, token string, body []byte) (json.RawMessage, int, error)
+	ForwardStripeWebhook(ctx context.Context, companyRef, token string, body []byte) (json.RawMessage, int, error)
 	Forward(ctx context.Context, scope port.BillingScope, call port.BillingCall) (port.BillingResponse, error)
 }
 
@@ -215,11 +215,11 @@ func (s *service) ForwardAsaasWebhook(ctx context.Context, accessToken string, b
 	return s.client.ForwardAsaasWebhook(ctx, accessToken, body)
 }
 
-func (s *service) ForwardStripeWebhook(ctx context.Context, token string, body []byte) (json.RawMessage, int, error) {
+func (s *service) ForwardStripeWebhook(ctx context.Context, companyRef, token string, body []byte) (json.RawMessage, int, error) {
 	if err := s.require(); err != nil {
 		return nil, 0, err
 	}
-	return s.client.ForwardStripeWebhook(ctx, token, body)
+	return s.client.ForwardStripeWebhook(ctx, companyRef, token, body)
 }
 
 func (s *service) Forward(ctx context.Context, scope port.BillingScope, call port.BillingCall) (port.BillingResponse, error) {

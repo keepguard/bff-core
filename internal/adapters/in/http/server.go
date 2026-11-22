@@ -335,6 +335,8 @@ func (s *serverImpl) SetupRoutes(handlers Handler) {
 	userGroup.POST("/core/billing/billing-reviews/:id/resolve", handlers.ResolveBillingReviewHandler, billingMoney...)
 	userGroup.POST("/core/billing/webhooks/asaas", handlers.AsaasWebhookHandler, publicEndpoint.Middleware(), rl.Limit("asaas_webhook", rules.AsaasWebhook))
 	userGroup.POST("/core/billing/webhooks/stripe", handlers.StripeWebhookHandler, publicEndpoint.Middleware(), rl.Limit("stripe_webhook", rules.AsaasWebhook))
+	// S1c §2: destino do webhook do Stripe por company (mesmo tratamento da rota acima).
+	userGroup.POST("/core/billing/webhooks/stripe/:companyRef", handlers.StripeWebhookHandler, publicEndpoint.Middleware(), rl.Limit("stripe_webhook", rules.AsaasWebhook))
 
 	s.logger.Info("Rotas configuradas com sucesso com proteção de Rate Limit",
 		zap.String("port", s.config.Server.Port),

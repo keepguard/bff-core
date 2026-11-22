@@ -84,7 +84,7 @@ type BillingClient interface {
 	ListEntitlements(ctx context.Context, scope BillingScope, query map[string]string) (json.RawMessage, error)
 	GetInvoice(ctx context.Context, scope BillingScope, id string) (json.RawMessage, error)
 	ForwardAsaasWebhook(ctx context.Context, accessToken string, body []byte) (json.RawMessage, int, error)
-	ForwardStripeWebhook(ctx context.Context, token string, body []byte) (json.RawMessage, int, error)
+	ForwardStripeWebhook(ctx context.Context, companyRef, token string, body []byte) (json.RawMessage, int, error)
 	BillingForwarder
 }
 

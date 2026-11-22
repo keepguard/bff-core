@@ -178,8 +178,8 @@ func (d *decorated) ForwardAsaasWebhook(ctx context.Context, accessToken string,
 	return d.inner.ForwardAsaasWebhook(ctx, accessToken, body)
 }
 
-func (d *decorated) ForwardStripeWebhook(ctx context.Context, token string, body []byte) (json.RawMessage, int, error) {
-	return d.inner.ForwardStripeWebhook(ctx, token, body)
+func (d *decorated) ForwardStripeWebhook(ctx context.Context, companyRef, token string, body []byte) (json.RawMessage, int, error) {
+	return d.inner.ForwardStripeWebhook(ctx, companyRef, token, body)
 }
 
 // Forward repete só leitura: escrita nova tem Idempotency-Key, e quem decide repetir é

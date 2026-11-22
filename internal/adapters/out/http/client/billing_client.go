@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"encoding/json"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -177,7 +178,7 @@ func (c *billingClient) ForwardAsaasWebhook(ctx context.Context, accessToken str
 	return cloneBody(resp.Body()), resp.StatusCode(), nil
 }
 
-func (c *billingClient) ForwardStripeWebhook(ctx context.Context, token string, body []byte) (json.RawMessage, int, error) {
+func (c *billingClient) ForwardStripeWebhook(ctx context.Context, companyRef, token string, body []byte) (json.RawMessage, int, error) {
 	req := c.httpClient.R().SetContext(ctx).
 		SetHeader("Content-Type", "application/json").
 		SetBody(body)
@@ -186,7 +187,12 @@ func (c *billingClient) ForwardStripeWebhook(ctx context.Context, token string, 
 	} else {
 		req.SetHeader("x-webhook-token", token)
 	}
-	resp, err := req.Post(c.baseURL + "/api/v1/billing/webhooks/stripe")
+	path := "/api/v1/billing/webhooks/stripe"
+	if companyRef != "" {
+		// S1c §2: destino por company; o ms-billing confere o HMAC só com o segredo dela.
+		path += "/" + url.PathEscape(companyRef)
+	}
+	resp, err := req.Post(c.baseURL + path)
 	if err != nil {
 		return nil, 0, MapNetworkError(err, "ms-billing")
 	}

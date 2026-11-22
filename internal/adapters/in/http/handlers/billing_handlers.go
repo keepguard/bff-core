@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
 	"strings"
 
 	middlewarePkg "github.com/keepguard/bff-core/internal/adapters/in/http/middleware"
@@ -399,8 +400,20 @@ func (h *BillingHandlers) AsaasWebhookHandler(c echo.Context) error {
 	return writeRaw(c, status, result)
 }
 
+// companyRefPattern: public_slug ou company_id (S1c §2). Nada além de letra, dígito, "-" e "_".
+var companyRefPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
+
 func (h *BillingHandlers) StripeWebhookHandler(c echo.Context) error {
 	correlationID := middlewarePkg.GetCorrelationID(c)
+	// S1c §2: /webhooks/stripe/:companyRef é o destino por company (slug ou id). Vazio = rota antiga.
+	companyRef := strings.TrimSpace(c.Param("companyRef"))
+	if companyRef != "" && !companyRefPattern.MatchString(companyRef) {
+		return c.JSON(http.StatusNotFound, pkg.ErrorResponse{
+			Error:         "NOT_FOUND",
+			Message:       "destino de webhook desconhecido",
+			CorrelationID: correlationID,
+		})
+	}
 	if c.QueryString() != "" {
 		return c.JSON(http.StatusUnauthorized, pkg.ErrorResponse{
 			Error:         "UNAUTHORIZED",
@@ -448,7 +461,7 @@ func (h *BillingHandlers) StripeWebhookHandler(c echo.Context) error {
 			CorrelationID: correlationID,
 		})
 	}
-	result, status, callErr := h.billing.ForwardStripeWebhook(c.Request().Context(), token, body)
+	result, status, callErr := h.billing.ForwardStripeWebhook(c.Request().Context(), companyRef, token, body)
 	if callErr != nil {
 		if httpErr, ok := callErr.(*pkg.AppError); ok {
 			return c.JSON(httpErr.StatusCode, httpErr.WithTraceID(correlationID).ToResponse())

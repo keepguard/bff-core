@@ -28,7 +28,7 @@ func TestForwardStripeWebhookKeepsRawBodyAndSignature(t *testing.T) {
 	cfg.Services.Billing.BaseURL = upstream.URL
 	client := NewBillingClient(cfg, zap.NewNop())
 
-	if _, status, err := client.ForwardStripeWebhook(context.Background(), signature, raw); err != nil || status != http.StatusOK {
+	if _, status, err := client.ForwardStripeWebhook(context.Background(), "", signature, raw); err != nil || status != http.StatusOK {
 		t.Fatalf("status %d err %v", status, err)
 	}
 	if string(gotBody) != string(raw) {
@@ -39,5 +39,26 @@ func TestForwardStripeWebhookKeepsRawBodyAndSignature(t *testing.T) {
 	}
 	if gotPath != "/api/v1/billing/webhooks/stripe" {
 		t.Fatalf("rota errada: %s", gotPath)
+	}
+}
+
+// S1c §2: com companyRef, o repasse vai a /webhooks/stripe/{companyRef}, com o mesmo corpo cru.
+func TestForwardStripeWebhookCompanyRefPath(t *testing.T) {
+	var gotPath string
+	var gotBody []byte
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		gotBody, _ = io.ReadAll(r.Body)
+		_, _ = w.Write([]byte(`{"received":true}`))
+	}))
+	defer upstream.Close()
+	cfg := &config.Config{}
+	cfg.Services.Billing.BaseURL = upstream.URL
+	raw := []byte(`{"id":"evt_2" }`)
+	if _, _, err := NewBillingClient(cfg, zap.NewNop()).ForwardStripeWebhook(context.Background(), "echouno", "t=1,v1=x", raw); err != nil {
+		t.Fatal(err)
+	}
+	if gotPath != "/api/v1/billing/webhooks/stripe/echouno" || string(gotBody) != string(raw) {
+		t.Fatalf("path %s body %s", gotPath, gotBody)
 	}
 }

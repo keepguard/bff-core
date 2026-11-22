@@ -25,6 +25,7 @@ type stubBillingClient struct {
 	createBody  any
 	webhookBody []byte
 	webhookTok  string
+	webhookRef  string
 
 	reactivateBody any
 	// payerScopes guarda o escopo de cada chamada às 4 rotas do país da conta.
@@ -154,7 +155,8 @@ func (s *stubBillingClient) ForwardAsaasWebhook(_ context.Context, accessToken s
 	s.webhookBody = append([]byte(nil), body...)
 	return json.RawMessage(`{"received":true}`), 200, nil
 }
-func (s *stubBillingClient) ForwardStripeWebhook(_ context.Context, token string, body []byte) (json.RawMessage, int, error) {
+func (s *stubBillingClient) ForwardStripeWebhook(_ context.Context, companyRef, token string, body []byte) (json.RawMessage, int, error) {
+	s.webhookRef = companyRef
 	s.webhookTok = token
 	s.webhookBody = append([]byte(nil), body...)
 	return json.RawMessage(`{"received":true}`), 200, nil
@@ -804,5 +806,35 @@ func TestForwardedErrorKeepsCode(t *testing.T) {
 	}
 	if rec.Code != http.StatusTooManyRequests || !strings.Contains(rec.Body.String(), "DAILY_CAP_EXCEEDED") {
 		t.Fatalf("status %d body %s", rec.Code, rec.Body.String())
+	}
+}
+
+// S1c §2: destino do webhook do Stripe por company. O {companyRef} segue ao ms-billing; ref estranha = 404 sem chamar.
+func TestStripeWebhookHandler_CompanyRef(t *testing.T) {
+	for _, tc := range []struct {
+		ref    string
+		status int
+	}{{"echouno", http.StatusOK}, {"4e65bc72-c60b-4382-977d-c15314d117a8", http.StatusOK}, {"a/b", http.StatusNotFound}, {"x%20y", http.StatusNotFound}} {
+		billing := &stubBillingClient{}
+		e := echo.New()
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/core/billing/webhooks/stripe/"+tc.ref, strings.NewReader(`{"id":"evt_1"}`))
+		req.Header.Set("stripe-signature", "t=1700000000,v1=abc")
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		c.SetParamNames("companyRef")
+		c.SetParamValues(tc.ref)
+		h := NewBillingHandlers(appbilling.NewBillingPort(billing), zap.NewNop())
+		if err := h.StripeWebhookHandler(c); err != nil {
+			t.Fatal(err)
+		}
+		if rec.Code != tc.status {
+			t.Fatalf("%s: status %d", tc.ref, rec.Code)
+		}
+		if tc.status == http.StatusOK && billing.webhookRef != tc.ref {
+			t.Fatalf("%s: ref não chegou (%q)", tc.ref, billing.webhookRef)
+		}
+		if tc.status != http.StatusOK && billing.webhookTok != "" {
+			t.Fatalf("%s: billing chamado", tc.ref)
+		}
 	}
 }

@@ -89,7 +89,7 @@ func (m *mockBillingClientForMiddleware) GetInvoice(ctx context.Context, scope d
 func (m *mockBillingClientForMiddleware) ForwardAsaasWebhook(ctx context.Context, accessToken string, body []byte) (json.RawMessage, int, error) {
 	return nil, 0, nil
 }
-func (m *mockBillingClientForMiddleware) ForwardStripeWebhook(ctx context.Context, token string, body []byte) (json.RawMessage, int, error) {
+func (m *mockBillingClientForMiddleware) ForwardStripeWebhook(ctx context.Context, companyRef, token string, body []byte) (json.RawMessage, int, error) {
 	return nil, 0, nil
 }
 
