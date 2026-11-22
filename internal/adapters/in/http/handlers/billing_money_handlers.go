@@ -24,7 +24,7 @@ const (
 // GetBillingCreditsHandler é GET /credits. userId só vai adiante para Operador: quem não
 // opera lê o próprio extrato (contrato C2 §3 e §6.12).
 func (h *BillingHandlers) GetBillingCreditsHandler(c echo.Context) error {
-	query := billingListQuery(c, "page", "size", "userId")
+	query := billingListQuery(c, "page", "size", "userId", "currency")
 	claims := middlewarePkg.GetClaimsFromContext(c)
 	if claims == nil || !middlewarePkg.IsBillingOperator(claims.Roles, claims.Authorities) {
 		delete(query, "userId")

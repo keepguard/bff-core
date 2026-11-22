@@ -306,6 +306,9 @@ func (s *serverImpl) SetupRoutes(handlers Handler) {
 	userGroup.GET("/core/billing/invoices/:id", handlers.GetBillingInvoiceHandler, billingRead...)
 	userGroup.GET("/core/billing/entitlements", handlers.ListBillingEntitlementsHandler, billingOrgRead...)
 	userGroup.GET("/core/billing/users/lookup", handlers.LookupBillingUserHandler, billingOrgRead...)
+	// Stripe S0a §6: leituras da própria pessoa, mesmo nível de GET /subscription.
+	userGroup.GET("/core/billing/payment-options", handlers.GetBillingPaymentOptionsHandler, billingRead...)
+	userGroup.GET("/core/billing/lock-state", handlers.GetBillingLockStateHandler, billingRead...)
 	// Cobrança, fase C3 (contrato C2 §3 e §6.12).
 	billingOperatorRead := []echo.MiddlewareFunc{
 		s.jwt.Middleware(),
