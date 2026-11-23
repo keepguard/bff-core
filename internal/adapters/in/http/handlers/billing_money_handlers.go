@@ -3,6 +3,7 @@ package handlers
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/url"
@@ -10,6 +11,7 @@ import (
 	"strings"
 
 	middlewarePkg "github.com/keepguard/bff-core/internal/adapters/in/http/middleware"
+	appdto "github.com/keepguard/bff-core/internal/application/dto"
 	"github.com/keepguard/bff-core/internal/application/port"
 	"github.com/keepguard/bff-core/internal/infrastructure/clientip"
 	"github.com/keepguard/bff-core/internal/pkg"
@@ -38,6 +40,61 @@ func (h *BillingHandlers) RemoveBillingCardHandler(c echo.Context) error {
 		Operation: "RemoveCard", Method: http.MethodDelete,
 		Path: billingAPIBase + "/subscriptions/" + url.PathEscape(c.Param("id")) + "/card", Endpoint: "/billing/subscriptions/{id}/card",
 	})
+}
+
+// CreateBillingCardSetupHandler é POST /subscriptions/:id/card/setup (S2.3): a página do Stripe para trocar o cartão.
+// Corpo camelCase ({cardDebitConsent:{textVersion}, locale}); dado de cartão no corpo = 422. Só o pagador: a regra é
+// do billing. No 429, o Retry-After do billing segue para o navegador.
+func (h *BillingHandlers) CreateBillingCardSetupHandler(c echo.Context) error {
+	body, err := bindBillingJSON(c)
+	if err != nil || c.Response().Committed {
+		return err
+	}
+	scope, ok, respErr := h.guard(c)
+	if !ok {
+		return respErr
+	}
+	// Origem do aceite (S2.3): só o que a conexão diz, nunca o corpo do navegador. O billing trunca o IP.
+	delete(body, "ipAddress")
+	delete(body, "userAgent")
+	if ip := clientip.FromRequest(c.Request()); ip != "" {
+		body["ipAddress"] = ip
+	}
+	if ua := strings.TrimSpace(c.Request().UserAgent()); ua != "" {
+		body["userAgent"] = ua
+	}
+	resp, callErr := h.billing.Forward(c.Request().Context(), scope, port.BillingCall{
+		Operation: "CreateCardSetup", Method: http.MethodPost, Body: body,
+		Path: billingAPIBase + "/subscriptions/" + url.PathEscape(c.Param("id")) + "/card/setup", Endpoint: "/billing/subscriptions/{id}/card/setup",
+	})
+	if callErr != nil {
+		if retry := upstreamRetryAfter(callErr); retry > 0 {
+			c.Response().Header().Set("Retry-After", strconv.FormatInt(retry, 10))
+		}
+		return handleError(c, callErr, scope.CorrelationID)
+	}
+	return writeRaw(c, resp.Status, resp.Body)
+}
+
+// upstreamRetryAfter lê erro.detalhes.retryAfterSeconds do 429 do billing. 0 = sem espera informada.
+func upstreamRetryAfter(err error) int64 {
+	var httpErr *appdto.HTTPError
+	if !errors.As(err, &httpErr) || httpErr.Code != http.StatusTooManyRequests {
+		return 0
+	}
+	var payload struct {
+		Erro struct {
+			Detalhes map[string]string `json:"detalhes"`
+		} `json:"erro"`
+	}
+	if json.Unmarshal([]byte(strings.TrimSpace(httpErr.Details)), &payload) != nil {
+		return 0
+	}
+	seconds, convErr := strconv.ParseInt(payload.Erro.Detalhes["retryAfterSeconds"], 10, 64)
+	if convErr != nil || seconds <= 0 {
+		return 0
+	}
+	return seconds
 }
 
 // GetBillingSettingsHandler é GET /billing-settings, de Operador. Acrescenta coreWriteEnabled,

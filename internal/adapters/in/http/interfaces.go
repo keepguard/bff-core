@@ -107,6 +107,7 @@ type Handler interface {
 	GetBillingLockStateHandler(c echo.Context) error
 	GetBillingCreditsHandler(c echo.Context) error
 	RemoveBillingCardHandler(c echo.Context) error
+	CreateBillingCardSetupHandler(c echo.Context) error
 	GetBillingSettingsHandler(c echo.Context) error
 	ListBillingReviewsHandler(c echo.Context) error
 	GetBillingRefundPreviewHandler(c echo.Context) error

@@ -320,6 +320,8 @@ func (s *serverImpl) SetupRoutes(handlers Handler) {
 	billingMoney := append(append([]echo.MiddlewareFunc{s.jwt.Middleware()}, s.billingMoney.Chain()...), rl.Limit("billing", rules.Billing))
 	userGroup.GET("/core/billing/credits", handlers.GetBillingCreditsHandler, billingRead...)
 	userGroup.DELETE("/core/billing/subscriptions/:id/card", handlers.RemoveBillingCardHandler, billingRead...)
+	// S2.3: trocar cartão pela página do Stripe. Só o pagador (a regra é do billing), Idempotency-Key repassada.
+	userGroup.POST("/core/billing/subscriptions/:id/card/setup", handlers.CreateBillingCardSetupHandler, billingRead...)
 	userGroup.GET("/core/billing/billing-settings", handlers.GetBillingSettingsHandler, append(append([]echo.MiddlewareFunc{}, billingOperatorRead...), s.billingMoney.ExposeCoreWriteState())...)
 	userGroup.GET("/core/billing/billing-reviews", handlers.ListBillingReviewsHandler, billingOperatorRead...)
 	userGroup.GET("/core/billing/invoices/:id/refund-preview", handlers.GetBillingRefundPreviewHandler, billingOperatorRead...)
