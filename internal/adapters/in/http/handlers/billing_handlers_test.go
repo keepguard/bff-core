@@ -34,6 +34,12 @@ type stubBillingClient struct {
 	forwarded     []forwardedCall
 	forwardStatus int
 	forwardErr    error
+	cancelCalls   []cancelCall
+}
+
+type cancelCall struct {
+	id        string
+	immediate bool
 }
 
 type forwardedCall struct {
@@ -102,7 +108,8 @@ func (s *stubBillingClient) CreateSubscription(_ context.Context, scope port.Bil
 func (s *stubBillingClient) GrantLifetimeSubscription(context.Context, port.BillingScope, any) (json.RawMessage, error) {
 	return json.RawMessage(`{"status":"active","planCode":"VIP","interval":"lifetime"}`), nil
 }
-func (s *stubBillingClient) CancelSubscription(context.Context, port.BillingScope, string, bool) (json.RawMessage, error) {
+func (s *stubBillingClient) CancelSubscription(_ context.Context, _ port.BillingScope, id string, immediate bool) (json.RawMessage, error) {
+	s.cancelCalls = append(s.cancelCalls, cancelCall{id: id, immediate: immediate})
 	return json.RawMessage(`{"status":"canceled"}`), nil
 }
 func (s *stubBillingClient) Forward(_ context.Context, scope port.BillingScope, call port.BillingCall) (port.BillingResponse, error) {

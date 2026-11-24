@@ -251,6 +251,15 @@ func (h *BillingHandlers) CancelBillingSubscriptionHandler(c echo.Context) error
 	id := c.Param("id")
 	// Corte imediato é decisão de operação; o titular sempre agenda para o fim da vigência.
 	immediate := strings.EqualFold(strings.TrimSpace(c.QueryParam("immediate")), "true")
+	// Motivo opcional (cancelamento-motivo-contratos.md): só o objeto cancellationReason segue, sem
+	// validação aqui (quem valida é o ms-billing). Sem ele, o caminho de sempre, sem corpo.
+	reason, ok, respErr := cancellationReasonFromBody(c)
+	if !ok {
+		return respErr
+	}
+	if reason != nil {
+		return h.cancelWithReason(c, id, immediate, reason)
+	}
 	return h.proxy(c, http.StatusOK, func(ctx echo.Context, scope port.BillingScope) (json.RawMessage, error) {
 		return h.billing.CancelSubscription(ctx.Request().Context(), scope, id, immediate && scope.Admin)
 	})
