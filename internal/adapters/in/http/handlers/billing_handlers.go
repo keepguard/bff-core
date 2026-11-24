@@ -44,7 +44,22 @@ func (h *BillingHandlers) GetBillingEntitlementHandler(c echo.Context) error {
 	})
 }
 
+// ListBillingPlansHandler é GET /plans. Sem parâmetro, a tabela em reais (como sempre). `currency` (3 letras,
+// nunca ALL: essa é só do admin) e `region` escolhem a tabela da moeda da conta, para a vitrine mostrar o
+// mesmo valor que o Stripe vai cobrar.
 func (h *BillingHandlers) ListBillingPlansHandler(c echo.Context) error {
+	if query := billingListQuery(c, "currency", "region"); len(query) > 0 {
+		currency := strings.ToUpper(query["currency"])
+		region := strings.ToUpper(query["region"])
+		if len(currency) != 3 || currency == "ALL" || !isAlphaUpper(currency) || len(region) > 8 || (region != "" && !isAlphaUpper(region)) {
+			return c.JSON(http.StatusBadRequest, map[string]any{"title": "invalid_currency", "status": http.StatusBadRequest})
+		}
+		query["currency"] = currency
+		if region != "" {
+			query["region"] = region
+		}
+		return h.forward(c, port.BillingCall{Operation: "ListPlans", Method: http.MethodGet, Path: billingAPIBase + "/plans", Endpoint: "/billing/plans", Query: query})
+	}
 	return h.proxy(c, http.StatusOK, func(ctx echo.Context, scope port.BillingScope) (json.RawMessage, error) {
 		return h.billing.ListPlans(ctx.Request().Context(), scope)
 	})
@@ -1064,4 +1079,13 @@ func cardNodeHasData(value any) bool {
 		}
 	}
 	return false
+}
+
+func isAlphaUpper(v string) bool {
+	for _, r := range v {
+		if r < 'A' || r > 'Z' {
+			return false
+		}
+	}
+	return v != ""
 }

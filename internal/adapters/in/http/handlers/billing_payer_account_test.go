@@ -100,3 +100,28 @@ func TestCredits_ForwardsCurrency(t *testing.T) {
 		t.Fatalf("currency deve seguir ao ms-billing: %+v", billing.forwarded)
 	}
 }
+
+// Vitrine na moeda da conta: `currency` segue ao ms-billing; ALL (só do admin) e valor malformado são barrados.
+func TestListPlans_ForwardsAccountCurrency(t *testing.T) {
+	billing := &stubBillingClient{}
+	c, _ := billingContext(http.MethodGet, "/api/v1/core/billing/plans?currency=eur", "", &pkg.JWTClaims{UserID: "user-1", CodeUser: "code-1"})
+	h := NewBillingHandlers(appbilling.NewBillingPort(billing), zap.NewNop())
+	if err := h.ListBillingPlansHandler(c); err != nil {
+		t.Fatal(err)
+	}
+	if len(billing.forwarded) != 1 || billing.forwarded[0].call.Query["currency"] != "EUR" {
+		t.Fatalf("currency deve seguir ao ms-billing em maiúsculas: %+v", billing.forwarded)
+	}
+}
+
+func TestListPlans_RejectsAllAndMalformedCurrency(t *testing.T) {
+	for _, q := range []string{"currency=ALL", "currency=EU", "currency=E1R", "currency=EUR&region=a-b"} {
+		billing := &stubBillingClient{}
+		c, rec := billingContext(http.MethodGet, "/api/v1/core/billing/plans?"+q, "", &pkg.JWTClaims{UserID: "user-1", CodeUser: "code-1"})
+		h := NewBillingHandlers(appbilling.NewBillingPort(billing), zap.NewNop())
+		_ = h.ListBillingPlansHandler(c)
+		if rec.Code != http.StatusBadRequest || len(billing.forwarded) != 0 {
+			t.Fatalf("%s: esperava 400 sem chamar o ms-billing, veio %d %+v", q, rec.Code, billing.forwarded)
+		}
+	}
+}
