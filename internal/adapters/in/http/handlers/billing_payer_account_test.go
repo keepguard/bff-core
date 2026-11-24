@@ -125,3 +125,25 @@ func TestListPlans_RejectsAllAndMalformedCurrency(t *testing.T) {
 		}
 	}
 }
+
+// Origem do aceite (reativar e upgrade): vale a conexão, nunca o corpo; sem aceite no corpo, nada é gravado.
+func TestStampConsentOrigin_ConnectionOnlyAndOnlyWithConsent(t *testing.T) {
+	c, _ := billingContext(http.MethodPost, "/api/v1/core/billing/subscriptions/s/reactivate", "", nil)
+	c.Request().RemoteAddr = "203.0.113.9:4444"
+	c.Request().Header.Set("User-Agent", "Mozilla/5.0 (Real)")
+
+	withConsent := map[string]any{"cardDebitConsent": map[string]any{"textVersion": "v2"}, "ipAddress": "6.6.6.6", "userAgent": "forjado"}
+	stampConsentOrigin(c, withConsent)
+	if withConsent["ipAddress"] == "6.6.6.6" || withConsent["userAgent"] != "Mozilla/5.0 (Real)" {
+		t.Fatalf("o corpo não manda na origem do aceite: %+v", withConsent)
+	}
+	if withConsent["ipAddress"] == nil || withConsent["ipAddress"] == "" {
+		t.Fatalf("o IP da conexão precisa ir junto: %+v", withConsent)
+	}
+
+	without := map[string]any{"ipAddress": "6.6.6.6", "userAgent": "forjado"}
+	stampConsentOrigin(c, without)
+	if len(without) != 0 {
+		t.Fatalf("sem aceite não segue origem nenhuma: %+v", without)
+	}
+}

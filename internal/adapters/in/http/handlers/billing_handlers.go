@@ -265,6 +265,7 @@ func (h *BillingHandlers) ReactivateBillingSubscriptionHandler(c echo.Context) e
 		if err != nil || c.Response().Committed {
 			return err
 		}
+		stampConsentOrigin(c, parsed)
 		body = parsed
 	}
 	return h.proxyWithPayerCountry(c, http.StatusOK, func(ctx echo.Context, scope port.BillingScope) (json.RawMessage, error) {
@@ -289,6 +290,7 @@ func (h *BillingHandlers) ChangeBillingPlanHandler(c echo.Context) error {
 		return nil
 	}
 	id := c.Param("id")
+	stampConsentOrigin(c, body)
 	scope, ok, respErr := h.guard(c)
 	if !ok {
 		return respErr
@@ -651,6 +653,22 @@ func bindBillingJSON(c echo.Context) (map[string]any, error) {
 		}
 	}
 	return body, nil
+}
+
+// stampConsentOrigin grava no corpo a origem do aceite de débito no cartão (IP e dispositivo da conexão que
+// aceitou agora), e só quando há aceite. Nunca vale o que o navegador mandar no corpo: o billing trunca o IP.
+func stampConsentOrigin(c echo.Context, body map[string]any) {
+	delete(body, "ipAddress")
+	delete(body, "userAgent")
+	if body["cardDebitConsent"] == nil {
+		return
+	}
+	if ip := clientip.FromRequest(c.Request()); ip != "" {
+		body["ipAddress"] = ip
+	}
+	if ua := strings.TrimSpace(c.Request().UserAgent()); ua != "" {
+		body["userAgent"] = ua
+	}
 }
 
 // clientRemoteIP é o IP real do visitante (contrato C2 §9 e §11). O primeiro item de
